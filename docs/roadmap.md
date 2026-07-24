@@ -7,6 +7,8 @@
 - Docker Compose local environment
 - Backend and frontend tests
 - Reproducible Node 20 and pnpm 9.15.5 build
+- Structured extraction diagnostics
+- Filename, extracted-text, evidence, and metadata/status search
 
 ## Milestone 1 — Observe — complete
 
@@ -40,10 +42,10 @@
 - Append-only action audit
 - Reversible execution and undo
 
-## Milestone 5 — Learn and search
+## Milestone 5 — Learn and advanced search
 
 - Learn patterns only from confirmed approvals
-- Metadata and full-text search
+- Semantic and ranked search
 - User-controlled automation rules
 - Measured thresholds before any automatic filing
 

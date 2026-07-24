@@ -13,6 +13,9 @@ The current MVP can:
 - Mark empty, oversized, failed, and not-yet-supported files clearly
 - Store the inventory in local SQLite
 - Display intake status in a responsive local dashboard
+- Search filenames, paths, extracted text, titles, evidence, and extraction errors
+- Filter by intake status, understanding status, extension, and document type
+- Show structured extraction diagnostics with method, error code, and retry guidance
 - Run automatic background scans or a manual scan
 
 Nova does not rename, move, delete, upload, or share intake files.
@@ -35,7 +38,9 @@ Place a TXT or Markdown test file in `data/intake`. Nova scans automatically eve
 three seconds, or you can select **Scan now** in the dashboard. The folder is
 mounted read-only inside the backend container.
 
-Nova currently extracts UTF-8 TXT, MD, and MARKDOWN files up to 1 MB. The limit
+Nova currently extracts and locally indexes UTF-8 TXT, MD, and MARKDOWN files up
+to 1 MB. Search is case-insensitive and runs against the local SQLite inventory;
+file contents are never returned by the API. The limit
 can be changed with `NOVA_MAX_TEXT_BYTES`. PDF and DOCX extraction are planned
 next; those files are observed safely but marked as not supported.
 
@@ -97,6 +102,9 @@ pnpm run typecheck
 pnpm run test
 pnpm run build
 ```
+
+The frontend container also pins Node 20 and pnpm 9.15.5. Update both
+`frontend/package.json` and `frontend/Dockerfile` together when changing pnpm.
 
 ## Repository layout
 

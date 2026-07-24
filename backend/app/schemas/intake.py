@@ -26,6 +26,9 @@ class UnderstandingRecord(BaseModel):
     character_count: int | None
     evidence: str
     error: str | None
+    error_code: str | None
+    extraction_method: str
+    retryable: bool
     understood_at: datetime
 
 

@@ -5,6 +5,7 @@ import {
   getIntakeFiles,
   scanIntake,
   type HealthResponse,
+  type IntakeFilters,
   type IntakeFile,
   type UnderstandingRecord,
 } from "./lib/api";
@@ -19,17 +20,18 @@ function App() {
   const [files, setFiles] = useState<IntakeFile[]>([]);
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [filters, setFilters] = useState<IntakeFilters>({});
 
   const loadFiles = useCallback(async (signal?: AbortSignal) => {
     try {
-      const nextFiles = await getIntakeFiles(signal);
+      const nextFiles = await getIntakeFiles(filters, signal);
       setFiles(nextFiles);
       setIntakeError(null);
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       setIntakeError(error instanceof Error ? error.message : "Unable to load intake");
     }
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -120,6 +122,8 @@ function App() {
           <Metric label="Ready for review" value={files.length - duplicates} />
           <Metric label="Exact duplicates" value={duplicates} accent={duplicates > 0} />
         </div>
+
+        <SearchControls filters={filters} onChange={setFilters} resultCount={files.length} />
 
         {intakeError ? <p className="error-banner">{intakeError}</p> : null}
 
@@ -225,13 +229,109 @@ function understandingTitle(understanding: UnderstandingRecord | null): string {
 
 function understandingDetail(understanding: UnderstandingRecord | null): string {
   if (!understanding) return "Nova has not processed this file yet.";
-  if (understanding.error) return understanding.error;
+  if (understanding.error) {
+    const code = understanding.error_code ? ` [${understanding.error_code}]` : "";
+    const retry = understanding.retryable ? " Retry the scan after checking file access." : "";
+    return `${understanding.error}${code} Extractor: ${understanding.extraction_method}.${retry}`;
+  }
   if (understanding.text_preview) {
     const wordSummary =
       understanding.word_count === null ? "" : ` · ${understanding.word_count} words`;
     return `${understanding.text_preview}${wordSummary}`;
   }
   return understanding.evidence;
+}
+
+function SearchControls({
+  filters,
+  onChange,
+  resultCount,
+}: {
+  filters: IntakeFilters;
+  onChange: (filters: IntakeFilters) => void;
+  resultCount: number;
+}) {
+  const hasFilters = Object.values(filters).some(Boolean);
+  return (
+    <section className="search-panel" aria-label="Search intake files">
+      <label className="search-field">
+        <span>Search files and extracted text</span>
+        <input
+          type="search"
+          value={filters.query ?? ""}
+          placeholder="Filename, title, content, evidence, or error"
+          onChange={(event) => onChange({ ...filters, query: event.target.value })}
+        />
+      </label>
+      <div className="filter-row">
+        <label>
+          <span>Intake status</span>
+          <select
+            value={filters.status ?? ""}
+            onChange={(event) =>
+              onChange({
+                ...filters,
+                status: event.target.value as IntakeFilters["status"],
+              })
+            }
+          >
+            <option value="">All</option>
+            <option value="observed">Observed</option>
+            <option value="duplicate">Duplicate</option>
+          </select>
+        </label>
+        <label>
+          <span>Understanding</span>
+          <select
+            value={filters.understandingStatus ?? ""}
+            onChange={(event) =>
+              onChange({
+                ...filters,
+                understandingStatus:
+                  event.target.value as IntakeFilters["understandingStatus"],
+              })
+            }
+          >
+            <option value="">All</option>
+            <option value="ready">Understood</option>
+            <option value="empty">Empty</option>
+            <option value="unsupported">Not supported</option>
+            <option value="too_large">Too large</option>
+            <option value="failed">Needs attention</option>
+          </select>
+        </label>
+        <label>
+          <span>Extension</span>
+          <input
+            value={filters.extension ?? ""}
+            placeholder="txt"
+            onChange={(event) => onChange({ ...filters, extension: event.target.value })}
+          />
+        </label>
+        <label>
+          <span>Document type</span>
+          <input
+            value={filters.documentType ?? ""}
+            placeholder="plain_text"
+            onChange={(event) =>
+              onChange({ ...filters, documentType: event.target.value })
+            }
+          />
+        </label>
+        <div className="search-summary">
+          <span>{resultCount} result{resultCount === 1 ? "" : "s"}</span>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={!hasFilters}
+            onClick={() => onChange({})}
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function Metric({

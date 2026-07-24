@@ -31,7 +31,18 @@ export interface UnderstandingRecord {
   character_count: number | null;
   evidence: string;
   error: string | null;
+  error_code: string | null;
+  extraction_method: string;
+  retryable: boolean;
   understood_at: string;
+}
+
+export interface IntakeFilters {
+  query?: string;
+  status?: IntakeFile["status"] | "";
+  understandingStatus?: UnderstandingRecord["status"] | "";
+  extension?: string;
+  documentType?: string;
 }
 
 export interface IntakeScanResult {
@@ -45,8 +56,22 @@ export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
   return request<HealthResponse>("/api/v1/health", { signal });
 }
 
-export async function getIntakeFiles(signal?: AbortSignal): Promise<IntakeFile[]> {
-  return request<IntakeFile[]>("/api/v1/intake/files", { signal });
+export async function getIntakeFiles(
+  filters: IntakeFilters = {},
+  signal?: AbortSignal,
+): Promise<IntakeFile[]> {
+  const parameters = new URLSearchParams();
+  if (filters.query?.trim()) parameters.set("q", filters.query.trim());
+  if (filters.status) parameters.set("status", filters.status);
+  if (filters.understandingStatus) {
+    parameters.set("understanding_status", filters.understandingStatus);
+  }
+  if (filters.extension?.trim()) parameters.set("extension", filters.extension.trim());
+  if (filters.documentType?.trim()) {
+    parameters.set("document_type", filters.documentType.trim());
+  }
+  const query = parameters.size ? `?${parameters.toString()}` : "";
+  return request<IntakeFile[]>(`/api/v1/intake/files${query}`, { signal });
 }
 
 export async function scanIntake(): Promise<IntakeScanResult> {

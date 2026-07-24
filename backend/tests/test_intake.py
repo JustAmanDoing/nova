@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import Settings
 from app.main import create_app
+from app.schemas.intake import UnderstandingStatus
 from app.services.intake import IntakeService
 
 
@@ -126,6 +127,53 @@ def test_understanding_refreshes_when_file_content_changes(tmp_path: Path) -> No
     assert understanding.title == "A different and longer title"
 
 
+def test_search_covers_filename_full_text_evidence_and_filters(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    (service.intake_path / "invoice.txt").write_text(
+        "Quarterly account\nSupplier: Example Office\nReference: INV-90210",
+        encoding="utf-8",
+    )
+    (service.intake_path / "project.md").write_text(
+        "# Nova roadmap\n\nPrivate assistant milestones",
+        encoding="utf-8",
+    )
+    (service.intake_path / "scan.pdf").write_bytes(b"%PDF")
+    service.scan()
+
+    assert [item.original_name for item in service.list_files(query="INV-90210")] == [
+        "invoice.txt"
+    ]
+    assert [item.original_name for item in service.list_files(query="project.md")] == [
+        "project.md"
+    ]
+    assert [item.original_name for item in service.list_files(query="not supported")] == [
+        "scan.pdf"
+    ]
+    assert [
+        item.original_name
+        for item in service.list_files(
+            understanding_status=UnderstandingStatus.ready,
+            extension="md",
+            document_type="markdown",
+        )
+    ] == ["project.md"]
+
+
+def test_failed_extraction_has_actionable_diagnostics(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    (service.intake_path / "invalid.txt").write_bytes(b"\xff\xfe\xfa")
+
+    service.scan()
+    understanding = service.list_files()[0].understanding
+
+    assert understanding is not None
+    assert understanding.status == "failed"
+    assert understanding.error_code == "invalid_utf8"
+    assert understanding.extraction_method == "utf-8"
+    assert understanding.retryable is False
+    assert understanding.error == "The file could not be decoded as UTF-8 text."
+
+
 def test_intake_api_scans_and_lists_files(tmp_path: Path) -> None:
     intake_path = tmp_path / "intake"
     settings = Settings(
@@ -147,3 +195,28 @@ def test_intake_api_scans_and_lists_files(tmp_path: Path) -> None:
     assert files_response.json()[0]["original_name"] == "note.md"
     assert files_response.json()[0]["understanding"]["status"] == "ready"
     assert files_response.json()[0]["understanding"]["title"] == "Nova"
+
+
+def test_intake_api_searches_extracted_text_and_status(tmp_path: Path) -> None:
+    intake_path = tmp_path / "intake"
+    application = create_app(
+        Settings(
+            intake_path=intake_path,
+            database_path=tmp_path / "nova.db",
+            intake_scan_seconds=60,
+        )
+    )
+
+    with TestClient(application) as client:
+        (intake_path / "notes.txt").write_text(
+            "Internal reference ZX-418",
+            encoding="utf-8",
+        )
+        client.post("/api/v1/intake/scan")
+        response = client.get(
+            "/api/v1/intake/files",
+            params={"q": "ZX-418", "understanding_status": "ready"},
+        )
+
+    assert response.status_code == 200
+    assert [item["original_name"] for item in response.json()] == ["notes.txt"]

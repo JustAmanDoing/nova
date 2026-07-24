@@ -31,6 +31,8 @@ Local data/intake folder (read-only mount)
 
 - Displays service health, intake totals, file metadata, duplicate status, and
   normalized understanding results.
+- Provides server-backed text search and metadata/status filters.
+- Displays structured extraction diagnostics without exposing stack traces.
 - Can request an immediate scan.
 - Does not receive file contents.
 - Owns interaction state, not authoritative inventory data.
@@ -41,6 +43,8 @@ Local data/intake folder (read-only mount)
 - Reads every file locally to calculate its fingerprint.
 - Extracts UTF-8 TXT and Markdown files up to the configured size limit.
 - Stores normalized metadata and understanding results in SQLite.
+- Indexes supported extracted text locally for case-insensitive search across
+  filenames, paths, titles, content, evidence, and extraction errors.
 - Exposes versioned endpoints under `/api/v1`.
 - Runs without an AI model or cloud service.
 
@@ -71,9 +75,12 @@ Supported text files also have a normalized understanding record:
 - Short text preview
 - Word and character counts
 - Plain-language extraction evidence
-- Error detail when local extraction fails
+- Error detail, stable error code, extraction method, and retry guidance when
+  local extraction fails
 
-The database stores only a short preview, not a second full copy of the document.
+The database stores searchable extracted text for supported files, alongside the
+short preview returned by the API. Full extracted content never leaves the
+backend through the intake listing endpoint.
 PDF and DOCX files remain `unsupported` until their local extractors are added.
 
 ## Security baseline

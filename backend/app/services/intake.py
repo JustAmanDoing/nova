@@ -12,6 +12,7 @@ from app.schemas.intake import (
     IntakeScanResult,
     IntakeStatus,
     UnderstandingRecord,
+    UnderstandingStatus,
 )
 from app.services.understanding import understand_file
 
@@ -70,12 +71,28 @@ class IntakeService:
                     character_count INTEGER,
                     evidence TEXT NOT NULL,
                     error TEXT,
+                    error_code TEXT,
+                    extraction_method TEXT NOT NULL DEFAULT 'none',
+                    retryable INTEGER NOT NULL DEFAULT 0,
+                    full_text TEXT,
                     understood_at TEXT NOT NULL
                 );
 
-                UPDATE schema_meta SET version = 2;
+                UPDATE schema_meta SET version = 3;
                 """
             )
+            self._add_column_if_missing(connection, "understanding_results", "error_code TEXT")
+            self._add_column_if_missing(
+                connection,
+                "understanding_results",
+                "extraction_method TEXT NOT NULL DEFAULT 'none'",
+            )
+            self._add_column_if_missing(
+                connection,
+                "understanding_results",
+                "retryable INTEGER NOT NULL DEFAULT 0",
+            )
+            self._add_column_if_missing(connection, "understanding_results", "full_text TEXT")
 
     def scan(self) -> IntakeScanResult:
         scanned = added = updated = 0
@@ -176,10 +193,49 @@ class IntakeService:
             duplicates=duplicates,
         )
 
-    def list_files(self) -> list[IntakeFile]:
+    def list_files(
+        self,
+        query: str | None = None,
+        status: IntakeStatus | None = None,
+        understanding_status: UnderstandingStatus | None = None,
+        extension: str | None = None,
+        document_type: str | None = None,
+    ) -> list[IntakeFile]:
+        clauses: list[str] = []
+        parameters: list[str] = []
+        if query and (term := query.strip()):
+            clauses.append(
+                """(
+                    files.original_name LIKE ? ESCAPE '\\'
+                    OR files.relative_path LIKE ? ESCAPE '\\'
+                    OR understanding.title LIKE ? ESCAPE '\\'
+                    OR understanding.full_text LIKE ? ESCAPE '\\'
+                    OR understanding.evidence LIKE ? ESCAPE '\\'
+                    OR understanding.error LIKE ? ESCAPE '\\'
+                )"""
+            )
+            pattern = f"%{self._escape_like(term)}%"
+            parameters.extend([pattern] * 6)
+        if status is not None:
+            clauses.append("files.status = ?")
+            parameters.append(status.value)
+        if understanding_status is not None:
+            clauses.append("understanding.status = ?")
+            parameters.append(understanding_status.value)
+        if extension and (normalized_extension := extension.strip().lower()):
+            clauses.append("files.extension = ?")
+            parameters.append(
+                normalized_extension
+                if normalized_extension.startswith(".")
+                else f".{normalized_extension}"
+            )
+        if document_type and (normalized_type := document_type.strip().lower()):
+            clauses.append("understanding.document_type = ?")
+            parameters.append(normalized_type)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._lock, self._connection() as connection:
             rows = connection.execute(
-                """
+                f"""
                 SELECT files.id, files.relative_path, files.original_name,
                        files.extension, files.size_bytes, files.modified_at,
                        files.observed_at, files.sha256, files.status,
@@ -187,12 +243,16 @@ class IntakeService:
                        understanding.document_type, understanding.title,
                        understanding.text_preview, understanding.word_count,
                        understanding.character_count, understanding.evidence,
-                       understanding.error, understanding.understood_at
+                       understanding.error, understanding.error_code,
+                       understanding.extraction_method, understanding.retryable,
+                       understanding.understood_at
                 FROM intake_files AS files
                 LEFT JOIN understanding_results AS understanding
                   ON understanding.file_id = files.id
+                {where}
                 ORDER BY observed_at DESC, relative_path
-                """
+                """,
+                parameters,
             ).fetchall()
         return [self._intake_file_from_row(row) for row in rows]
 
@@ -219,9 +279,10 @@ class IntakeService:
                 INSERT INTO understanding_results (
                     file_id, source_sha256, status, document_type, title,
                     text_preview, word_count, character_count, evidence,
-                    error, understood_at
+                    error, error_code, extraction_method, retryable, full_text,
+                    understood_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(file_id) DO UPDATE SET
                     source_sha256 = excluded.source_sha256,
                     status = excluded.status,
@@ -232,6 +293,10 @@ class IntakeService:
                     character_count = excluded.character_count,
                     evidence = excluded.evidence,
                     error = excluded.error,
+                    error_code = excluded.error_code,
+                    extraction_method = excluded.extraction_method,
+                    retryable = excluded.retryable,
+                    full_text = excluded.full_text,
                     understood_at = excluded.understood_at
                 """,
                 (
@@ -245,6 +310,10 @@ class IntakeService:
                     result.character_count,
                     result.evidence,
                     result.error,
+                    result.error_code,
+                    result.extraction_method,
+                    int(result.retryable),
+                    result.full_text,
                     result.understood_at,
                 ),
             )
@@ -262,6 +331,9 @@ class IntakeService:
                 character_count=row["character_count"],
                 evidence=row["evidence"],
                 error=row["error"],
+                error_code=row["error_code"],
+                extraction_method=row["extraction_method"],
+                retryable=bool(row["retryable"]),
                 understood_at=row["understood_at"],
             )
         return IntakeFile(
@@ -305,6 +377,23 @@ class IntakeService:
                 (status.value, canonical_id, row["id"]),
             )
         return duplicates
+
+    @staticmethod
+    def _escape_like(value: str) -> str:
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    @staticmethod
+    def _add_column_if_missing(
+        connection: sqlite3.Connection,
+        table: str,
+        definition: str,
+    ) -> None:
+        column = definition.split()[0]
+        columns = {
+            row["name"] for row in connection.execute(f"PRAGMA table_info({table})")
+        }
+        if column not in columns:
+            connection.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
 
     @contextmanager
     def _connection(self) -> Iterator[sqlite3.Connection]:

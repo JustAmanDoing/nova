@@ -226,6 +226,74 @@ h2 {
   background: #281714;
 }
 
+.search-panel {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid #2a322e;
+  border-radius: 14px;
+  background: #101412;
+}
+
+.search-panel label {
+  display: grid;
+  gap: 7px;
+  color: #8d9892;
+  font-size: 0.72rem;
+}
+
+.search-panel input,
+.search-panel select {
+  min-width: 0;
+  padding: 11px 12px;
+  color: #edf1ed;
+  border: 1px solid #353e39;
+  border-radius: 9px;
+  outline: none;
+  background: #090c0b;
+  font: inherit;
+}
+
+.search-panel input:focus,
+.search-panel select:focus {
+  border-color: #8bf6b8;
+  box-shadow: 0 0 0 3px rgba(139, 246, 184, 0.1);
+}
+
+.search-field input {
+  width: 100%;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(125px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.search-summary {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  color: #8d9892;
+  font-size: 0.78rem;
+}
+
+.secondary-button {
+  padding: 10px 12px;
+  color: #c8d0cb;
+  border: 1px solid #3b4540;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.secondary-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .file-panel {
   overflow: hidden;
   min-height: 280px;
@@ -412,6 +480,15 @@ tbody tr:last-child td {
   .metric {
     min-height: 82px;
   }
+
+  .filter-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .search-summary {
+    justify-content: space-between;
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 560px) {
@@ -430,5 +507,13 @@ tbody tr:last-child td {
 
   .metrics {
     grid-template-columns: 1fr;
+  }
+
+  .filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .search-summary {
+    grid-column: auto;
   }
 }

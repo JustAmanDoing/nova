@@ -19,6 +19,10 @@ class UnderstandingResult:
     character_count: int | None
     evidence: str
     error: str | None
+    error_code: str | None
+    extraction_method: str
+    retryable: bool
+    full_text: str | None
     understood_at: str
 
 
@@ -40,6 +44,10 @@ def understand_file(
             character_count=None,
             evidence=f"{normalized_extension or 'Unknown'} files are not supported yet.",
             error=None,
+            error_code=None,
+            extraction_method="none",
+            retryable=False,
+            full_text=None,
             understood_at=understood_at,
         )
 
@@ -54,6 +62,10 @@ def understand_file(
                 character_count=None,
                 evidence=f"Local extraction is limited to {max_text_bytes} bytes.",
                 error=None,
+                error_code="file_too_large",
+                extraction_method="utf-8",
+                retryable=False,
+                full_text=None,
                 understood_at=understood_at,
             )
         text = path.read_text(encoding="utf-8-sig")
@@ -66,10 +78,14 @@ def understand_file(
             word_count=None,
             character_count=None,
             evidence="Nova attempted local UTF-8 text extraction.",
-            error="The file is not valid UTF-8 text.",
+            error="The file could not be decoded as UTF-8 text.",
+            error_code="invalid_utf8",
+            extraction_method="utf-8",
+            retryable=False,
+            full_text=None,
             understood_at=understood_at,
         )
-    except OSError:
+    except OSError as error:
         return UnderstandingResult(
             status=UnderstandingStatus.failed,
             document_type=_document_type(normalized_extension),
@@ -78,7 +94,11 @@ def understand_file(
             word_count=None,
             character_count=None,
             evidence="Nova attempted to read the file locally.",
-            error="Nova could not read the file.",
+            error=f"Nova could not read the file: {error.strerror or type(error).__name__}.",
+            error_code="file_read_error",
+            extraction_method="utf-8",
+            retryable=True,
+            full_text=None,
             understood_at=understood_at,
         )
 
@@ -93,6 +113,10 @@ def understand_file(
             character_count=0,
             evidence="The file was read locally and contains no text.",
             error=None,
+            error_code=None,
+            extraction_method="utf-8",
+            retryable=False,
+            full_text="",
             understood_at=understood_at,
         )
 
@@ -106,6 +130,10 @@ def understand_file(
         character_count=len(normalized_text),
         evidence=f"Extracted locally from {document_type.replace('_', ' ')} content.",
         error=None,
+        error_code=None,
+        extraction_method="utf-8",
+        retryable=False,
+        full_text=normalized_text,
         understood_at=understood_at,
     )
 
