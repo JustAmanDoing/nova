@@ -32,12 +32,14 @@
 - Keep all processing local and make no file changes
 - Add local OCR for scanned PDFs and images
 
-## Milestone 3 — Recommend
+## Milestone 3 — Recommend — complete
 
-- Deterministic rules before AI
-- Suggest a category, filename, and destination
-- Include confidence and a plain-language explanation
-- Return no recommendation when evidence is insufficient
+- Deterministic rules before AI — complete
+- Suggest a category, approved-format filename, and destination — complete
+- Include confidence and a plain-language explanation — complete
+- Return no recommendation when evidence is insufficient — complete
+- Recalculate after source, understanding, duplicate-status, or rule-version changes — complete
+- Keep all recommendations read-only with no action controls — complete
 
 ## Milestone 4 — Approve and execute
 

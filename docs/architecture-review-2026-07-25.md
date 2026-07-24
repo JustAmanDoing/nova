@@ -54,6 +54,15 @@ Health responses now use the configuration attached to the running FastAPI
 application, including test or alternate local configurations. File candidates
 whose resolved path escapes the configured intake root are ignored.
 
+### Deterministic recommendation boundary
+
+The first Recommend slice remains inside the modular monolith. Versioned,
+deterministic rules consume normalized understanding records and persist either
+an explainable suggestion or an explicit insufficient-evidence outcome.
+Recommendations are invalidated when content, understanding, duplicate status,
+or rules change. The UI has no approval or execution controls, so the read-only
+source boundary is preserved.
+
 ## Deliberately retained
 
 - **SQLite and SQL `LIKE` search:** appropriate for the current single-user MVP
@@ -71,7 +80,7 @@ whose resolved path escapes the configured intake root are ignored.
 - Background job queues or a message bus
 - Microservices
 - OCR
-- Recommendation, approval, execution, audit, and undo modules
+- Approval, execution, audit, and undo modules
 - Chatbot and semantic retrieval
 
 These are not required to complete the current Observe and Understand slice.
@@ -89,6 +98,8 @@ These are not required to complete the current Observe and Understand slice.
 
 ## Next architectural gate
 
-Proceed to recommendation work only after the current intake slice is tested
-with representative local files and its failure states are acceptable. The
-chatbot remains explicitly outside this review.
+Test the recommendation slice with representative invoices, project documents,
+weak evidence, and exact duplicates before beginning approval work. Approval
+must remain a separate boundary, and execution must not be added until its
+audit and undo contract is defined. The chatbot remains explicitly outside this
+review.

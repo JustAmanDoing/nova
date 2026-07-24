@@ -13,7 +13,7 @@ def test_health_endpoint() -> None:
     body = response.json()
     assert body["status"] == "ok"
     assert body["service"] == "Nova API"
-    assert body["version"] == "0.2.0"
+    assert body["version"] == "0.3.0"
     assert body["environment"] == "development"
     assert body["timestamp"]
 

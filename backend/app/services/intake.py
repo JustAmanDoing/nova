@@ -1,4 +1,5 @@
 import hashlib
+import json
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -12,9 +13,11 @@ from app.schemas.intake import (
     IntakeScanResult,
     IntakeStatus,
     IntakeSummary,
+    RecommendationRecord,
     UnderstandingRecord,
     UnderstandingStatus,
 )
+from app.services.recommendation import RULES_VERSION, recommend_file
 from app.services.understanding import understand_file
 
 
@@ -81,7 +84,27 @@ class IntakeService:
                     understood_at TEXT NOT NULL
                 );
 
-                UPDATE schema_meta SET version = 3;
+                CREATE TABLE IF NOT EXISTS recommendation_results (
+                    file_id TEXT PRIMARY KEY
+                        REFERENCES intake_files(id) ON DELETE CASCADE,
+                    source_sha256 TEXT NOT NULL,
+                    source_status TEXT NOT NULL,
+                    source_understood_at TEXT,
+                    rules_version INTEGER NOT NULL,
+                    outcome TEXT NOT NULL CHECK (
+                        outcome IN ('suggested', 'insufficient_evidence')
+                    ),
+                    category TEXT,
+                    suggested_filename TEXT,
+                    destination TEXT,
+                    confidence REAL NOT NULL CHECK (
+                        confidence >= 0 AND confidence <= 1
+                    ),
+                    reasons TEXT NOT NULL,
+                    generated_at TEXT NOT NULL
+                );
+
+                UPDATE schema_meta SET version = 4;
                 """
             )
             self._add_column_if_missing(connection, "understanding_results", "error_code TEXT")
@@ -96,6 +119,16 @@ class IntakeService:
                 "retryable INTEGER NOT NULL DEFAULT 0",
             )
             self._add_column_if_missing(connection, "understanding_results", "full_text TEXT")
+            self._add_column_if_missing(
+                connection,
+                "recommendation_results",
+                "source_status TEXT NOT NULL DEFAULT 'observed'",
+            )
+            self._add_column_if_missing(
+                connection,
+                "recommendation_results",
+                "source_understood_at TEXT",
+            )
 
     def scan(self) -> IntakeScanResult:
         scanned = added = updated = 0
@@ -197,6 +230,7 @@ class IntakeService:
             removed = self._remove_missing_files(connection, seen_paths)
             duplicates = self._reconcile_duplicates(connection)
             self._refresh_understanding(connection)
+            self._refresh_recommendations(connection)
 
         return IntakeScanResult(
             scanned=scanned,
@@ -215,12 +249,14 @@ class IntakeService:
                     COALESCE(SUM(understanding.status = 'ready'), 0) AS understood,
                     COALESCE(SUM(
                         files.status = 'observed'
-                        AND understanding.status = 'ready'
+                        AND recommendation.outcome = 'suggested'
                     ), 0) AS ready_for_review,
                     COALESCE(SUM(files.status = 'duplicate'), 0) AS exact_duplicates
                 FROM intake_files AS files
                 LEFT JOIN understanding_results AS understanding
                   ON understanding.file_id = files.id
+                LEFT JOIN recommendation_results AS recommendation
+                  ON recommendation.file_id = files.id
                 """
             ).fetchone()
         return IntakeSummary(
@@ -249,10 +285,14 @@ class IntakeService:
                     OR understanding.full_text LIKE ? ESCAPE '\\'
                     OR understanding.evidence LIKE ? ESCAPE '\\'
                     OR understanding.error LIKE ? ESCAPE '\\'
+                    OR recommendation.category LIKE ? ESCAPE '\\'
+                    OR recommendation.suggested_filename LIKE ? ESCAPE '\\'
+                    OR recommendation.destination LIKE ? ESCAPE '\\'
+                    OR recommendation.reasons LIKE ? ESCAPE '\\'
                 )"""
             )
             pattern = f"%{self._escape_like(term)}%"
-            parameters.extend([pattern] * 6)
+            parameters.extend([pattern] * 10)
         if status is not None:
             clauses.append("files.status = ?")
             parameters.append(status.value)
@@ -282,10 +322,19 @@ class IntakeService:
                        understanding.character_count, understanding.evidence,
                        understanding.error, understanding.error_code,
                        understanding.extraction_method, understanding.retryable,
-                       understanding.understood_at
+                       understanding.understood_at,
+                       recommendation.outcome AS recommendation_outcome,
+                       recommendation.category AS recommendation_category,
+                       recommendation.suggested_filename,
+                       recommendation.destination,
+                       recommendation.confidence,
+                       recommendation.reasons,
+                       recommendation.generated_at
                 FROM intake_files AS files
                 LEFT JOIN understanding_results AS understanding
                   ON understanding.file_id = files.id
+                LEFT JOIN recommendation_results AS recommendation
+                  ON recommendation.file_id = files.id
                 {where}
                 ORDER BY observed_at DESC, relative_path
                 """,
@@ -370,6 +419,79 @@ class IntakeService:
                 ),
             )
 
+    def _refresh_recommendations(self, connection: sqlite3.Connection) -> None:
+        rows = connection.execute(
+            """
+            SELECT files.id, files.original_name, files.extension, files.modified_at,
+                   files.sha256, files.status,
+                   understanding.status AS understanding_status,
+                   understanding.title, understanding.full_text,
+                   understanding.understood_at AS understanding_understood_at,
+                   recommendation.source_sha256,
+                   recommendation.source_status,
+                   recommendation.source_understood_at,
+                   recommendation.rules_version
+            FROM intake_files AS files
+            LEFT JOIN understanding_results AS understanding
+              ON understanding.file_id = files.id
+            LEFT JOIN recommendation_results AS recommendation
+              ON recommendation.file_id = files.id
+            """
+        ).fetchall()
+        for row in rows:
+            if (
+                row["source_sha256"] == row["sha256"]
+                and row["source_status"] == row["status"]
+                and row["source_understood_at"] == row["understanding_understood_at"]
+                and row["rules_version"] == RULES_VERSION
+            ):
+                continue
+            result = recommend_file(
+                original_name=row["original_name"],
+                extension=row["extension"],
+                modified_at=row["modified_at"],
+                title=row["title"],
+                full_text=row["full_text"],
+                understanding_status=row["understanding_status"],
+                is_duplicate=row["status"] == IntakeStatus.duplicate.value,
+            )
+            connection.execute(
+                """
+                INSERT INTO recommendation_results (
+                    file_id, source_sha256, source_status, source_understood_at,
+                    rules_version, outcome, category, suggested_filename,
+                    destination, confidence, reasons, generated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(file_id) DO UPDATE SET
+                    source_sha256 = excluded.source_sha256,
+                    source_status = excluded.source_status,
+                    source_understood_at = excluded.source_understood_at,
+                    rules_version = excluded.rules_version,
+                    outcome = excluded.outcome,
+                    category = excluded.category,
+                    suggested_filename = excluded.suggested_filename,
+                    destination = excluded.destination,
+                    confidence = excluded.confidence,
+                    reasons = excluded.reasons,
+                    generated_at = excluded.generated_at
+                """,
+                (
+                    row["id"],
+                    row["sha256"],
+                    row["status"],
+                    row["understanding_understood_at"],
+                    RULES_VERSION,
+                    result.outcome.value,
+                    result.category,
+                    result.suggested_filename,
+                    result.destination,
+                    result.confidence,
+                    json.dumps(result.reasons),
+                    result.generated_at,
+                ),
+            )
+
     @staticmethod
     def _intake_file_from_row(row: sqlite3.Row) -> IntakeFile:
         understanding = None
@@ -388,6 +510,17 @@ class IntakeService:
                 retryable=bool(row["retryable"]),
                 understood_at=row["understood_at"],
             )
+        recommendation = None
+        if row["recommendation_outcome"] is not None:
+            recommendation = RecommendationRecord(
+                outcome=row["recommendation_outcome"],
+                category=row["recommendation_category"],
+                suggested_filename=row["suggested_filename"],
+                destination=row["destination"],
+                confidence=row["confidence"],
+                reasons=json.loads(row["reasons"]),
+                generated_at=row["generated_at"],
+            )
         return IntakeFile(
             id=row["id"],
             relative_path=row["relative_path"],
@@ -400,6 +533,7 @@ class IntakeService:
             status=row["status"],
             duplicate_of=row["duplicate_of"],
             understanding=understanding,
+            recommendation=recommendation,
         )
 
     def _reconcile_duplicates(self, connection: sqlite3.Connection) -> int:

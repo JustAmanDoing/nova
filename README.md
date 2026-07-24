@@ -16,6 +16,9 @@ The current MVP can:
 - Search filenames, paths, extracted text, titles, evidence, and extraction errors
 - Filter by intake status, understanding status, extension, and document type
 - Show structured extraction diagnostics with method, error code, and retry guidance
+- Apply deterministic invoice and project rules before any AI is considered
+- Suggest a category, approved-format filename, and destination with confidence
+- Explain why each suggestion was made, or return no recommendation when evidence is weak
 - Recover background monitoring after an individual scan or parser failure
 - Reconcile removed files and duplicate ownership with the current intake folder
 - Keep dashboard totals accurate while search filters are active
@@ -45,6 +48,12 @@ Nova currently extracts and locally indexes UTF-8 text, PDF text layers, and DOC
 document text. Scanned PDFs without a text layer remain empty until OCR is added.
 Search is case-insensitive and runs against the local SQLite inventory; file
 contents are never returned by the API.
+
+Recommendations are local, deterministic, and read-only. The first rules cover
+invoice and project documents. Nova stores a versioned result, exposes its
+plain-language reasons in the dashboard, and deliberately returns **No
+recommendation** when evidence is insufficient. A recommendation never renames
+or moves a source file.
 
 Two independent limits protect local resources:
 
@@ -135,5 +144,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 
 - [Architecture](docs/architecture.md)
 - [Architecture review — 25 July 2026](docs/architecture-review-2026-07-25.md)
+- [Milestone 3 recommendations](docs/milestone-3-recommendations.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

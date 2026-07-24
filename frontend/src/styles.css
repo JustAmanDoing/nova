@@ -369,6 +369,11 @@ td:first-child {
   max-width: 440px;
 }
 
+.recommendation-cell {
+  min-width: 300px;
+  max-width: 420px;
+}
+
 td strong,
 td span {
   display: block;
@@ -386,6 +391,23 @@ td:first-child span {
 }
 
 .understanding-cell span {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 6px;
+  color: #7f8b84;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.recommendation-cell strong {
+  overflow-wrap: anywhere;
+  margin-top: 9px;
+  font-size: 0.8rem;
+}
+
+.recommendation-cell > span:not(.badge) {
   display: -webkit-box;
   overflow: hidden;
   margin-top: 6px;
@@ -436,6 +458,19 @@ tbody tr:last-child td {
   color: #ffd4cf;
   border-color: #693f3a;
   background: #281714;
+}
+
+.badge.recommendation.suggested {
+  color: #b9f7d1;
+  border-color: #315440;
+  background: #122219;
+}
+
+.badge.recommendation.insufficient,
+.badge.recommendation.pending {
+  color: #c7cec9;
+  border-color: #414844;
+  background: #1b201d;
 }
 
 .status {

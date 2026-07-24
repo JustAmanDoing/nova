@@ -9,6 +9,7 @@ import {
   type IntakeFilters,
   type IntakeFile,
   type IntakeSummary,
+  type RecommendationRecord,
   type UnderstandingRecord,
 } from "./lib/api";
 
@@ -93,25 +94,26 @@ function App() {
         </a>
         <div className="nav-status">
           <Status state={service} />
-          <span className="phase">Intake MVP · 0.2.0</span>
+          <span className="phase">Intake MVP · 0.3.0</span>
         </div>
       </nav>
 
       <section className="hero">
         <div>
-          <p className="eyebrow">Observe + understand · Files remain untouched</p>
+          <p className="eyebrow">Observe + understand + recommend · Files remain untouched</p>
           <h1>Turn incoming files into useful context.</h1>
           <p className="lede">
             Add a TXT, Markdown, PDF, or DOCX file to <code>data/intake</code>.
-            Nova reads it locally, records a title and preview, and explains what
-            was extracted. Other formats remain safely marked as unsupported.
+            Nova reads it locally, records what it understands, and applies
+            deterministic filing rules when evidence is strong enough. Every
+            recommendation is explainable and nothing is changed.
           </p>
         </div>
         <div className="safety-card">
           <span className="safety-icon" aria-hidden="true">✓</span>
           <div>
-            <strong>Local understanding</strong>
-            <p>Your intake folder stays read-only. No file is renamed, moved, or uploaded.</p>
+            <strong>Safe recommendations</strong>
+            <p>Your intake folder stays read-only. Suggestions are displayed, never executed.</p>
           </div>
         </div>
       </section>
@@ -119,8 +121,8 @@ function App() {
       <section className="workspace" aria-labelledby="intake-title">
         <div className="workspace-heading">
           <div>
-            <p className="section-number">02 · Understand</p>
-            <h2 id="intake-title">What Nova knows about each file</h2>
+            <p className="section-number">02–03 · Understand + recommend</p>
+            <h2 id="intake-title">What Nova knows and recommends</h2>
           </div>
           <button type="button" onClick={handleScan} disabled={isScanning}>
             {isScanning ? "Scanning…" : "Scan now"}
@@ -158,6 +160,7 @@ function App() {
                     <th>Intake</th>
                     <th>Understanding</th>
                     <th>Evidence</th>
+                    <th>Recommendation</th>
                     <th>Observed</th>
                   </tr>
                 </thead>
@@ -182,6 +185,9 @@ function App() {
                         <strong>{understandingTitle(file.understanding)}</strong>
                         <span>{understandingDetail(file.understanding)}</span>
                       </td>
+                      <td className="recommendation-cell">
+                        <RecommendationView recommendation={file.recommendation} />
+                      </td>
                       <td>{formatObserved(file.observed_at)}</td>
                     </tr>
                   ))}
@@ -192,6 +198,43 @@ function App() {
         </div>
       </section>
     </main>
+  );
+}
+
+function RecommendationView({
+  recommendation,
+}: {
+  recommendation: RecommendationRecord | null;
+}) {
+  if (!recommendation) {
+    return (
+      <>
+        <span className="badge recommendation pending">Pending</span>
+        <span>Nova has not evaluated this file yet.</span>
+      </>
+    );
+  }
+  if (recommendation.outcome === "insufficient_evidence") {
+    return (
+      <>
+        <span className="badge recommendation insufficient">No recommendation</span>
+        <span title={recommendation.reasons.join(" ")}>
+          {recommendation.reasons[0]}
+        </span>
+      </>
+    );
+  }
+  return (
+    <>
+      <span className="badge recommendation suggested">
+        {recommendation.category} · {Math.round(recommendation.confidence * 100)}%
+      </span>
+      <strong>{recommendation.suggested_filename}</strong>
+      <span>Destination: {recommendation.destination}</span>
+      <span title={recommendation.reasons.join(" ")}>
+        {recommendation.reasons[0]}
+      </span>
+    </>
   );
 }
 
@@ -270,11 +313,11 @@ function SearchControls({
   return (
     <section className="search-panel" aria-label="Search intake files">
       <label className="search-field">
-        <span>Search files and extracted text</span>
+        <span>Search files, extracted text, and recommendations</span>
         <input
           type="search"
           value={filters.query ?? ""}
-          placeholder="Filename, title, content, evidence, or error"
+          placeholder="Filename, content, evidence, category, destination, or error"
           onChange={(event) => onChange({ ...filters, query: event.target.value })}
         />
       </label>

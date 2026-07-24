@@ -9,8 +9,9 @@ useful workflow before autonomy is introduced:
 Observe → Understand → Recommend → Approve → Execute → Audit → Learn
 ```
 
-**Observe** and the first **Understand** slice are active today. Nova records files,
-extracts supported text locally, and never changes the source files.
+**Observe**, **Understand**, and the first deterministic **Recommend** slice are
+active today. Nova records files, extracts supported text locally, proposes
+filing details when evidence is strong enough, and never changes source files.
 
 ## Current vertical slice
 
@@ -20,7 +21,8 @@ Local data/intake folder (read-only mount)
         └── metadata + SHA-256 fingerprint
               └── exact-duplicate check
                     └── local TXT/Markdown/PDF/DOCX understanding
-                          └── local SQLite inventory
+                          └── versioned deterministic recommendation rules
+                                └── local SQLite inventory
                                 ├── versioned FastAPI endpoints
                                 └── React intake dashboard
 ```
@@ -34,6 +36,8 @@ Local data/intake folder (read-only mount)
 - Reads authoritative, unfiltered totals from a dedicated summary endpoint so
   dashboard metrics do not change when search filters are active.
 - Provides server-backed text search and metadata/status filters.
+- Displays category, filename, destination, confidence, and explanation for
+  deterministic recommendations.
 - Displays structured extraction diagnostics without exposing stack traces.
 - Can request an immediate scan.
 - Does not receive file contents.
@@ -50,8 +54,13 @@ Local data/intake folder (read-only mount)
 - Reconciles inventory records and duplicate ownership when source files are
   removed from the intake folder.
 - Stores normalized metadata and understanding results in SQLite.
+- Applies versioned deterministic invoice and project filing rules after local
+  understanding completes.
+- Persists either an explainable suggestion or an explicit
+  `insufficient_evidence` outcome.
 - Indexes supported extracted text locally for case-insensitive search across
-  filenames, paths, titles, content, evidence, and extraction errors.
+  filenames, paths, titles, content, evidence, extraction errors, and
+  recommendation fields.
 - Exposes versioned endpoints under `/api/v1`.
 - Runs without an AI model or cloud service.
 
@@ -91,6 +100,20 @@ backend through the intake listing endpoint.
 PDF extraction uses pypdf; DOCX extraction reads the Open XML package locally.
 Scanned PDFs without a text layer produce an empty result rather than invoking a
 cloud OCR service.
+
+Each file also receives a versioned recommendation record:
+
+- Outcome: `suggested` or `insufficient_evidence`
+- Suggested category, approved-format filename, and destination when available
+- Confidence score
+- Plain-language reasons
+- Source fingerprint and intake status used to produce the result
+- Rules version and generation timestamp
+
+Recommendations are recalculated after content, understanding-result, or
+duplicate-status changes and when the rules version changes. Exact duplicates
+are never recommended for independent filing. These records are proposals only:
+there is no approval or execution path in the current milestone.
 
 ## Security baseline
 

@@ -20,6 +20,7 @@ export interface IntakeFile {
   status: "observed" | "duplicate";
   duplicate_of: string | null;
   understanding: UnderstandingRecord | null;
+  recommendation: RecommendationRecord | null;
 }
 
 export interface UnderstandingRecord {
@@ -35,6 +36,16 @@ export interface UnderstandingRecord {
   extraction_method: string;
   retryable: boolean;
   understood_at: string;
+}
+
+export interface RecommendationRecord {
+  outcome: "suggested" | "insufficient_evidence";
+  category: string | null;
+  suggested_filename: string | null;
+  destination: string | null;
+  confidence: number;
+  reasons: string[];
+  generated_at: string;
 }
 
 export interface IntakeFilters {

@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class IntakeStatus(StrEnum):
@@ -15,6 +15,21 @@ class UnderstandingStatus(StrEnum):
     unsupported = "unsupported"
     too_large = "too_large"
     failed = "failed"
+
+
+class RecommendationOutcome(StrEnum):
+    suggested = "suggested"
+    insufficient_evidence = "insufficient_evidence"
+
+
+class RecommendationRecord(BaseModel):
+    outcome: RecommendationOutcome
+    category: str | None
+    suggested_filename: str | None
+    destination: str | None
+    confidence: float = Field(ge=0, le=1)
+    reasons: list[str] = Field(min_length=1)
+    generated_at: datetime
 
 
 class UnderstandingRecord(BaseModel):
@@ -44,6 +59,7 @@ class IntakeFile(BaseModel):
     status: IntakeStatus
     duplicate_of: str | None
     understanding: UnderstandingRecord | None
+    recommendation: RecommendationRecord | None
 
 
 class IntakeScanResult(BaseModel):

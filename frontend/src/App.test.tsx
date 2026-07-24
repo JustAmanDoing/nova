@@ -61,6 +61,17 @@ describe("App", () => {
               error: null,
               understood_at: "2026-07-24T00:00:01Z",
             },
+            recommendation: {
+              outcome: "insufficient_evidence",
+              category: null,
+              suggested_filename: null,
+              destination: null,
+              confidence: 0,
+              reasons: [
+                "Exact duplicates are not recommended for filing independently.",
+              ],
+              generated_at: "2026-07-24T00:00:02Z",
+            },
           },
         ]);
       }),
@@ -77,6 +88,10 @@ describe("App", () => {
       screen.getByText(/Invoice TEST-2026-001 from Example Office Supplies/),
     ).toBeInTheDocument();
     expect(screen.getByText(/1\.2 KB/)).toBeInTheDocument();
+    expect(screen.getByText("No recommendation")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Exact duplicates are not recommended/),
+    ).toBeInTheDocument();
   });
 
   it("shows a clear status for unsupported formats", async () => {
@@ -210,7 +225,7 @@ describe("App", () => {
 
     fireEvent.change(
       await screen.findByRole("searchbox", {
-        name: "Search files and extracted text",
+        name: "Search files, extracted text, and recommendations",
       }),
       { target: { value: "invoice 90210" } },
     );
@@ -286,5 +301,83 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText(/invalid_utf8/)).toBeInTheDocument();
     expect(screen.getByText(/Extractor: utf-8/)).toBeInTheDocument();
+  });
+
+  it("shows an explainable deterministic recommendation without action controls", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        if (input.toString().endsWith("/health")) {
+          return response({
+            status: "ok",
+            service: "Nova API",
+            version: "0.3.0",
+            environment: "test",
+            timestamp: "2026-07-25T00:00:00Z",
+          });
+        }
+        if (input.toString().endsWith("/summary")) {
+          return response({
+            files_observed: 1,
+            understood: 1,
+            ready_for_review: 1,
+            exact_duplicates: 0,
+          });
+        }
+        return response([
+          {
+            id: "invoice-file",
+            relative_path: "invoice.txt",
+            original_name: "invoice.txt",
+            extension: ".txt",
+            size_bytes: 256,
+            modified_at: "2026-07-24T00:00:00Z",
+            observed_at: "2026-07-24T00:00:00Z",
+            sha256: "abcdef1234567890",
+            status: "observed",
+            duplicate_of: null,
+            understanding: {
+              status: "ready",
+              document_type: "plain_text",
+              title: "Office invoice",
+              text_preview: "Invoice number INV-001",
+              word_count: 4,
+              character_count: 22,
+              evidence: "Extracted locally from plain text content.",
+              error: null,
+              error_code: null,
+              extraction_method: "utf-8",
+              retryable: false,
+              understood_at: "2026-07-24T00:00:01Z",
+            },
+            recommendation: {
+              outcome: "suggested",
+              category: "Financial",
+              suggested_filename:
+                "24-07-2026_Financial_Invoice_Example-Office_v01.txt",
+              destination: "Financial/Invoices",
+              confidence: 0.96,
+              reasons: [
+                "Matched invoice signals: invoice, invoice number, supplier:, total:.",
+                "Applied the approved Financial filing category.",
+                "No file will change until a later approval step.",
+              ],
+              generated_at: "2026-07-24T00:00:02Z",
+            },
+          },
+        ]);
+      }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByText("Financial · 96%")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "24-07-2026_Financial_Invoice_Example-Office_v01.txt",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Destination: Financial/Invoices")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /approve/i })).not.toBeInTheDocument();
   });
 });

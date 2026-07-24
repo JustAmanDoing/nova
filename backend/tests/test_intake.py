@@ -88,9 +88,22 @@ def test_scan_removes_missing_records_and_promotes_remaining_duplicate(
     service = make_service(tmp_path)
     first = service.intake_path / "first.txt"
     second = service.intake_path / "second.txt"
-    first.write_text("same content", encoding="utf-8")
-    second.write_text("same content", encoding="utf-8")
+    content = (
+        "Invoice\n"
+        "Invoice number: INV-001\n"
+        "Invoice date: 24-07-2026\n"
+        "Supplier: Example Office\n"
+        "Total: $35.15 AUD"
+    )
+    first.write_text(content, encoding="utf-8")
+    second.write_text(content, encoding="utf-8")
     service.scan()
+    initial_records = {
+        record.original_name: record for record in service.list_files()
+    }
+
+    assert initial_records["second.txt"].recommendation is not None
+    assert initial_records["second.txt"].recommendation.outcome == "insufficient_evidence"
 
     first.unlink()
     result = service.scan()
@@ -101,6 +114,74 @@ def test_scan_removes_missing_records_and_promotes_remaining_duplicate(
     assert [record.original_name for record in records] == ["second.txt"]
     assert records[0].status == "observed"
     assert records[0].duplicate_of is None
+    assert records[0].recommendation is not None
+    assert records[0].recommendation.outcome == "suggested"
+
+
+def test_invoice_gets_an_explainable_deterministic_recommendation(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    source = service.intake_path / "invoice.txt"
+    content = (
+        "NOVA TEST DOCUMENT\n"
+        "Document type: Invoice\n"
+        "Invoice number: TEST-2026-001\n"
+        "Invoice date: 24-07-2026\n"
+        "Supplier: Example Office Supplies\n"
+        "Total: $35.15 AUD"
+    )
+    source.write_text(content, encoding="utf-8")
+
+    service.scan()
+    record = service.list_files()[0]
+
+    assert source.read_text(encoding="utf-8") == content
+    assert record.recommendation is not None
+    assert record.recommendation.outcome == "suggested"
+    assert record.recommendation.category == "Financial"
+    assert (
+        record.recommendation.suggested_filename
+        == "24-07-2026_Financial_Invoice_Example-Office-Supplies_v01.txt"
+    )
+    assert record.recommendation.destination == "Financial/Invoices"
+    assert record.recommendation.confidence == 0.96
+    assert record.recommendation.reasons[-1] == (
+        "No file will change until a later approval step."
+    )
+
+
+def test_project_rule_and_insufficient_evidence_outcomes(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    (service.intake_path / "project.md").write_text(
+        "# Nova Project\n\nMilestone roadmap for the local assistant.",
+        encoding="utf-8",
+    )
+    (service.intake_path / "note.txt").write_text(
+        "Remember to buy milk.",
+        encoding="utf-8",
+    )
+
+    service.scan()
+    records = {record.original_name: record for record in service.list_files()}
+
+    project = records["project.md"].recommendation
+    assert project is not None
+    assert project.outcome == "suggested"
+    assert project.category == "Project"
+    assert project.destination == "Project"
+    assert project.suggested_filename is not None
+    assert project.suggested_filename.endswith(
+        "_Project_Nova-Project_Local_v01.md"
+    )
+
+    note = records["note.txt"].recommendation
+    assert note is not None
+    assert note.outcome == "insufficient_evidence"
+    assert note.category is None
+    assert note.suggested_filename is None
+    assert note.destination is None
+    assert note.confidence == 0.0
 
 
 def test_markdown_understanding_uses_first_heading_as_title(tmp_path: Path) -> None:
@@ -172,6 +253,17 @@ def test_scan_backfills_search_data_from_an_older_understanding_record(
             SET full_text = NULL, extraction_method = 'none'
             """
         )
+        connection.execute(
+            """
+            UPDATE recommendation_results
+            SET outcome = 'insufficient_evidence',
+                category = NULL,
+                suggested_filename = NULL,
+                destination = NULL,
+                confidence = 0,
+                reasons = '["stale recommendation"]'
+            """
+        )
 
     assert service.list_files(query="TEST-2026-001") == []
 
@@ -181,12 +273,17 @@ def test_scan_backfills_search_data_from_an_older_understanding_record(
     assert [record.original_name for record in records] == ["invoice.txt"]
     assert records[0].understanding is not None
     assert records[0].understanding.extraction_method == "utf-8"
+    assert records[0].recommendation is not None
+    assert records[0].recommendation.outcome == "suggested"
 
 
 def test_search_covers_filename_full_text_evidence_and_filters(tmp_path: Path) -> None:
     service = make_service(tmp_path)
     (service.intake_path / "invoice.txt").write_text(
-        "Quarterly account\nSupplier: Example Office\nReference: INV-90210",
+        "Quarterly invoice\n"
+        "Invoice number: INV-90210\n"
+        "Supplier: Example Office\n"
+        "Total: $42.00",
         encoding="utf-8",
     )
     (service.intake_path / "project.md").write_text(
@@ -205,6 +302,10 @@ def test_search_covers_filename_full_text_evidence_and_filters(tmp_path: Path) -
     assert [item.original_name for item in service.list_files(query="not supported")] == [
         "scan.png"
     ]
+    assert [
+        item.original_name
+        for item in service.list_files(query="Financial/Invoices")
+    ] == ["invoice.txt"]
     assert [
         item.original_name
         for item in service.list_files(
@@ -357,7 +458,10 @@ def test_intake_api_scans_and_lists_files(tmp_path: Path) -> None:
     application = create_app(settings)
 
     with TestClient(application) as client:
-        (intake_path / "note.md").write_text("# Nova", encoding="utf-8")
+        (intake_path / "note.md").write_text(
+            "# Nova project\n\nMilestone 3 roadmap",
+            encoding="utf-8",
+        )
 
         scan_response = client.post("/api/v1/intake/scan")
         files_response = client.get("/api/v1/intake/files")
@@ -368,7 +472,9 @@ def test_intake_api_scans_and_lists_files(tmp_path: Path) -> None:
     assert files_response.status_code == 200
     assert files_response.json()[0]["original_name"] == "note.md"
     assert files_response.json()[0]["understanding"]["status"] == "ready"
-    assert files_response.json()[0]["understanding"]["title"] == "Nova"
+    assert files_response.json()[0]["understanding"]["title"] == "Nova project"
+    assert files_response.json()[0]["recommendation"]["outcome"] == "suggested"
+    assert files_response.json()[0]["recommendation"]["category"] == "Project"
     assert summary_response.status_code == 200
     assert summary_response.json() == {
         "files_observed": 1,
