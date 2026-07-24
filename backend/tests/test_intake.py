@@ -9,7 +9,12 @@ from fastapi.testclient import TestClient
 
 from app.core.config import Settings
 from app.main import create_app, watch_intake
-from app.schemas.intake import UnderstandingStatus
+from app.schemas.intake import (
+    ApprovalAction,
+    ApprovalRequest,
+    ApprovalStatus,
+    UnderstandingStatus,
+)
 from app.services import understanding as understanding_service
 from app.services.intake import IntakeService
 
@@ -21,6 +26,19 @@ def make_service(tmp_path: Path) -> IntakeService:
     )
     service.initialize()
     return service
+
+
+def write_invoice(path: Path, supplier: str = "Example Office Supplies") -> str:
+    content = (
+        "NOVA TEST DOCUMENT\n"
+        "Document type: Invoice\n"
+        "Invoice number: TEST-2026-001\n"
+        "Invoice date: 24-07-2026\n"
+        f"Supplier: {supplier}\n"
+        "Total: $35.15 AUD"
+    )
+    path.write_text(content, encoding="utf-8")
+    return content
 
 
 def test_scan_records_a_file_without_changing_it(tmp_path: Path) -> None:
@@ -123,15 +141,7 @@ def test_invoice_gets_an_explainable_deterministic_recommendation(
 ) -> None:
     service = make_service(tmp_path)
     source = service.intake_path / "invoice.txt"
-    content = (
-        "NOVA TEST DOCUMENT\n"
-        "Document type: Invoice\n"
-        "Invoice number: TEST-2026-001\n"
-        "Invoice date: 24-07-2026\n"
-        "Supplier: Example Office Supplies\n"
-        "Total: $35.15 AUD"
-    )
-    source.write_text(content, encoding="utf-8")
+    content = write_invoice(source)
 
     service.scan()
     record = service.list_files()[0]
@@ -149,6 +159,120 @@ def test_invoice_gets_an_explainable_deterministic_recommendation(
     assert record.recommendation.reasons[-1] == (
         "No file will change until a later approval step."
     )
+
+
+def test_recommendation_can_be_edited_and_approved_without_changing_file(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    source = service.intake_path / "invoice.txt"
+    content = write_invoice(source)
+    service.scan()
+    file_id = service.list_files()[0].id
+
+    edited = service.review_recommendation(
+        file_id,
+        ApprovalRequest(
+            action=ApprovalAction.edit,
+            category="Financial",
+            suggested_filename="24-07-2026_Financial_Invoice_Office_v02.txt",
+            destination="Financial/Invoices/2026",
+        ),
+    )
+    approved = service.review_recommendation(
+        file_id,
+        ApprovalRequest(action=ApprovalAction.approve),
+    )
+    record = service.list_files(approval_status=ApprovalStatus.approved)[0]
+
+    assert edited.status == "pending"
+    assert approved.status == "approved"
+    assert approved.suggested_filename == edited.suggested_filename
+    assert approved.destination == "Financial/Invoices/2026"
+    assert record.approval == approved
+    assert service.summary().ready_for_review == 0
+    assert source.read_text(encoding="utf-8") == content
+
+
+@pytest.mark.parametrize(
+    ("action", "expected"),
+    [
+        (ApprovalAction.reject, ApprovalStatus.rejected),
+        (ApprovalAction.ignore, ApprovalStatus.ignored),
+    ],
+)
+def test_recommendation_can_be_rejected_or_ignored(
+    tmp_path: Path,
+    action: ApprovalAction,
+    expected: ApprovalStatus,
+) -> None:
+    service = make_service(tmp_path)
+    write_invoice(service.intake_path / "invoice.txt")
+    service.scan()
+    file_id = service.list_files()[0].id
+
+    result = service.review_recommendation(
+        file_id,
+        ApprovalRequest(action=action),
+    )
+
+    assert result.status == expected
+    assert service.list_files(approval_status=expected)[0].approval == result
+    assert service.summary().ready_for_review == 0
+
+
+def test_changed_recommendation_returns_to_the_review_queue(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    source = service.intake_path / "invoice.txt"
+    write_invoice(source)
+    service.scan()
+    file_id = service.list_files()[0].id
+    service.review_recommendation(
+        file_id,
+        ApprovalRequest(action=ApprovalAction.approve),
+    )
+
+    write_invoice(source, supplier="A Different and Longer Supplier Name")
+    service.scan()
+    record = service.list_files()[0]
+
+    assert record.approval is None
+    assert record.recommendation is not None
+    assert record.recommendation.outcome == "suggested"
+    assert service.summary().ready_for_review == 1
+
+
+def test_review_rejects_missing_recommendations_and_unsafe_edits(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    (service.intake_path / "note.txt").write_text("Buy milk", encoding="utf-8")
+    service.scan()
+    file_id = service.list_files()[0].id
+
+    with pytest.raises(LookupError, match="No current recommendation"):
+        service.review_recommendation(
+            file_id,
+            ApprovalRequest(action=ApprovalAction.approve),
+        )
+
+    write_invoice(service.intake_path / "invoice.txt")
+    service.scan()
+    invoice_id = next(
+        record.id
+        for record in service.list_files()
+        if record.original_name == "invoice.txt"
+    )
+    with pytest.raises(ValueError, match="unsafe characters"):
+        service.review_recommendation(
+            invoice_id,
+            ApprovalRequest(
+                action=ApprovalAction.edit,
+                category="Financial",
+                suggested_filename="../escape.txt",
+                destination="Financial/Invoices",
+            ),
+        )
 
 
 def test_project_rule_and_insufficient_evidence_outcomes(tmp_path: Path) -> None:
@@ -507,6 +631,35 @@ def test_intake_api_searches_extracted_text_and_status(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert [item["original_name"] for item in response.json()] == ["notes.txt"]
+
+
+def test_intake_api_records_approval_without_executing_it(tmp_path: Path) -> None:
+    intake_path = tmp_path / "intake"
+    application = create_app(
+        Settings(
+            intake_path=intake_path,
+            database_path=tmp_path / "nova.db",
+            intake_scan_seconds=60,
+        )
+    )
+
+    with TestClient(application) as client:
+        source = intake_path / "invoice.txt"
+        content = write_invoice(source)
+        client.post("/api/v1/intake/scan")
+        file_id = client.get("/api/v1/intake/files").json()[0]["id"]
+
+        response = client.put(
+            f"/api/v1/intake/files/{file_id}/approval",
+            json={"action": "approve"},
+        )
+        summary = client.get("/api/v1/intake/summary").json()
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "approved"
+    assert response.json()["destination"] == "Financial/Invoices"
+    assert summary["ready_for_review"] == 0
+    assert source.read_text(encoding="utf-8") == content
 
 
 def test_background_watcher_continues_after_scan_failure() -> None:

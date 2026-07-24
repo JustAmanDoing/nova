@@ -39,11 +39,15 @@
 - Include confidence and a plain-language explanation — complete
 - Return no recommendation when evidence is insufficient — complete
 - Recalculate after source, understanding, duplicate-status, or rule-version changes — complete
-- Keep all recommendations read-only with no action controls — complete
+- Keep all recommendations read-only with no filesystem action controls — complete
 
-## Milestone 4 — Approve and execute
+## Milestone 4 — Approve and execute — in progress
 
-- Approval queue with edit, reject, and ignore actions
+- Approval queue with approve, edit, reject, ignore, and review-again actions — complete
+- Persist review state against the exact recommendation version — complete
+- Return changed recommendations to the queue — complete
+- Validate edited filename and destination values — complete
+- Keep approval separate from execution — complete
 - Rename and move only after approval
 - Append-only action audit
 - Reversible execution and undo

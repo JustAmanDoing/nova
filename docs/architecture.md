@@ -9,9 +9,10 @@ useful workflow before autonomy is introduced:
 Observe → Understand → Recommend → Approve → Execute → Audit → Learn
 ```
 
-**Observe**, **Understand**, and the first deterministic **Recommend** slice are
-active today. Nova records files, extracts supported text locally, proposes
-filing details when evidence is strong enough, and never changes source files.
+**Observe**, **Understand**, deterministic **Recommend**, and the first
+approval-only **Approve** slice are active today. Nova records files, extracts
+supported text locally, proposes filing details when evidence is strong enough,
+and records review intent without changing source files.
 
 ## Current vertical slice
 
@@ -22,9 +23,10 @@ Local data/intake folder (read-only mount)
               └── exact-duplicate check
                     └── local TXT/Markdown/PDF/DOCX understanding
                           └── versioned deterministic recommendation rules
-                                └── local SQLite inventory
-                                ├── versioned FastAPI endpoints
-                                └── React intake dashboard
+                                └── version-bound approval review state
+                                      └── local SQLite state
+                                            ├── versioned FastAPI endpoints
+                                            └── React intake dashboard
 ```
 
 ## Boundaries
@@ -38,6 +40,8 @@ Local data/intake folder (read-only mount)
 - Provides server-backed text search and metadata/status filters.
 - Displays category, filename, destination, confidence, and explanation for
   deterministic recommendations.
+- Provides approve, edit, reject, ignore, and review-again controls.
+- Makes the non-execution boundary visible beside every review.
 - Displays structured extraction diagnostics without exposing stack traces.
 - Can request an immediate scan.
 - Does not receive file contents.
@@ -58,6 +62,9 @@ Local data/intake folder (read-only mount)
   understanding completes.
 - Persists either an explainable suggestion or an explicit
   `insufficient_evidence` outcome.
+- Validates and stores review state against the exact recommendation generation
+  that was reviewed.
+- Treats missing or stale review state as awaiting review.
 - Indexes supported extracted text locally for case-insensitive search across
   filenames, paths, titles, content, evidence, extraction errors, and
   recommendation fields.
@@ -113,7 +120,20 @@ Each file also receives a versioned recommendation record:
 Recommendations are recalculated after content, understanding-result, or
 duplicate-status changes and when the rules version changes. Exact duplicates
 are never recommended for independent filing. These records are proposals only:
-there is no approval or execution path in the current milestone.
+there is no execution path in the current milestone.
+
+Each suggested recommendation may also have one current approval record:
+
+- Status: `pending`, `approved`, `rejected`, or `ignored`
+- Reviewed category, filename, and destination
+- Exact recommendation generation timestamp
+- Review timestamp
+
+An edit stores corrected fields with `pending` status. Approval without new
+fields uses the latest edited values. When the recommendation generation
+changes, its earlier review no longer joins to the current result and the file
+returns to the review queue. This table stores current review state, not the
+append-only execution audit planned for the next slice.
 
 ## Security baseline
 
@@ -123,6 +143,7 @@ there is no approval or execution path in the current milestone.
 - Explicit CORS origins
 - No secrets or runtime files in source control
 - No automatic rename, move, delete, upload, or sharing
+- Approval records intent only and cannot invoke filesystem actions
 - Bounded source-file and expanded-text processing
 - Parser errors are logged locally while safe diagnostics are returned to the UI
 - AI providers disabled until explicitly configured

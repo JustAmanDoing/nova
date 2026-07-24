@@ -21,6 +21,7 @@ export interface IntakeFile {
   duplicate_of: string | null;
   understanding: UnderstandingRecord | null;
   recommendation: RecommendationRecord | null;
+  approval: ApprovalRecord | null;
 }
 
 export interface UnderstandingRecord {
@@ -48,12 +49,31 @@ export interface RecommendationRecord {
   generated_at: string;
 }
 
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "ignored";
+
+export interface ApprovalRecord {
+  status: ApprovalStatus;
+  category: string;
+  suggested_filename: string;
+  destination: string;
+  recommendation_generated_at: string;
+  reviewed_at: string;
+}
+
+export interface ApprovalRequest {
+  action: "edit" | "approve" | "reject" | "ignore";
+  category?: string;
+  suggested_filename?: string;
+  destination?: string;
+}
+
 export interface IntakeFilters {
   query?: string;
   status?: IntakeFile["status"] | "";
   understandingStatus?: UnderstandingRecord["status"] | "";
   extension?: string;
   documentType?: string;
+  approvalStatus?: ApprovalStatus | "";
 }
 
 export interface IntakeScanResult {
@@ -89,6 +109,9 @@ export async function getIntakeFiles(
   if (filters.documentType?.trim()) {
     parameters.set("document_type", filters.documentType.trim());
   }
+  if (filters.approvalStatus) {
+    parameters.set("approval_status", filters.approvalStatus);
+  }
   const query = parameters.size ? `?${parameters.toString()}` : "";
   return request<IntakeFile[]>(`/api/v1/intake/files${query}`, { signal });
 }
@@ -99,6 +122,17 @@ export async function getIntakeSummary(signal?: AbortSignal): Promise<IntakeSumm
 
 export async function scanIntake(): Promise<IntakeScanResult> {
   return request<IntakeScanResult>("/api/v1/intake/scan", { method: "POST" });
+}
+
+export async function reviewRecommendation(
+  fileId: string,
+  review: ApprovalRequest,
+): Promise<ApprovalRecord> {
+  return request<ApprovalRecord>(`/api/v1/intake/files/${fileId}/approval`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(review),
+  });
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

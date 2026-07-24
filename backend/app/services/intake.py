@@ -1,14 +1,19 @@
 import hashlib
 import json
+import re
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from threading import Lock
 from uuid import uuid4
 
 from app.schemas.intake import (
+    ApprovalAction,
+    ApprovalRecord,
+    ApprovalRequest,
+    ApprovalStatus,
     IntakeFile,
     IntakeScanResult,
     IntakeStatus,
@@ -104,7 +109,20 @@ class IntakeService:
                     generated_at TEXT NOT NULL
                 );
 
-                UPDATE schema_meta SET version = 4;
+                CREATE TABLE IF NOT EXISTS approval_reviews (
+                    file_id TEXT PRIMARY KEY
+                        REFERENCES intake_files(id) ON DELETE CASCADE,
+                    recommendation_generated_at TEXT NOT NULL,
+                    status TEXT NOT NULL CHECK (
+                        status IN ('pending', 'approved', 'rejected', 'ignored')
+                    ),
+                    category TEXT NOT NULL,
+                    suggested_filename TEXT NOT NULL,
+                    destination TEXT NOT NULL,
+                    reviewed_at TEXT NOT NULL
+                );
+
+                UPDATE schema_meta SET version = 5;
                 """
             )
             self._add_column_if_missing(connection, "understanding_results", "error_code TEXT")
@@ -250,6 +268,10 @@ class IntakeService:
                     COALESCE(SUM(
                         files.status = 'observed'
                         AND recommendation.outcome = 'suggested'
+                        AND (
+                            approval.file_id IS NULL
+                            OR approval.status = 'pending'
+                        )
                     ), 0) AS ready_for_review,
                     COALESCE(SUM(files.status = 'duplicate'), 0) AS exact_duplicates
                 FROM intake_files AS files
@@ -257,6 +279,9 @@ class IntakeService:
                   ON understanding.file_id = files.id
                 LEFT JOIN recommendation_results AS recommendation
                   ON recommendation.file_id = files.id
+                LEFT JOIN approval_reviews AS approval
+                  ON approval.file_id = files.id
+                 AND approval.recommendation_generated_at = recommendation.generated_at
                 """
             ).fetchone()
         return IntakeSummary(
@@ -273,6 +298,7 @@ class IntakeService:
         understanding_status: UnderstandingStatus | None = None,
         extension: str | None = None,
         document_type: str | None = None,
+        approval_status: ApprovalStatus | None = None,
     ) -> list[IntakeFile]:
         clauses: list[str] = []
         parameters: list[str] = []
@@ -289,10 +315,14 @@ class IntakeService:
                     OR recommendation.suggested_filename LIKE ? ESCAPE '\\'
                     OR recommendation.destination LIKE ? ESCAPE '\\'
                     OR recommendation.reasons LIKE ? ESCAPE '\\'
+                    OR approval.status LIKE ? ESCAPE '\\'
+                    OR approval.category LIKE ? ESCAPE '\\'
+                    OR approval.suggested_filename LIKE ? ESCAPE '\\'
+                    OR approval.destination LIKE ? ESCAPE '\\'
                 )"""
             )
             pattern = f"%{self._escape_like(term)}%"
-            parameters.extend([pattern] * 10)
+            parameters.extend([pattern] * 14)
         if status is not None:
             clauses.append("files.status = ?")
             parameters.append(status.value)
@@ -309,6 +339,16 @@ class IntakeService:
         if document_type and (normalized_type := document_type.strip().lower()):
             clauses.append("understanding.document_type = ?")
             parameters.append(normalized_type)
+        if approval_status is ApprovalStatus.pending:
+            clauses.append(
+                """(
+                    recommendation.outcome = 'suggested'
+                    AND (approval.file_id IS NULL OR approval.status = 'pending')
+                )"""
+            )
+        elif approval_status is not None:
+            clauses.append("approval.status = ?")
+            parameters.append(approval_status.value)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._lock, self._connection() as connection:
             rows = connection.execute(
@@ -329,18 +369,124 @@ class IntakeService:
                        recommendation.destination,
                        recommendation.confidence,
                        recommendation.reasons,
-                       recommendation.generated_at
+                       recommendation.generated_at,
+                       approval.status AS approval_status,
+                       approval.category AS approval_category,
+                       approval.suggested_filename AS approval_suggested_filename,
+                       approval.destination AS approval_destination,
+                       approval.recommendation_generated_at,
+                       approval.reviewed_at
                 FROM intake_files AS files
                 LEFT JOIN understanding_results AS understanding
                   ON understanding.file_id = files.id
                 LEFT JOIN recommendation_results AS recommendation
                   ON recommendation.file_id = files.id
+                LEFT JOIN approval_reviews AS approval
+                  ON approval.file_id = files.id
+                 AND approval.recommendation_generated_at = recommendation.generated_at
                 {where}
                 ORDER BY observed_at DESC, relative_path
                 """,
                 parameters,
             ).fetchall()
         return [self._intake_file_from_row(row) for row in rows]
+
+    def review_recommendation(
+        self,
+        file_id: str,
+        review: ApprovalRequest,
+    ) -> ApprovalRecord:
+        with self._lock, self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT recommendation.outcome, recommendation.category,
+                       recommendation.suggested_filename,
+                       recommendation.destination,
+                       recommendation.generated_at,
+                       approval.status AS approval_status,
+                       approval.category AS approval_category,
+                       approval.suggested_filename AS approval_suggested_filename,
+                       approval.destination AS approval_destination
+                FROM recommendation_results AS recommendation
+                LEFT JOIN approval_reviews AS approval
+                  ON approval.file_id = recommendation.file_id
+                 AND approval.recommendation_generated_at =
+                     recommendation.generated_at
+                WHERE recommendation.file_id = ?
+                """,
+                (file_id,),
+            ).fetchone()
+            if row is None or row["outcome"] != "suggested":
+                raise LookupError("No current recommendation is available for review.")
+
+            category = row["approval_category"] or row["category"]
+            suggested_filename = (
+                row["approval_suggested_filename"] or row["suggested_filename"]
+            )
+            destination = row["approval_destination"] or row["destination"]
+            if review.action is ApprovalAction.edit:
+                if (
+                    review.category is None
+                    or review.suggested_filename is None
+                    or review.destination is None
+                ):
+                    raise ValueError(
+                        "Editing requires category, suggested filename, and destination."
+                    )
+                category = review.category
+                suggested_filename = review.suggested_filename
+                destination = review.destination
+            elif review.action is ApprovalAction.approve:
+                category = review.category or category
+                suggested_filename = review.suggested_filename or suggested_filename
+                destination = review.destination or destination
+
+            category, suggested_filename, destination = self._validate_review_values(
+                category,
+                suggested_filename,
+                destination,
+            )
+            status = {
+                ApprovalAction.edit: ApprovalStatus.pending,
+                ApprovalAction.approve: ApprovalStatus.approved,
+                ApprovalAction.reject: ApprovalStatus.rejected,
+                ApprovalAction.ignore: ApprovalStatus.ignored,
+            }[review.action]
+            reviewed_at = datetime.now(UTC).isoformat()
+            connection.execute(
+                """
+                INSERT INTO approval_reviews (
+                    file_id, recommendation_generated_at, status, category,
+                    suggested_filename, destination, reviewed_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(file_id) DO UPDATE SET
+                    recommendation_generated_at =
+                        excluded.recommendation_generated_at,
+                    status = excluded.status,
+                    category = excluded.category,
+                    suggested_filename = excluded.suggested_filename,
+                    destination = excluded.destination,
+                    reviewed_at = excluded.reviewed_at
+                """,
+                (
+                    file_id,
+                    row["generated_at"],
+                    status.value,
+                    category,
+                    suggested_filename,
+                    destination,
+                    reviewed_at,
+                ),
+            )
+        return ApprovalRecord(
+            status=status,
+            category=category,
+            suggested_filename=suggested_filename,
+            destination=destination,
+            recommendation_generated_at=row["generated_at"],
+            reviewed_at=reviewed_at,
+        )
 
     def _refresh_understanding(self, connection: sqlite3.Connection) -> None:
         rows = connection.execute(
@@ -521,6 +667,16 @@ class IntakeService:
                 reasons=json.loads(row["reasons"]),
                 generated_at=row["generated_at"],
             )
+        approval = None
+        if row["approval_status"] is not None:
+            approval = ApprovalRecord(
+                status=row["approval_status"],
+                category=row["approval_category"],
+                suggested_filename=row["approval_suggested_filename"],
+                destination=row["approval_destination"],
+                recommendation_generated_at=row["recommendation_generated_at"],
+                reviewed_at=row["reviewed_at"],
+            )
         return IntakeFile(
             id=row["id"],
             relative_path=row["relative_path"],
@@ -534,6 +690,7 @@ class IntakeService:
             duplicate_of=row["duplicate_of"],
             understanding=understanding,
             recommendation=recommendation,
+            approval=approval,
         )
 
     def _reconcile_duplicates(self, connection: sqlite3.Connection) -> int:
@@ -589,6 +746,43 @@ class IntakeService:
     @staticmethod
     def _escape_like(value: str) -> str:
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    @staticmethod
+    def _validate_review_values(
+        category: str | None,
+        suggested_filename: str | None,
+        destination: str | None,
+    ) -> tuple[str, str, str]:
+        normalized_category = (category or "").strip()
+        normalized_filename = (suggested_filename or "").strip()
+        normalized_destination = (destination or "").strip().replace("\\", "/")
+        if not normalized_category:
+            raise ValueError("Category cannot be empty.")
+        if not normalized_filename:
+            raise ValueError("Suggested filename cannot be empty.")
+        if (
+            normalized_filename in {".", ".."}
+            or re.search(r'[<>:"/\\|?*\x00-\x1f]', normalized_filename)
+            or normalized_filename.endswith((".", " "))
+        ):
+            raise ValueError("Suggested filename contains unsafe characters.")
+        if (
+            not normalized_destination
+            or normalized_destination.startswith("/")
+            or re.match(r"^[A-Za-z]:", normalized_destination)
+        ):
+            raise ValueError("Destination must be a relative folder path.")
+        destination_path = PurePosixPath(normalized_destination)
+        if any(
+            part in {"", ".", ".."} or re.search(r'[<>:"|?*\x00-\x1f]', part)
+            for part in destination_path.parts
+        ):
+            raise ValueError("Destination contains an unsafe path component.")
+        return (
+            normalized_category,
+            normalized_filename,
+            destination_path.as_posix(),
+        )
 
     @staticmethod
     def _add_column_if_missing(

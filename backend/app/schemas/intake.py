@@ -22,6 +22,20 @@ class RecommendationOutcome(StrEnum):
     insufficient_evidence = "insufficient_evidence"
 
 
+class ApprovalAction(StrEnum):
+    edit = "edit"
+    approve = "approve"
+    reject = "reject"
+    ignore = "ignore"
+
+
+class ApprovalStatus(StrEnum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    ignored = "ignored"
+
+
 class RecommendationRecord(BaseModel):
     outcome: RecommendationOutcome
     category: str | None
@@ -30,6 +44,22 @@ class RecommendationRecord(BaseModel):
     confidence: float = Field(ge=0, le=1)
     reasons: list[str] = Field(min_length=1)
     generated_at: datetime
+
+
+class ApprovalRequest(BaseModel):
+    action: ApprovalAction
+    category: str | None = Field(default=None, max_length=80)
+    suggested_filename: str | None = Field(default=None, max_length=255)
+    destination: str | None = Field(default=None, max_length=500)
+
+
+class ApprovalRecord(BaseModel):
+    status: ApprovalStatus
+    category: str
+    suggested_filename: str
+    destination: str
+    recommendation_generated_at: datetime
+    reviewed_at: datetime
 
 
 class UnderstandingRecord(BaseModel):
@@ -60,6 +90,7 @@ class IntakeFile(BaseModel):
     duplicate_of: str | None
     understanding: UnderstandingRecord | None
     recommendation: RecommendationRecord | None
+    approval: ApprovalRecord | None
 
 
 class IntakeScanResult(BaseModel):

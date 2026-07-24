@@ -1,9 +1,12 @@
 import asyncio
 from typing import cast
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.schemas.intake import (
+    ApprovalRecord,
+    ApprovalRequest,
+    ApprovalStatus,
     IntakeFile,
     IntakeScanResult,
     IntakeStatus,
@@ -27,6 +30,7 @@ async def list_intake_files(
     understanding_status: UnderstandingStatus | None = None,
     extension: str | None = Query(default=None, max_length=20),
     document_type: str | None = Query(default=None, max_length=50),
+    approval_status: ApprovalStatus | None = None,
 ) -> list[IntakeFile]:
     service = get_intake_service(request)
     return await asyncio.to_thread(
@@ -36,6 +40,7 @@ async def list_intake_files(
         understanding_status=understanding_status,
         extension=extension,
         document_type=document_type,
+        approval_status=approval_status,
     )
 
 
@@ -49,3 +54,21 @@ async def scan_intake(request: Request) -> IntakeScanResult:
 async def get_intake_summary(request: Request) -> IntakeSummary:
     service = get_intake_service(request)
     return await asyncio.to_thread(service.summary)
+
+
+@router.put(
+    "/files/{file_id}/approval",
+    response_model=ApprovalRecord,
+)
+async def review_recommendation(
+    file_id: str,
+    review: ApprovalRequest,
+    request: Request,
+) -> ApprovalRecord:
+    service = get_intake_service(request)
+    try:
+        return await asyncio.to_thread(service.review_recommendation, file_id, review)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error

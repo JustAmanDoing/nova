@@ -19,6 +19,9 @@ The current MVP can:
 - Apply deterministic invoice and project rules before any AI is considered
 - Suggest a category, approved-format filename, and destination with confidence
 - Explain why each suggestion was made, or return no recommendation when evidence is weak
+- Review suggestions by approving, editing, rejecting, or ignoring them
+- Filter files by current review status
+- Return changed recommendations to the review queue automatically
 - Recover background monitoring after an individual scan or parser failure
 - Reconcile removed files and duplicate ownership with the current intake folder
 - Keep dashboard totals accurate while search filters are active
@@ -54,6 +57,11 @@ invoice and project documents. Nova stores a versioned result, exposes its
 plain-language reasons in the dashboard, and deliberately returns **No
 recommendation** when evidence is insufficient. A recommendation never renames
 or moves a source file.
+
+Approval is also read-only in the current release. Approving a recommendation
+records your intent against that exact recommendation version; it does not
+rename or move anything. Edited values are validated as safe relative paths,
+and a changed recommendation automatically requires a fresh review.
 
 Two independent limits protect local resources:
 
@@ -145,5 +153,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Architecture](docs/architecture.md)
 - [Architecture review — 25 July 2026](docs/architecture-review-2026-07-25.md)
 - [Milestone 3 recommendations](docs/milestone-3-recommendations.md)
+- [Milestone 4 approval boundary](docs/milestone-4-approval.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

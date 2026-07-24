@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import {
   getHealth,
   getIntakeFiles,
   getIntakeSummary,
+  reviewRecommendation,
   scanIntake,
+  type ApprovalRecord,
+  type ApprovalRequest,
   type HealthResponse,
   type IntakeFilters,
   type IntakeFile,
@@ -29,6 +32,7 @@ function App() {
   });
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [reviewingFileId, setReviewingFileId] = useState<string | null>(null);
   const [filters, setFilters] = useState<IntakeFilters>({});
 
   const loadIntake = useCallback(async (signal?: AbortSignal) => {
@@ -85,6 +89,23 @@ function App() {
     }
   }
 
+  async function handleReview(
+    fileId: string,
+    review: ApprovalRequest,
+  ): Promise<boolean> {
+    setReviewingFileId(fileId);
+    try {
+      await reviewRecommendation(fileId, review);
+      await loadIntake();
+      return true;
+    } catch (error: unknown) {
+      setIntakeError(error instanceof Error ? error.message : "Review failed");
+      return false;
+    } finally {
+      setReviewingFileId(null);
+    }
+  }
+
   return (
     <main className="shell">
       <nav className="nav" aria-label="Primary navigation">
@@ -94,26 +115,28 @@ function App() {
         </a>
         <div className="nav-status">
           <Status state={service} />
-          <span className="phase">Intake MVP · 0.3.0</span>
+          <span className="phase">Intake MVP · 0.4.0</span>
         </div>
       </nav>
 
       <section className="hero">
         <div>
-          <p className="eyebrow">Observe + understand + recommend · Files remain untouched</p>
+          <p className="eyebrow">
+            Observe + understand + recommend + approve · Files remain untouched
+          </p>
           <h1>Turn incoming files into useful context.</h1>
           <p className="lede">
             Add a TXT, Markdown, PDF, or DOCX file to <code>data/intake</code>.
             Nova reads it locally, records what it understands, and applies
-            deterministic filing rules when evidence is strong enough. Every
-            recommendation is explainable and nothing is changed.
+            deterministic filing rules when evidence is strong enough. Review
+            decisions record your intent, but nothing is renamed or moved.
           </p>
         </div>
         <div className="safety-card">
           <span className="safety-icon" aria-hidden="true">✓</span>
           <div>
-            <strong>Safe recommendations</strong>
-            <p>Your intake folder stays read-only. Suggestions are displayed, never executed.</p>
+            <strong>Approval without execution</strong>
+            <p>Your intake folder stays read-only. Approving records intent only.</p>
           </div>
         </div>
       </section>
@@ -121,8 +144,8 @@ function App() {
       <section className="workspace" aria-labelledby="intake-title">
         <div className="workspace-heading">
           <div>
-            <p className="section-number">02–03 · Understand + recommend</p>
-            <h2 id="intake-title">What Nova knows and recommends</h2>
+            <p className="section-number">02–04 · Understand + review</p>
+            <h2 id="intake-title">Review Nova’s recommendations</h2>
           </div>
           <button type="button" onClick={handleScan} disabled={isScanning}>
             {isScanning ? "Scanning…" : "Scan now"}
@@ -186,7 +209,13 @@ function App() {
                         <span>{understandingDetail(file.understanding)}</span>
                       </td>
                       <td className="recommendation-cell">
-                        <RecommendationView recommendation={file.recommendation} />
+                        <RecommendationView
+                          fileId={file.id}
+                          recommendation={file.recommendation}
+                          approval={file.approval}
+                          isBusy={reviewingFileId === file.id}
+                          onReview={handleReview}
+                        />
                       </td>
                       <td>{formatObserved(file.observed_at)}</td>
                     </tr>
@@ -202,10 +231,23 @@ function App() {
 }
 
 function RecommendationView({
+  fileId,
   recommendation,
+  approval,
+  isBusy,
+  onReview,
 }: {
+  fileId: string;
   recommendation: RecommendationRecord | null;
+  approval: ApprovalRecord | null;
+  isBusy: boolean;
+  onReview: (fileId: string, review: ApprovalRequest) => Promise<boolean>;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [category, setCategory] = useState("");
+  const [suggestedFilename, setSuggestedFilename] = useState("");
+  const [destination, setDestination] = useState("");
+
   if (!recommendation) {
     return (
       <>
@@ -224,18 +266,161 @@ function RecommendationView({
       </>
     );
   }
+  const effectiveCategory = approval?.category ?? recommendation.category ?? "";
+  const effectiveFilename =
+    approval?.suggested_filename ?? recommendation.suggested_filename ?? "";
+  const effectiveDestination =
+    approval?.destination ?? recommendation.destination ?? "";
+  const approvalStatus = approval?.status ?? "pending";
+
+  function beginEditing() {
+    setCategory(effectiveCategory);
+    setSuggestedFilename(effectiveFilename);
+    setDestination(effectiveDestination);
+    setIsEditing(true);
+  }
+
+  async function saveEdits(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const saved = await onReview(fileId, {
+      action: "edit",
+      category,
+      suggested_filename: suggestedFilename,
+      destination,
+    });
+    if (saved) setIsEditing(false);
+  }
+
+  if (isEditing) {
+    return (
+      <form className="recommendation-form" onSubmit={saveEdits}>
+        <label>
+          <span>Category</span>
+          <input
+            aria-label="Recommendation category"
+            value={category}
+            maxLength={80}
+            required
+            onChange={(event) => setCategory(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Suggested filename</span>
+          <input
+            aria-label="Suggested filename"
+            value={suggestedFilename}
+            maxLength={255}
+            required
+            onChange={(event) => setSuggestedFilename(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Destination</span>
+          <input
+            aria-label="Recommendation destination"
+            value={destination}
+            maxLength={500}
+            required
+            onChange={(event) => setDestination(event.target.value)}
+          />
+        </label>
+        <div className="review-actions">
+          <button type="submit" disabled={isBusy}>Save edits</button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={isBusy}
+            onClick={() => setIsEditing(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <>
-      <span className="badge recommendation suggested">
-        {recommendation.category} · {Math.round(recommendation.confidence * 100)}%
+      <span className={`badge approval ${approvalStatus}`}>
+        {approvalLabel(approvalStatus)}
       </span>
-      <strong>{recommendation.suggested_filename}</strong>
-      <span>Destination: {recommendation.destination}</span>
+      <span>
+        {effectiveCategory} · {Math.round(recommendation.confidence * 100)}%
+      </span>
+      <strong>{effectiveFilename}</strong>
+      <span>Destination: {effectiveDestination}</span>
       <span title={recommendation.reasons.join(" ")}>
         {recommendation.reasons[0]}
       </span>
+      <span className="no-execution">No file action will run.</span>
+      {approvalStatus === "pending" ? (
+        <div className="review-actions">
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={() => void onReview(fileId, { action: "approve" })}
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={isBusy}
+            onClick={beginEditing}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={isBusy}
+            onClick={() => void onReview(fileId, { action: "reject" })}
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={isBusy}
+            onClick={() => void onReview(fileId, { action: "ignore" })}
+          >
+            Ignore
+          </button>
+        </div>
+      ) : (
+        <div className="review-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={isBusy}
+            onClick={() =>
+              void onReview(fileId, {
+                action: "edit",
+                category: effectiveCategory,
+                suggested_filename: effectiveFilename,
+                destination: effectiveDestination,
+              })
+            }
+          >
+            Review again
+          </button>
+        </div>
+      )}
     </>
   );
+}
+
+function approvalLabel(status: ApprovalRecord["status"] | "pending"): string {
+  switch (status) {
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "ignored":
+      return "Ignored";
+    default:
+      return "Awaiting review";
+  }
 }
 
 function UnderstandingBadge({
@@ -375,6 +560,25 @@ function SearchControls({
               onChange({ ...filters, documentType: event.target.value })
             }
           />
+        </label>
+        <label>
+          <span>Review status</span>
+          <select
+            value={filters.approvalStatus ?? ""}
+            onChange={(event) =>
+              onChange({
+                ...filters,
+                approvalStatus:
+                  event.target.value as IntakeFilters["approvalStatus"],
+              })
+            }
+          >
+            <option value="">All</option>
+            <option value="pending">Awaiting review</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="ignored">Ignored</option>
+          </select>
         </label>
         <div className="search-summary">
           <span>{resultCount} result{resultCount === 1 ? "" : "s"}</span>

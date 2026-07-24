@@ -60,8 +60,16 @@ The first Recommend slice remains inside the modular monolith. Versioned,
 deterministic rules consume normalized understanding records and persist either
 an explainable suggestion or an explicit insufficient-evidence outcome.
 Recommendations are invalidated when content, understanding, duplicate status,
-or rules change. The UI has no approval or execution controls, so the read-only
-source boundary is preserved.
+or rules change. The UI has review controls but no execution controls, so the
+read-only source boundary is preserved.
+
+### Approval boundary
+
+Approval is implemented as version-bound review state, not as permission to
+execute a file operation. Approve, edit, reject, ignore, and review-again
+actions update only local SQLite state. Edited filenames and destinations are
+validated before storage. When a recommendation changes, the earlier review is
+treated as stale and the file returns to the queue.
 
 ## Deliberately retained
 
@@ -80,10 +88,10 @@ source boundary is preserved.
 - Background job queues or a message bus
 - Microservices
 - OCR
-- Approval, execution, audit, and undo modules
+- Execution, append-only action audit, and undo modules
 - Chatbot and semantic retrieval
 
-These are not required to complete the current Observe and Understand slice.
+These are not required to complete the current review-only slice.
 
 ## Risks to monitor
 
@@ -98,8 +106,8 @@ These are not required to complete the current Observe and Understand slice.
 
 ## Next architectural gate
 
-Test the recommendation slice with representative invoices, project documents,
-weak evidence, and exact duplicates before beginning approval work. Approval
-must remain a separate boundary, and execution must not be added until its
-audit and undo contract is defined. The chatbot remains explicitly outside this
+Test the approval slice with representative edits and every review state before
+beginning execution work. Execution must not be added until rename/move
+preconditions, append-only audit records, conflict handling, and undo are
+designed and tested together. The chatbot remains explicitly outside this
 review.
