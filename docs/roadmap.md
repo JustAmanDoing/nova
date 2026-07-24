@@ -1,41 +1,54 @@
 # Nova Roadmap
 
-## Foundation — complete in this initial commit
+## Foundation — complete
 
-- FastAPI application factory and versioned routing
-- Typed health response
-- React/Vite/TypeScript application
-- Frontend-to-backend health integration
+- FastAPI and React monorepo
+- Typed, versioned API and health checks
+- Docker Compose local environment
 - Backend and frontend tests
-- Docker Compose development environment
-- Architecture and contributor documentation
+- Reproducible Node 20 and pnpm 9.15.5 build
 
-## Milestone 1 — Comparison workspace
+## Milestone 1 — Observe — complete
 
-- Create and name a comparison
-- Capture goals, constraints, and non-functional requirements
-- Add multiple candidate designs
-- Save locally
+- Read-only local intake folder
+- Background and manual scanning
+- File metadata and SHA-256 fingerprinting
+- Exact-duplicate detection
+- Local SQLite inventory
+- Intake dashboard
 
-## Milestone 2 — Structured evaluation
+## Milestone 2 — Understand — next
 
-- Define reusable evaluation criteria
-- Score candidates consistently
-- Record evidence and uncertainty
-- Display side-by-side trade-offs
+- Extract text from TXT and Markdown
+- Add PDF and DOCX extraction
+- Produce one normalized understanding record
+- Show extraction status and evidence
+- Keep all processing local and make no file changes
 
-## Milestone 3 — Explainable assistance
+## Milestone 3 — Recommend
 
-- Optional AI provider adapters
-- Generate candidate designs from approved requirements
-- Explain recommendations and cite their inputs
-- Require user approval before saving generated conclusions
+- Deterministic rules before AI
+- Suggest a category, filename, and destination
+- Include confidence and a plain-language explanation
+- Return no recommendation when evidence is insufficient
 
-## Milestone 4 — Operational hardening
+## Milestone 4 — Approve and execute
 
-- Authentication and authorization if multi-user access is required
-- Database migrations and backups
-- Audit history and rollback
-- Observability and performance budgets
-- Automated release pipeline
+- Approval queue with edit, reject, and ignore actions
+- Rename and move only after approval
+- Append-only action audit
+- Reversible execution and undo
 
+## Milestone 5 — Learn and search
+
+- Learn patterns only from confirmed approvals
+- Metadata and full-text search
+- User-controlled automation rules
+- Measured thresholds before any automatic filing
+
+## Later capabilities
+
+- Optional local or cloud AI provider adapters
+- Project and personal memory with source references
+- Plugin and agent interfaces
+- Backup, recovery, and operational hardening

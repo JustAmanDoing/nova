@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN addgroup --system nova && adduser --system --ingroup nova nova
+RUN mkdir -p /data /intake && chown -R nova:nova /data /intake
 
 COPY pyproject.toml README.md ./
 COPY app ./app

@@ -2,54 +2,80 @@
 
 ## Purpose
 
-Nova begins as a local-first system design comparison tool. Its first architectural goal is a dependable browser-to-API vertical slice that can later support structured requirements, competing designs, trade-off scoring, explainable recommendations, approvals, and audit history.
-
-## Current shape
+Nova is a local-first personal assistant platform. The MVP proves one safe,
+useful workflow before autonomy is introduced:
 
 ```text
-Browser
-  └── React + TypeScript
-        └── HTTP/JSON
-              └── FastAPI
-                    └── Versioned API routes
+Observe → Understand → Recommend → Approve → Execute → Audit → Learn
 ```
 
-The repository is a monorepo, but the applications remain independently buildable and deployable.
+Only **Observe** is active today. Nova records files without changing them.
+
+## Current vertical slice
+
+```text
+Local data/intake folder (read-only mount)
+  └── periodic or manual scan
+        └── metadata + SHA-256 fingerprint
+              └── exact-duplicate check
+                    └── local SQLite inventory
+                          ├── versioned FastAPI endpoints
+                          └── React intake dashboard
+```
 
 ## Boundaries
 
 ### Frontend
 
-- Presents workspaces, comparisons, evidence, and approvals.
-- Owns interaction state, not authoritative project data.
-- Uses a single typed API adapter.
+- Displays service health, intake totals, file metadata, and duplicate status.
+- Can request an immediate scan.
+- Does not receive file contents.
+- Owns interaction state, not authoritative inventory data.
 
 ### Backend
 
-- Owns business rules, validation, persistence, and provider integration.
+- Scans the configured intake directory.
+- Reads files only to calculate their fingerprint.
+- Stores normalized metadata in SQLite.
 - Exposes versioned endpoints under `/api/v1`.
-- Keeps AI providers behind optional adapters so core workflows remain usable without them.
+- Runs without an AI model or cloud service.
 
-## Configuration
+### Local storage
 
-Runtime configuration comes from environment variables. `.env.example` contains safe defaults; populated `.env` files must never be committed.
+- Intake files remain in `data/intake`.
+- Docker mounts the intake folder read-only.
+- SQLite lives in the `nova_data` Docker volume.
+- Runtime data is excluded from Git.
+
+## Intake record
+
+Each observed file has:
+
+- Permanent ID
+- Relative path and original filename
+- Extension and byte size
+- Modified and observed timestamps
+- SHA-256 fingerprint
+- Status: `observed` or `duplicate`
+- Canonical file reference when it is an exact duplicate
+
+No classification or content extraction is performed yet.
 
 ## Security baseline
 
-- Explicit CORS origins
-- No secrets in source control
+- Local-only deployment
+- Read-only intake mount
 - Non-root backend container
-- Minimal production images
-- Health checks for orchestration
+- Explicit CORS origins
+- No secrets or runtime files in source control
+- No automatic rename, move, delete, upload, or sharing
 - AI providers disabled until explicitly configured
-
-Authentication, authorization, persistence, and secret management will be introduced with the first feature that requires them, rather than guessed upfront.
 
 ## Evolution rules
 
 1. Build complete vertical slices.
-2. Keep recommendations explainable.
-3. Require approval before material actions.
-4. Preserve an audit path.
-5. Add infrastructure only from measured need.
-
+2. Preserve original files as the source of truth.
+3. Explain recommendations before requesting approval.
+4. Make material actions reversible and auditable.
+5. Keep AI optional for core operation.
+6. Add infrastructure only from measured need.

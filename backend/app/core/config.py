@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated
 
 from pydantic import field_validator
@@ -19,6 +20,9 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+    intake_path: Path = Path("data/intake")
+    database_path: Path = Path("data/nova.db")
+    intake_scan_seconds: float = 3.0
 
     @field_validator("cors_origins", mode="before")
     @classmethod

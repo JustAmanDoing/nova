@@ -1,29 +1,46 @@
 # Nova
 
-Nova is a local-first foundation for comparing AI system designs and evolving them into explainable, testable recommendations.
+Nova is a local-first personal AI foundation that begins with safe, explainable
+file intake. Its core remains useful without an AI provider.
 
-This repository starts with a production-shaped monorepo:
+The current MVP can:
 
-- FastAPI backend with versioned API routes and health checks
-- React frontend built with Vite and TypeScript
-- Docker Compose for a one-command local environment
-- Tests, linting, typed configuration, and structured documentation
-- Clear boundaries for future comparison, recommendation, and audit features
+- Observe files placed in a local intake folder
+- Record filename, path, size, timestamps, and SHA-256 fingerprint
+- Detect exact duplicates without deleting either copy
+- Store the inventory in local SQLite
+- Display intake status in a responsive local dashboard
+- Run automatic background scans or a manual scan
+
+Nova does not rename, move, delete, upload, or share intake files.
 
 ## Quick start with Docker
 
-Prerequisites: Docker Desktop with Docker Compose.
+Prerequisite: Docker Desktop with Docker Compose.
 
 ```bash
-cp .env.example .env
 docker compose up --build
 ```
 
 Open:
 
-- Web app: http://localhost:5173
+- Nova: http://localhost:5173
 - API docs: http://localhost:8000/docs
 - API health: http://localhost:8000/api/v1/health
+
+Place a test file in `data/intake`. Nova scans automatically every three seconds,
+or you can select **Scan now** in the dashboard. The folder is mounted read-only
+inside the backend container.
+
+Stop Nova with:
+
+```bash
+docker compose down
+```
+
+The SQLite inventory remains in a Docker volume between restarts. Use
+`docker compose down -v` only when you intentionally want to erase Nova's local
+inventory.
 
 ## Local development
 
@@ -55,12 +72,13 @@ mypy app
 
 ### Frontend
 
-Requires Node.js 20+.
+Requires Node.js 20+ and pnpm 9.15.5.
 
 ```bash
 cd frontend
 corepack enable
-pnpm install
+corepack prepare pnpm@9.15.5 --activate
+pnpm install --frozen-lockfile
 pnpm run dev
 ```
 
@@ -77,20 +95,18 @@ pnpm run build
 
 ```text
 nova/
-├── backend/            FastAPI application and tests
-├── frontend/           React/Vite application and tests
+├── backend/            FastAPI, SQLite intake service, and tests
+├── frontend/           React/Vite intake dashboard
 ├── docs/               Architecture and roadmap
+├── data/intake/        Local intake folder; contents are ignored by Git
 ├── .env.example        Safe local configuration template
 └── docker-compose.yml  Local full-stack environment
 ```
 
-## Current capability
-
-The frontend calls the backend health endpoint and displays live service status. This intentionally small vertical slice proves the complete browser-to-API path before Nova gains comparison workflows.
-
 ## Safety
 
-Never commit secrets, API keys, private documents, personal data, or a populated `.env` file. Nova's core is designed to work without an AI provider; provider integrations will be optional and explicitly configured.
+Never commit secrets, API keys, private documents, personal data, or a populated
+`.env` file. Everything under `data/` is ignored by Git.
 
 ## Documentation
 

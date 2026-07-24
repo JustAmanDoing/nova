@@ -7,6 +7,12 @@ services:
       NOVA_API_HOST: 0.0.0.0
       NOVA_API_PORT: 8000
       NOVA_CORS_ORIGINS: ${NOVA_CORS_ORIGINS:-http://localhost:5173}
+      NOVA_INTAKE_PATH: /intake
+      NOVA_DATABASE_PATH: /data/nova.db
+      NOVA_INTAKE_SCAN_SECONDS: ${NOVA_INTAKE_SCAN_SECONDS:-3}
+    volumes:
+      - ./data/intake:/intake:ro
+      - nova_data:/data
     ports:
       - "8000:8000"
     healthcheck:
@@ -30,4 +36,7 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+
+volumes:
+  nova_data:
 
