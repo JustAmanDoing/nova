@@ -1,1 +1,3 @@
-# chatgpt-test
+# nova
+
+AI system design comparison project
