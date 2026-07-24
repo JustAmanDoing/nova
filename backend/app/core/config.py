@@ -14,13 +14,14 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "Nova API"
-    app_version: str = "0.4.0"
+    app_version: str = "0.5.0"
     environment: str = "development"
     api_prefix: str = "/api/v1"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
     intake_path: Path = Path("data/intake")
+    library_path: Path | None = None
     database_path: Path = Path("data/nova.db")
     intake_scan_seconds: float = 3.0
     max_text_bytes: int = 1_000_000

@@ -36,6 +36,17 @@ class ApprovalStatus(StrEnum):
     ignored = "ignored"
 
 
+class ActionKind(StrEnum):
+    move = "move"
+    undo = "undo"
+
+
+class ActionStatus(StrEnum):
+    started = "started"
+    succeeded = "succeeded"
+    failed = "failed"
+
+
 class RecommendationRecord(BaseModel):
     outcome: RecommendationOutcome
     category: str | None
@@ -60,6 +71,20 @@ class ApprovalRecord(BaseModel):
     destination: str
     recommendation_generated_at: datetime
     reviewed_at: datetime
+
+
+class ActionRecord(BaseModel):
+    operation_id: str
+    file_id: str
+    kind: ActionKind
+    status: ActionStatus
+    source_path: str
+    destination_path: str
+    sha256: str
+    related_operation_id: str | None
+    detail: str
+    created_at: datetime
+    can_undo: bool
 
 
 class UnderstandingRecord(BaseModel):

@@ -1,15 +1,20 @@
 import hashlib
 import json
+import os
 import re
+import shutil
 import sqlite3
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from threading import Lock
 from uuid import uuid4
 
 from app.schemas.intake import (
+    ActionKind,
+    ActionRecord,
+    ActionStatus,
     ApprovalAction,
     ApprovalRecord,
     ApprovalRequest,
@@ -26,15 +31,31 @@ from app.services.recommendation import RULES_VERSION, recommend_file
 from app.services.understanding import understand_file
 
 
+class ActionConflict(RuntimeError):
+    """Raised when a requested file action cannot be completed safely."""
+
+
+WINDOWS_RESERVED_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    *(f"COM{number}" for number in range(1, 10)),
+    *(f"LPT{number}" for number in range(1, 10)),
+}
+
+
 class IntakeService:
     def __init__(
         self,
         intake_path: Path,
         database_path: Path,
+        library_path: Path | None = None,
         max_text_bytes: int = 1_000_000,
         max_extracted_text_bytes: int = 1_000_000,
     ) -> None:
         self.intake_path = intake_path
+        self.library_path = library_path or intake_path.parent / "library"
         self.database_path = database_path
         self.max_text_bytes = max_text_bytes
         self.max_extracted_text_bytes = max_extracted_text_bytes
@@ -42,6 +63,7 @@ class IntakeService:
 
     def initialize(self) -> None:
         self.intake_path.mkdir(parents=True, exist_ok=True)
+        self.library_path.mkdir(parents=True, exist_ok=True)
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connection() as connection:
             connection.executescript(
@@ -122,7 +144,29 @@ class IntakeService:
                     reviewed_at TEXT NOT NULL
                 );
 
-                UPDATE schema_meta SET version = 5;
+                CREATE TABLE IF NOT EXISTS action_events (
+                    event_id TEXT PRIMARY KEY,
+                    operation_id TEXT NOT NULL,
+                    file_id TEXT NOT NULL,
+                    kind TEXT NOT NULL CHECK (kind IN ('move', 'undo')),
+                    status TEXT NOT NULL CHECK (
+                        status IN ('started', 'succeeded', 'failed')
+                    ),
+                    source_path TEXT NOT NULL,
+                    destination_path TEXT NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    related_operation_id TEXT,
+                    detail TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS ix_action_events_operation
+                ON action_events (operation_id);
+
+                CREATE INDEX IF NOT EXISTS ix_action_events_related
+                ON action_events (related_operation_id);
+
+                UPDATE schema_meta SET version = 6;
                 """
             )
             self._add_column_if_missing(connection, "understanding_results", "error_code TEXT")
@@ -488,6 +532,320 @@ class IntakeService:
             reviewed_at=reviewed_at,
         )
 
+    def list_actions(self, limit: int = 50) -> list[ActionRecord]:
+        with self._lock, self._connection() as connection:
+            rows = connection.execute(
+                """
+                WITH latest AS (
+                    SELECT operation_id, MAX(rowid) AS event_rowid
+                    FROM action_events
+                    GROUP BY operation_id
+                )
+                SELECT event.operation_id, event.file_id, event.kind,
+                       event.status, event.source_path, event.destination_path,
+                       event.sha256, event.related_operation_id, event.detail,
+                       event.created_at,
+                       CASE
+                           WHEN event.kind = 'move'
+                            AND event.status = 'succeeded'
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM action_events AS undo
+                                WHERE undo.kind = 'undo'
+                                  AND undo.status = 'succeeded'
+                                  AND undo.related_operation_id =
+                                      event.operation_id
+                            )
+                           THEN 1
+                           ELSE 0
+                       END AS can_undo
+                FROM action_events AS event
+                JOIN latest ON latest.event_rowid = event.rowid
+                ORDER BY event.rowid DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [self._action_record_from_row(row) for row in rows]
+
+    def execute_approved(self, file_id: str) -> ActionRecord:
+        with self._lock, self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT files.id, files.relative_path, files.sha256, files.status,
+                       recommendation.outcome,
+                       recommendation.source_sha256,
+                       recommendation.source_status,
+                       recommendation.generated_at,
+                       approval.status AS approval_status,
+                       approval.category AS approval_category,
+                       approval.suggested_filename AS approval_suggested_filename,
+                       approval.destination AS approval_destination
+                FROM intake_files AS files
+                JOIN recommendation_results AS recommendation
+                  ON recommendation.file_id = files.id
+                LEFT JOIN approval_reviews AS approval
+                  ON approval.file_id = files.id
+                 AND approval.recommendation_generated_at =
+                     recommendation.generated_at
+                WHERE files.id = ?
+                """,
+                (file_id,),
+            ).fetchone()
+            if row is None:
+                raise LookupError("The intake file or its recommendation no longer exists.")
+            if (
+                row["status"] != IntakeStatus.observed.value
+                or row["outcome"] != "suggested"
+                or row["source_sha256"] != row["sha256"]
+                or row["source_status"] != row["status"]
+                or row["approval_status"] != ApprovalStatus.approved.value
+            ):
+                raise ActionConflict(
+                    "Execution requires a current approved recommendation for "
+                    "a non-duplicate file."
+                )
+
+            _, suggested_filename, destination = self._validate_review_values(
+                row["approval_category"],
+                row["approval_suggested_filename"],
+                row["approval_destination"],
+            )
+            source_relative = PurePosixPath(row["relative_path"]).as_posix()
+            destination_relative = (
+                PurePosixPath(destination) / suggested_filename
+            ).as_posix()
+            source = self._resolve_existing_file(
+                self.intake_path,
+                source_relative,
+                "The intake source is missing or outside the intake folder.",
+            )
+            target = self._resolve_new_file(
+                self.library_path,
+                destination_relative,
+                "The approved destination is outside the library folder.",
+            )
+            if target.exists():
+                raise ActionConflict(
+                    "The destination already exists. Nova will not overwrite it."
+                )
+            try:
+                current_hash = hash_file(source)
+            except OSError as error:
+                raise ActionConflict(
+                    "Nova could not read the source file. No file was changed."
+                ) from error
+            if current_hash != row["sha256"]:
+                raise ActionConflict(
+                    "The source changed after review. Scan and approve it again."
+                )
+
+            operation_id = str(uuid4())
+            started_at = datetime.now(UTC).isoformat()
+            self._insert_action_event(
+                connection,
+                operation_id=operation_id,
+                file_id=file_id,
+                kind=ActionKind.move,
+                status=ActionStatus.started,
+                source_path=source_relative,
+                destination_path=destination_relative,
+                sha256=current_hash,
+                related_operation_id=None,
+                detail="Validated the current approval and began a no-overwrite move.",
+                created_at=started_at,
+            )
+            connection.commit()
+
+            try:
+                self._perform_verified_move(source, target, current_hash)
+            except (ActionConflict, OSError) as error:
+                detail = self._action_failure_detail(error)
+                failed_at = datetime.now(UTC).isoformat()
+                self._insert_action_event(
+                    connection,
+                    operation_id=operation_id,
+                    file_id=file_id,
+                    kind=ActionKind.move,
+                    status=ActionStatus.failed,
+                    source_path=source_relative,
+                    destination_path=destination_relative,
+                    sha256=current_hash,
+                    related_operation_id=None,
+                    detail=detail,
+                    created_at=failed_at,
+                )
+                connection.commit()
+                raise ActionConflict(detail) from error
+
+            completed_at = datetime.now(UTC).isoformat()
+            self._insert_action_event(
+                connection,
+                operation_id=operation_id,
+                file_id=file_id,
+                kind=ActionKind.move,
+                status=ActionStatus.succeeded,
+                source_path=source_relative,
+                destination_path=destination_relative,
+                sha256=current_hash,
+                related_operation_id=None,
+                detail=(
+                    "Moved the approved file after SHA-256 verification. "
+                    "No existing file was overwritten."
+                ),
+                created_at=completed_at,
+            )
+            connection.commit()
+
+        with suppress(Exception):
+            self.scan()
+        return ActionRecord(
+            operation_id=operation_id,
+            file_id=file_id,
+            kind=ActionKind.move,
+            status=ActionStatus.succeeded,
+            source_path=source_relative,
+            destination_path=destination_relative,
+            sha256=current_hash,
+            related_operation_id=None,
+            detail=(
+                "Moved the approved file after SHA-256 verification. "
+                "No existing file was overwritten."
+            ),
+            created_at=completed_at,
+            can_undo=True,
+        )
+
+    def undo_action(self, operation_id: str) -> ActionRecord:
+        with self._lock, self._connection() as connection:
+            move = connection.execute(
+                """
+                SELECT operation_id, file_id, source_path, destination_path,
+                       sha256
+                FROM action_events
+                WHERE operation_id = ?
+                  AND kind = 'move'
+                  AND status = 'succeeded'
+                ORDER BY rowid DESC
+                LIMIT 1
+                """,
+                (operation_id,),
+            ).fetchone()
+            if move is None:
+                raise LookupError("No completed move exists for that operation.")
+            undone = connection.execute(
+                """
+                SELECT 1
+                FROM action_events
+                WHERE kind = 'undo'
+                  AND status = 'succeeded'
+                  AND related_operation_id = ?
+                LIMIT 1
+                """,
+                (operation_id,),
+            ).fetchone()
+            if undone is not None:
+                raise ActionConflict("That move has already been undone.")
+
+            source = self._resolve_existing_file(
+                self.library_path,
+                move["destination_path"],
+                "The filed copy is missing or outside the library folder.",
+            )
+            target = self._resolve_new_file(
+                self.intake_path,
+                move["source_path"],
+                "The original intake destination is outside the intake folder.",
+            )
+            if target.exists():
+                raise ActionConflict(
+                    "The original intake path is occupied. Nova will not overwrite it."
+                )
+            try:
+                current_hash = hash_file(source)
+            except OSError as error:
+                raise ActionConflict(
+                    "Nova could not read the filed copy. No file was changed."
+                ) from error
+            if current_hash != move["sha256"]:
+                raise ActionConflict(
+                    "The filed copy changed after execution. Undo was stopped."
+                )
+
+            undo_operation_id = str(uuid4())
+            started_at = datetime.now(UTC).isoformat()
+            self._insert_action_event(
+                connection,
+                operation_id=undo_operation_id,
+                file_id=move["file_id"],
+                kind=ActionKind.undo,
+                status=ActionStatus.started,
+                source_path=move["destination_path"],
+                destination_path=move["source_path"],
+                sha256=current_hash,
+                related_operation_id=operation_id,
+                detail="Validated the filed copy and began a no-overwrite undo.",
+                created_at=started_at,
+            )
+            connection.commit()
+
+            try:
+                self._perform_verified_move(source, target, current_hash)
+            except (ActionConflict, OSError) as error:
+                detail = self._action_failure_detail(error)
+                failed_at = datetime.now(UTC).isoformat()
+                self._insert_action_event(
+                    connection,
+                    operation_id=undo_operation_id,
+                    file_id=move["file_id"],
+                    kind=ActionKind.undo,
+                    status=ActionStatus.failed,
+                    source_path=move["destination_path"],
+                    destination_path=move["source_path"],
+                    sha256=current_hash,
+                    related_operation_id=operation_id,
+                    detail=detail,
+                    created_at=failed_at,
+                )
+                connection.commit()
+                raise ActionConflict(detail) from error
+
+            completed_at = datetime.now(UTC).isoformat()
+            detail = (
+                "Restored the verified file to its original intake path. "
+                "No existing file was overwritten."
+            )
+            self._insert_action_event(
+                connection,
+                operation_id=undo_operation_id,
+                file_id=move["file_id"],
+                kind=ActionKind.undo,
+                status=ActionStatus.succeeded,
+                source_path=move["destination_path"],
+                destination_path=move["source_path"],
+                sha256=current_hash,
+                related_operation_id=operation_id,
+                detail=detail,
+                created_at=completed_at,
+            )
+            connection.commit()
+
+        with suppress(Exception):
+            self.scan()
+        return ActionRecord(
+            operation_id=undo_operation_id,
+            file_id=move["file_id"],
+            kind=ActionKind.undo,
+            status=ActionStatus.succeeded,
+            source_path=move["destination_path"],
+            destination_path=move["source_path"],
+            sha256=current_hash,
+            related_operation_id=operation_id,
+            detail=detail,
+            created_at=completed_at,
+            can_undo=False,
+        )
+
     def _refresh_understanding(self, connection: sqlite3.Connection) -> None:
         rows = connection.execute(
             """
@@ -700,7 +1058,7 @@ class IntakeService:
             """
             SELECT id, sha256
             FROM intake_files
-            ORDER BY observed_at, id
+            ORDER BY observed_at, relative_path, id
             """
         ).fetchall()
         for row in rows:
@@ -748,6 +1106,139 @@ class IntakeService:
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     @staticmethod
+    def _insert_action_event(
+        connection: sqlite3.Connection,
+        *,
+        operation_id: str,
+        file_id: str,
+        kind: ActionKind,
+        status: ActionStatus,
+        source_path: str,
+        destination_path: str,
+        sha256: str,
+        related_operation_id: str | None,
+        detail: str,
+        created_at: str,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO action_events (
+                event_id, operation_id, file_id, kind, status, source_path,
+                destination_path, sha256, related_operation_id, detail,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(uuid4()),
+                operation_id,
+                file_id,
+                kind.value,
+                status.value,
+                source_path,
+                destination_path,
+                sha256,
+                related_operation_id,
+                detail,
+                created_at,
+            ),
+        )
+
+    @staticmethod
+    def _action_record_from_row(row: sqlite3.Row) -> ActionRecord:
+        return ActionRecord(
+            operation_id=row["operation_id"],
+            file_id=row["file_id"],
+            kind=row["kind"],
+            status=row["status"],
+            source_path=row["source_path"],
+            destination_path=row["destination_path"],
+            sha256=row["sha256"],
+            related_operation_id=row["related_operation_id"],
+            detail=row["detail"],
+            created_at=row["created_at"],
+            can_undo=bool(row["can_undo"]),
+        )
+
+    @staticmethod
+    def _resolve_existing_file(
+        root: Path,
+        relative_path: str,
+        error_message: str,
+    ) -> Path:
+        relative = PurePosixPath(relative_path)
+        if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+            raise ActionConflict(error_message)
+        try:
+            resolved_root = root.resolve(strict=True)
+            candidate = (root / Path(*relative.parts)).resolve(strict=True)
+        except OSError as error:
+            raise ActionConflict(error_message) from error
+        if not candidate.is_relative_to(resolved_root) or not candidate.is_file():
+            raise ActionConflict(error_message)
+        return candidate
+
+    @staticmethod
+    def _resolve_new_file(
+        root: Path,
+        relative_path: str,
+        error_message: str,
+    ) -> Path:
+        relative = PurePosixPath(relative_path)
+        if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+            raise ActionConflict(error_message)
+        try:
+            resolved_root = root.resolve(strict=True)
+            candidate_parent = root / Path(*relative.parts[:-1])
+            candidate_parent.mkdir(parents=True, exist_ok=True)
+            resolved_parent = candidate_parent.resolve(strict=True)
+        except OSError as error:
+            raise ActionConflict(error_message) from error
+        if not resolved_parent.is_relative_to(resolved_root):
+            raise ActionConflict(error_message)
+        return resolved_parent / relative.name
+
+    @staticmethod
+    def _perform_verified_move(
+        source: Path,
+        destination: Path,
+        expected_hash: str,
+    ) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination_created = False
+        try:
+            with source.open("rb") as source_file, destination.open("xb") as target_file:
+                destination_created = True
+                shutil.copyfileobj(source_file, target_file, length=1024 * 1024)
+                target_file.flush()
+                os.fsync(target_file.fileno())
+            shutil.copystat(source, destination)
+            if hash_file(destination) != expected_hash:
+                raise ActionConflict(
+                    "The copied file failed SHA-256 verification. The source was retained."
+                )
+            if hash_file(source) != expected_hash:
+                raise ActionConflict(
+                    "The source changed during the move. The source was retained."
+                )
+            source.unlink()
+        except FileExistsError as error:
+            raise ActionConflict(
+                "The destination already exists. Nova will not overwrite it."
+            ) from error
+        except Exception:
+            if destination_created and source.exists() and destination.exists():
+                with suppress(OSError):
+                    destination.unlink()
+            raise
+
+    @staticmethod
+    def _action_failure_detail(error: Exception) -> str:
+        if isinstance(error, ActionConflict):
+            return str(error)
+        return "The filesystem operation failed. Nova retained the safest recoverable state."
+
+    @staticmethod
     def _validate_review_values(
         category: str | None,
         suggested_filename: str | None,
@@ -764,6 +1255,8 @@ class IntakeService:
             normalized_filename in {".", ".."}
             or re.search(r'[<>:"/\\|?*\x00-\x1f]', normalized_filename)
             or normalized_filename.endswith((".", " "))
+            or normalized_filename.split(".", 1)[0].rstrip(" .").upper()
+            in WINDOWS_RESERVED_NAMES
         ):
             raise ValueError("Suggested filename contains unsafe characters.")
         if (
@@ -774,7 +1267,10 @@ class IntakeService:
             raise ValueError("Destination must be a relative folder path.")
         destination_path = PurePosixPath(normalized_destination)
         if any(
-            part in {"", ".", ".."} or re.search(r'[<>:"|?*\x00-\x1f]', part)
+            part in {"", ".", ".."}
+            or re.search(r'[<>:"|?*\x00-\x1f]', part)
+            or part.split(".", 1)[0].rstrip(" .").upper() in WINDOWS_RESERVED_NAMES
+            or part.endswith((".", " "))
             for part in destination_path.parts
         ):
             raise ValueError("Destination contains an unsafe path component.")

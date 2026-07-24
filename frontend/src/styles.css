@@ -302,6 +302,91 @@ h2 {
   background: #0e1210;
 }
 
+.action-history {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid #242b28;
+  border-radius: 16px;
+  background: #0e1210;
+}
+
+.history-heading {
+  display: flex;
+  gap: 20px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.history-heading h3 {
+  margin: 5px 0 0;
+  font-size: 1.05rem;
+}
+
+.history-heading > span,
+.history-empty {
+  color: #7f8b84;
+  font-size: 0.78rem;
+}
+
+.history-empty {
+  margin: 18px 0 0;
+}
+
+.action-list {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.action-list li {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  border: 1px solid #252c28;
+  border-radius: 11px;
+  background: #101412;
+}
+
+.action-list li > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.action-list strong {
+  overflow-wrap: anywhere;
+  color: #e2e8e4;
+  font-size: 0.82rem;
+}
+
+.action-list li > div > span:not(.badge),
+.action-list small {
+  color: #7f8b84;
+  font-size: 0.74rem;
+}
+
+.badge.action.started {
+  color: #f4cf8f;
+  border-color: #5d4930;
+  background: #251d12;
+}
+
+.badge.action.succeeded {
+  color: #b9f7d1;
+  border-color: #315440;
+  background: #122219;
+}
+
+.badge.action.failed {
+  color: #ffd4cf;
+  border-color: #693f3a;
+  background: #281714;
+}
+
 .empty-state {
   display: grid;
   min-height: 280px;
@@ -606,6 +691,11 @@ tbody tr:last-child td {
   .search-summary {
     justify-content: space-between;
     grid-column: 1 / -1;
+  }
+
+  .action-list li {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

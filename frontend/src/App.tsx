@@ -1,11 +1,15 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import {
+  executeApproved,
+  getActionHistory,
   getHealth,
   getIntakeFiles,
   getIntakeSummary,
   reviewRecommendation,
   scanIntake,
+  undoAction,
+  type ActionRecord,
   type ApprovalRecord,
   type ApprovalRequest,
   type HealthResponse,
@@ -33,16 +37,20 @@ function App() {
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [reviewingFileId, setReviewingFileId] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [actions, setActions] = useState<ActionRecord[]>([]);
   const [filters, setFilters] = useState<IntakeFilters>({});
 
   const loadIntake = useCallback(async (signal?: AbortSignal) => {
     try {
-      const [nextFiles, nextSummary] = await Promise.all([
+      const [nextFiles, nextSummary, nextActions] = await Promise.all([
         getIntakeFiles(filters, signal),
         getIntakeSummary(signal),
+        getActionHistory(signal),
       ]);
       setFiles(nextFiles);
       setSummary(nextSummary);
+      setActions(nextActions);
       setIntakeError(null);
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -106,6 +114,44 @@ function App() {
     }
   }
 
+  async function handleExecute(fileId: string) {
+    if (
+      !window.confirm(
+        "Move this approved file into Nova’s library? Existing files will never be overwritten.",
+      )
+    ) {
+      return;
+    }
+    setActingId(fileId);
+    try {
+      await executeApproved(fileId);
+      await loadIntake();
+    } catch (error: unknown) {
+      setIntakeError(error instanceof Error ? error.message : "Execution failed");
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function handleUndo(operationId: string) {
+    if (
+      !window.confirm(
+        "Restore this file to its original intake path? Nova will stop if that path is occupied.",
+      )
+    ) {
+      return;
+    }
+    setActingId(operationId);
+    try {
+      await undoAction(operationId);
+      await loadIntake();
+    } catch (error: unknown) {
+      setIntakeError(error instanceof Error ? error.message : "Undo failed");
+    } finally {
+      setActingId(null);
+    }
+  }
+
   return (
     <main className="shell">
       <nav className="nav" aria-label="Primary navigation">
@@ -115,28 +161,29 @@ function App() {
         </a>
         <div className="nav-status">
           <Status state={service} />
-          <span className="phase">Intake MVP · 0.4.0</span>
+          <span className="phase">Intake MVP · 0.5.0</span>
         </div>
       </nav>
 
       <section className="hero">
         <div>
           <p className="eyebrow">
-            Observe + understand + recommend + approve · Files remain untouched
+            Observe + understand + recommend + approve + execute · User controlled
           </p>
           <h1>Turn incoming files into useful context.</h1>
           <p className="lede">
             Add a TXT, Markdown, PDF, or DOCX file to <code>data/intake</code>.
             Nova reads it locally, records what it understands, and applies
             deterministic filing rules when evidence is strong enough. Review
-            decisions record your intent, but nothing is renamed or moved.
+            decisions remain separate from execution. Only the explicit Move
+            file action can place an approved item into Nova’s library.
           </p>
         </div>
         <div className="safety-card">
           <span className="safety-icon" aria-hidden="true">✓</span>
           <div>
-            <strong>Approval without execution</strong>
-            <p>Your intake folder stays read-only. Approving records intent only.</p>
+            <strong>No overwrite, verified undo</strong>
+            <p>Nova checks the file hash and both paths before every move.</p>
           </div>
         </div>
       </section>
@@ -213,8 +260,11 @@ function App() {
                           fileId={file.id}
                           recommendation={file.recommendation}
                           approval={file.approval}
-                          isBusy={reviewingFileId === file.id}
+                          isBusy={
+                            reviewingFileId === file.id || actingId === file.id
+                          }
                           onReview={handleReview}
+                          onExecute={handleExecute}
                         />
                       </td>
                       <td>{formatObserved(file.observed_at)}</td>
@@ -225,6 +275,11 @@ function App() {
             </div>
           )}
         </div>
+        <ActionHistory
+          actions={actions}
+          actingId={actingId}
+          onUndo={handleUndo}
+        />
       </section>
     </main>
   );
@@ -236,12 +291,14 @@ function RecommendationView({
   approval,
   isBusy,
   onReview,
+  onExecute,
 }: {
   fileId: string;
   recommendation: RecommendationRecord | null;
   approval: ApprovalRecord | null;
   isBusy: boolean;
   onReview: (fileId: string, review: ApprovalRequest) => Promise<boolean>;
+  onExecute: (fileId: string) => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [category, setCategory] = useState("");
@@ -352,7 +409,11 @@ function RecommendationView({
       <span title={recommendation.reasons.join(" ")}>
         {recommendation.reasons[0]}
       </span>
-      <span className="no-execution">No file action will run.</span>
+      <span className="no-execution">
+        {approvalStatus === "approved"
+          ? "Approved. Moving still requires the separate action below."
+          : "No file action will run until approval and explicit execution."}
+      </span>
       {approvalStatus === "pending" ? (
         <div className="review-actions">
           <button
@@ -389,6 +450,15 @@ function RecommendationView({
         </div>
       ) : (
         <div className="review-actions">
+          {approvalStatus === "approved" ? (
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={() => void onExecute(fileId)}
+            >
+              Move file
+            </button>
+          ) : null}
           <button
             type="button"
             className="secondary-button"
@@ -407,6 +477,60 @@ function RecommendationView({
         </div>
       )}
     </>
+  );
+}
+
+function ActionHistory({
+  actions,
+  actingId,
+  onUndo,
+}: {
+  actions: ActionRecord[];
+  actingId: string | null;
+  onUndo: (operationId: string) => Promise<void>;
+}) {
+  return (
+    <section className="action-history" aria-labelledby="action-history-title">
+      <div className="history-heading">
+        <div>
+          <p className="section-number">05–06 · Execute + audit</p>
+          <h3 id="action-history-title">File action history</h3>
+        </div>
+        <span>{actions.length} operation{actions.length === 1 ? "" : "s"}</span>
+      </div>
+      {actions.length === 0 ? (
+        <p className="history-empty">
+          No file actions yet. Approvals alone never move a file.
+        </p>
+      ) : (
+        <ul className="action-list">
+          {actions.map((action) => (
+            <li key={action.operation_id}>
+              <div>
+                <span className={`badge action ${action.status}`}>
+                  {action.kind === "undo" ? "Undo" : "Move"} · {action.status}
+                </span>
+                <strong>
+                  {action.source_path} → {action.destination_path}
+                </strong>
+                <span>{action.detail}</span>
+                <small>{formatObserved(action.created_at)}</small>
+              </div>
+              {action.can_undo ? (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={actingId === action.operation_id}
+                  onClick={() => void onUndo(action.operation_id)}
+                >
+                  Undo move
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

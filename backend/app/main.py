@@ -20,6 +20,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         intake = IntakeService(
             intake_path=resolved_settings.intake_path,
+            library_path=resolved_settings.library_path,
             database_path=resolved_settings.database_path,
             max_text_bytes=resolved_settings.max_text_bytes,
             max_extracted_text_bytes=resolved_settings.max_extracted_text_bytes,

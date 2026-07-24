@@ -16,7 +16,7 @@ from app.schemas.intake import (
     UnderstandingStatus,
 )
 from app.services import understanding as understanding_service
-from app.services.intake import IntakeService
+from app.services.intake import ActionConflict, IntakeService
 
 
 def make_service(tmp_path: Path) -> IntakeService:
@@ -242,6 +242,156 @@ def test_changed_recommendation_returns_to_the_review_queue(tmp_path: Path) -> N
     assert service.summary().ready_for_review == 1
 
 
+def test_approved_recommendation_moves_without_overwriting_and_can_be_undone(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    source = service.intake_path / "invoice.txt"
+    content = write_invoice(source)
+    service.scan()
+    file_id = service.list_files()[0].id
+    approval = service.review_recommendation(
+        file_id,
+        ApprovalRequest(action=ApprovalAction.approve),
+    )
+
+    moved = service.execute_approved(file_id)
+    filed = service.library_path / approval.destination / approval.suggested_filename
+
+    assert moved.kind == "move"
+    assert moved.status == "succeeded"
+    assert moved.can_undo is True
+    assert not source.exists()
+    assert filed.read_text(encoding="utf-8") == content
+    assert service.list_files() == []
+    assert service.list_actions()[0] == moved
+
+    restored = service.undo_action(moved.operation_id)
+    actions = service.list_actions()
+
+    assert restored.kind == "undo"
+    assert restored.status == "succeeded"
+    assert source.read_text(encoding="utf-8") == content
+    assert not filed.exists()
+    assert len(service.list_files()) == 1
+    assert actions[0].operation_id == restored.operation_id
+    assert actions[1].operation_id == moved.operation_id
+    assert actions[1].can_undo is False
+
+    with sqlite3.connect(service.database_path) as connection:
+        events = connection.execute(
+            """
+            SELECT kind, status
+            FROM action_events
+            ORDER BY rowid
+            """
+        ).fetchall()
+    assert events == [
+        ("move", "started"),
+        ("move", "succeeded"),
+        ("undo", "started"),
+        ("undo", "succeeded"),
+    ]
+
+
+def test_execution_refuses_unapproved_changed_and_existing_destinations(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    source = service.intake_path / "invoice.txt"
+    write_invoice(source)
+    service.scan()
+    file_id = service.list_files()[0].id
+
+    with pytest.raises(ActionConflict, match="current approved recommendation"):
+        service.execute_approved(file_id)
+
+    service.review_recommendation(
+        file_id,
+        ApprovalRequest(action=ApprovalAction.approve),
+    )
+    source.write_text("changed after approval", encoding="utf-8")
+    with pytest.raises(ActionConflict, match="changed after review"):
+        service.execute_approved(file_id)
+    assert source.read_text(encoding="utf-8") == "changed after approval"
+
+    write_invoice(source)
+    service.scan()
+    file_id = service.list_files()[0].id
+    approval = service.review_recommendation(
+        file_id,
+        ApprovalRequest(action=ApprovalAction.approve),
+    )
+    existing = service.library_path / approval.destination / approval.suggested_filename
+    existing.parent.mkdir(parents=True, exist_ok=True)
+    existing.write_text("keep me", encoding="utf-8")
+
+    with pytest.raises(ActionConflict, match="will not overwrite"):
+        service.execute_approved(file_id)
+    assert source.exists()
+    assert existing.read_text(encoding="utf-8") == "keep me"
+
+
+def test_undo_refuses_changed_library_file_and_occupied_intake_path(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    source = service.intake_path / "invoice.txt"
+    write_invoice(source)
+    service.scan()
+    file_id = service.list_files()[0].id
+    approval = service.review_recommendation(
+        file_id,
+        ApprovalRequest(action=ApprovalAction.approve),
+    )
+    moved = service.execute_approved(file_id)
+    filed = service.library_path / approval.destination / approval.suggested_filename
+
+    filed.write_text("changed after filing", encoding="utf-8")
+    with pytest.raises(ActionConflict, match="changed after execution"):
+        service.undo_action(moved.operation_id)
+
+    write_invoice(filed)
+    source.write_text("occupied", encoding="utf-8")
+    with pytest.raises(ActionConflict, match="will not overwrite"):
+        service.undo_action(moved.operation_id)
+    assert source.read_text(encoding="utf-8") == "occupied"
+
+
+def test_failed_move_is_journaled_without_removing_the_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = make_service(tmp_path)
+    source = service.intake_path / "invoice.txt"
+    content = write_invoice(source)
+    service.scan()
+    file_id = service.list_files()[0].id
+    service.review_recommendation(
+        file_id,
+        ApprovalRequest(action=ApprovalAction.approve),
+    )
+
+    def fail_move(_source: Path, _destination: Path, _sha256: str) -> None:
+        raise OSError("private filesystem detail")
+
+    monkeypatch.setattr(service, "_perform_verified_move", fail_move)
+
+    with pytest.raises(ActionConflict, match="filesystem operation failed"):
+        service.execute_approved(file_id)
+
+    action = service.list_actions()[0]
+    assert action.status == "failed"
+    assert "private filesystem detail" not in action.detail
+    assert source.read_text(encoding="utf-8") == content
+
+    with sqlite3.connect(service.database_path) as connection:
+        statuses = connection.execute(
+            "SELECT status FROM action_events ORDER BY rowid"
+        ).fetchall()
+    assert statuses == [("started",), ("failed",)]
+
+
 def test_review_rejects_missing_recommendations_and_unsafe_edits(
     tmp_path: Path,
 ) -> None:
@@ -270,6 +420,16 @@ def test_review_rejects_missing_recommendations_and_unsafe_edits(
                 action=ApprovalAction.edit,
                 category="Financial",
                 suggested_filename="../escape.txt",
+                destination="Financial/Invoices",
+            ),
+        )
+    with pytest.raises(ValueError, match="unsafe characters"):
+        service.review_recommendation(
+            invoice_id,
+            ApprovalRequest(
+                action=ApprovalAction.edit,
+                category="Financial",
+                suggested_filename="CON.txt",
                 destination="Financial/Invoices",
             ),
         )
@@ -660,6 +820,48 @@ def test_intake_api_records_approval_without_executing_it(tmp_path: Path) -> Non
     assert response.json()["destination"] == "Financial/Invoices"
     assert summary["ready_for_review"] == 0
     assert source.read_text(encoding="utf-8") == content
+
+
+def test_intake_api_executes_and_undoes_an_approved_move(tmp_path: Path) -> None:
+    intake_path = tmp_path / "intake"
+    library_path = tmp_path / "library"
+    application = create_app(
+        Settings(
+            intake_path=intake_path,
+            library_path=library_path,
+            database_path=tmp_path / "nova.db",
+            intake_scan_seconds=60,
+        )
+    )
+
+    with TestClient(application) as client:
+        source = intake_path / "invoice.txt"
+        content = write_invoice(source)
+        client.post("/api/v1/intake/scan")
+        file_id = client.get("/api/v1/intake/files").json()[0]["id"]
+        approval = client.put(
+            f"/api/v1/intake/files/{file_id}/approval",
+            json={"action": "approve"},
+        ).json()
+
+        execute_response = client.post(
+            f"/api/v1/intake/files/{file_id}/execute"
+        )
+        operation = execute_response.json()
+        actions_response = client.get("/api/v1/intake/actions")
+        undo_response = client.post(
+            f"/api/v1/intake/actions/{operation['operation_id']}/undo"
+        )
+
+    filed = library_path / approval["destination"] / approval["suggested_filename"]
+    assert execute_response.status_code == 200
+    assert operation["status"] == "succeeded"
+    assert actions_response.status_code == 200
+    assert actions_response.json()[0]["can_undo"] is True
+    assert undo_response.status_code == 200
+    assert undo_response.json()["kind"] == "undo"
+    assert source.read_text(encoding="utf-8") == content
+    assert not filed.exists()
 
 
 def test_background_watcher_continues_after_scan_failure() -> None:

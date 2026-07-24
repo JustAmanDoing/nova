@@ -67,6 +67,20 @@ export interface ApprovalRequest {
   destination?: string;
 }
 
+export interface ActionRecord {
+  operation_id: string;
+  file_id: string;
+  kind: "move" | "undo";
+  status: "started" | "succeeded" | "failed";
+  source_path: string;
+  destination_path: string;
+  sha256: string;
+  related_operation_id: string | null;
+  detail: string;
+  created_at: string;
+  can_undo: boolean;
+}
+
 export interface IntakeFilters {
   query?: string;
   status?: IntakeFile["status"] | "";
@@ -135,10 +149,35 @@ export async function reviewRecommendation(
   });
 }
 
+export async function getActionHistory(
+  signal?: AbortSignal,
+): Promise<ActionRecord[]> {
+  return request<ActionRecord[]>("/api/v1/intake/actions", { signal });
+}
+
+export async function executeApproved(fileId: string): Promise<ActionRecord> {
+  return request<ActionRecord>(`/api/v1/intake/files/${fileId}/execute`, {
+    method: "POST",
+  });
+}
+
+export async function undoAction(operationId: string): Promise<ActionRecord> {
+  return request<ActionRecord>(`/api/v1/intake/actions/${operationId}/undo`, {
+    method: "POST",
+  });
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, init);
   if (!response.ok) {
-    throw new Error(`Nova API returned ${response.status}`);
+    let detail = "";
+    try {
+      const body = (await response.json()) as { detail?: unknown };
+      if (typeof body.detail === "string") detail = `: ${body.detail}`;
+    } catch {
+      // The status is still useful when the response is not JSON.
+    }
+    throw new Error(`Nova API returned ${response.status}${detail}`);
   }
   return response.json() as Promise<T>;
 }

@@ -4,6 +4,7 @@ from typing import cast
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.schemas.intake import (
+    ActionRecord,
     ApprovalRecord,
     ApprovalRequest,
     ApprovalStatus,
@@ -13,7 +14,7 @@ from app.schemas.intake import (
     IntakeSummary,
     UnderstandingStatus,
 )
-from app.services.intake import IntakeService
+from app.services.intake import ActionConflict, IntakeService
 
 router = APIRouter(prefix="/intake", tags=["intake"])
 
@@ -72,3 +73,36 @@ async def review_recommendation(
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.get("/actions", response_model=list[ActionRecord])
+async def list_actions(
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=200),
+) -> list[ActionRecord]:
+    service = get_intake_service(request)
+    return await asyncio.to_thread(service.list_actions, limit)
+
+
+@router.post("/files/{file_id}/execute", response_model=ActionRecord)
+async def execute_approved(file_id: str, request: Request) -> ActionRecord:
+    service = get_intake_service(request)
+    try:
+        return await asyncio.to_thread(service.execute_approved, file_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except ActionConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post("/actions/{operation_id}/undo", response_model=ActionRecord)
+async def undo_action(operation_id: str, request: Request) -> ActionRecord:
+    service = get_intake_service(request)
+    try:
+        return await asyncio.to_thread(service.undo_action, operation_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ActionConflict as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error

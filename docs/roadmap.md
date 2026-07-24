@@ -29,7 +29,7 @@
 - Show understanding results in the dashboard — complete
 - Enforce a configurable local extraction size limit — complete
 - Add PDF and DOCX extraction — complete
-- Keep all processing local and make no file changes
+- Keep understanding and recommendation processing local and read-only — complete
 - Add local OCR for scanned PDFs and images
 
 ## Milestone 3 — Recommend — complete
@@ -41,16 +41,18 @@
 - Recalculate after source, understanding, duplicate-status, or rule-version changes — complete
 - Keep all recommendations read-only with no filesystem action controls — complete
 
-## Milestone 4 — Approve and execute — in progress
+## Milestone 4 — Approve, execute, and audit — complete
 
 - Approval queue with approve, edit, reject, ignore, and review-again actions — complete
 - Persist review state against the exact recommendation version — complete
 - Return changed recommendations to the queue — complete
 - Validate edited filename and destination values — complete
 - Keep approval separate from execution — complete
-- Rename and move only after approval
-- Append-only action audit
-- Reversible execution and undo
+- Move into the library only after current approval and separate confirmation — complete
+- Refuse overwrite, changed sources, stale approvals, and unsafe paths — complete
+- Reverify SHA-256 immediately before source removal — complete
+- Append-only operation event audit — complete
+- Reversible execution and guarded undo — complete
 
 ## Milestone 5 — Learn and advanced search
 

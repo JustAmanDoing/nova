@@ -59,6 +59,21 @@ function recommendedInvoice() {
   };
 }
 
+function approvedInvoice() {
+  return {
+    ...recommendedInvoice(),
+    approval: {
+      status: "approved",
+      category: "Financial",
+      suggested_filename:
+        "24-07-2026_Financial_Invoice_Example-Office_v01.txt",
+      destination: "Financial/Invoices",
+      recommendation_generated_at: "2026-07-24T00:00:02Z",
+      reviewed_at: "2026-07-25T00:00:00Z",
+    },
+  };
+}
+
 describe("App", () => {
   it("shows observed files and duplicate totals", async () => {
     vi.stubGlobal(
@@ -74,6 +89,7 @@ describe("App", () => {
             timestamp: "2026-07-24T00:00:00Z",
           });
         }
+        if (url.endsWith("/actions")) return response([]);
         if (url.endsWith("/summary")) {
           return response({
             files_observed: 1,
@@ -152,6 +168,7 @@ describe("App", () => {
             timestamp: "2026-07-24T00:00:00Z",
           });
         }
+        if (url.endsWith("/actions")) return response([]);
         if (url.endsWith("/summary")) {
           return response({
             files_observed: 1,
@@ -217,6 +234,7 @@ describe("App", () => {
           duplicates: 0,
         });
       }
+      if (url.endsWith("/actions")) return response([]);
       if (url.endsWith("/summary")) {
         return response({
           files_observed: 0,
@@ -251,6 +269,7 @@ describe("App", () => {
           timestamp: "2026-07-24T00:00:00Z",
         });
       }
+      if (url.endsWith("/actions")) return response([]);
       if (url.endsWith("/summary")) {
         return response({
           files_observed: 0,
@@ -310,6 +329,7 @@ describe("App", () => {
             timestamp: "2026-07-24T00:00:00Z",
           });
         }
+        if (input.toString().endsWith("/actions")) return response([]);
         if (input.toString().endsWith("/summary")) {
           return response({
             files_observed: 1,
@@ -354,7 +374,7 @@ describe("App", () => {
     expect(screen.getByText(/Extractor: utf-8/)).toBeInTheDocument();
   });
 
-  it("shows explainable approval controls without execution", async () => {
+  it("shows explainable review controls before execution", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((input: string | URL | Request) => {
@@ -367,6 +387,7 @@ describe("App", () => {
             timestamp: "2026-07-25T00:00:00Z",
           });
         }
+        if (input.toString().endsWith("/actions")) return response([]);
         if (input.toString().endsWith("/summary")) {
           return response({
             files_observed: 1,
@@ -433,7 +454,11 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ignore" })).toBeInTheDocument();
-    expect(screen.getByText("No file action will run.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No file action will run until approval and explicit execution.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("saves edited review fields through the approval API", async () => {
@@ -448,6 +473,7 @@ describe("App", () => {
           timestamp: "2026-07-25T00:00:00Z",
         });
       }
+      if (url.endsWith("/actions")) return response([]);
       if (url.endsWith("/summary")) {
         return response({
           files_observed: 1,
@@ -493,6 +519,127 @@ describe("App", () => {
         suggested_filename: "24-07-2026_Financial_Invoice_Office_v02.txt",
         destination: "Financial/Invoices/2026",
       });
+    });
+  });
+
+  it("executes only from an approved recommendation", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      const url = input.toString();
+      if (url.endsWith("/health")) {
+        return response({
+          status: "ok",
+          service: "Nova API",
+          version: "0.5.0",
+          environment: "test",
+          timestamp: "2026-07-25T00:00:00Z",
+        });
+      }
+      if (url.endsWith("/actions")) return response([]);
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 1,
+          understood: 1,
+          ready_for_review: 0,
+          exact_duplicates: 0,
+        });
+      }
+      if (url.endsWith("/execute") && init?.method === "POST") {
+        return response({
+          operation_id: "move-operation",
+          file_id: "invoice-file",
+          kind: "move",
+          status: "succeeded",
+          source_path: "invoice.txt",
+          destination_path:
+            "Financial/Invoices/24-07-2026_Financial_Invoice_Example-Office_v01.txt",
+          sha256: "abcdef1234567890",
+          related_operation_id: null,
+          detail: "Moved and verified.",
+          created_at: "2026-07-25T00:00:00Z",
+          can_undo: true,
+        });
+      }
+      return response([approvedInvoice()]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Move file" }));
+
+    await vi.waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([input, init]) =>
+            input.toString().endsWith("/execute") && init?.method === "POST",
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("shows append-only action history and requests guarded undo", async () => {
+    const moveAction = {
+      operation_id: "move-operation",
+      file_id: "invoice-file",
+      kind: "move",
+      status: "succeeded",
+      source_path: "invoice.txt",
+      destination_path:
+        "Financial/Invoices/24-07-2026_Financial_Invoice_Example-Office_v01.txt",
+      sha256: "abcdef1234567890",
+      related_operation_id: null,
+      detail: "Moved and verified.",
+      created_at: "2026-07-25T00:00:00Z",
+      can_undo: true,
+    };
+    const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      const url = input.toString();
+      if (url.endsWith("/health")) {
+        return response({
+          status: "ok",
+          service: "Nova API",
+          version: "0.5.0",
+          environment: "test",
+          timestamp: "2026-07-25T00:00:00Z",
+        });
+      }
+      if (url.endsWith("/actions/move-operation/undo") && init?.method === "POST") {
+        return response({
+          ...moveAction,
+          operation_id: "undo-operation",
+          kind: "undo",
+          source_path: moveAction.destination_path,
+          destination_path: moveAction.source_path,
+          related_operation_id: moveAction.operation_id,
+          can_undo: false,
+        });
+      }
+      if (url.endsWith("/actions")) return response([moveAction]);
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 0,
+          understood: 0,
+          ready_for_review: 0,
+          exact_duplicates: 0,
+        });
+      }
+      return response([]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<App />);
+
+    expect(await screen.findByText("Moved and verified.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Undo move" }));
+
+    await vi.waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([input, init]) =>
+            input.toString().endsWith("/actions/move-operation/undo") &&
+            init?.method === "POST",
+        ),
+      ).toBe(true);
     });
   });
 });

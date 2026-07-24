@@ -9,24 +9,26 @@ useful workflow before autonomy is introduced:
 Observe → Understand → Recommend → Approve → Execute → Audit → Learn
 ```
 
-**Observe**, **Understand**, deterministic **Recommend**, and the first
-approval-only **Approve** slice are active today. Nova records files, extracts
-supported text locally, proposes filing details when evidence is strong enough,
-and records review intent without changing source files.
+**Observe**, **Understand**, deterministic **Recommend**, explicit **Approve**,
+guarded **Execute**, and append-only **Audit** are active today. Nova changes a
+file only through a separate confirmed action that passes current-approval,
+path, conflict, and fingerprint checks.
 
 ## Current vertical slice
 
 ```text
-Local data/intake folder (read-only mount)
+Local data/intake folder
   └── periodic or manual scan
         └── metadata + SHA-256 fingerprint
               └── exact-duplicate check
                     └── local TXT/Markdown/PDF/DOCX understanding
                           └── versioned deterministic recommendation rules
                                 └── version-bound approval review state
-                                      └── local SQLite state
-                                            ├── versioned FastAPI endpoints
-                                            └── React intake dashboard
+                                      └── guarded no-overwrite move
+                                            └── append-only action events
+                                                  ├── local data/library
+                                                  ├── versioned FastAPI endpoints
+                                                  └── React intake dashboard
 ```
 
 ## Boundaries
@@ -41,7 +43,9 @@ Local data/intake folder (read-only mount)
 - Displays category, filename, destination, confidence, and explanation for
   deterministic recommendations.
 - Provides approve, edit, reject, ignore, and review-again controls.
-- Makes the non-execution boundary visible beside every review.
+- Keeps approval and execution visibly separate.
+- Requires confirmation for a move and presents guarded undo only when eligible.
+- Displays the latest state of each append-only audited operation.
 - Displays structured extraction diagnostics without exposing stack traces.
 - Can request an immediate scan.
 - Does not receive file contents.
@@ -65,6 +69,12 @@ Local data/intake folder (read-only mount)
 - Validates and stores review state against the exact recommendation generation
   that was reviewed.
 - Treats missing or stale review state as awaiting review.
+- Executes only a current approved recommendation for a non-duplicate file.
+- Resolves source and destination beneath configured roots, refuses overwrite,
+  and verifies SHA-256 before source removal.
+- Records started, succeeded, and failed move or undo events append-only.
+- Reverses a move only when the filed copy is unchanged and the original intake
+  path is free.
 - Indexes supported extracted text locally for case-insensitive search across
   filenames, paths, titles, content, evidence, extraction errors, and
   recommendation fields.
@@ -73,8 +83,10 @@ Local data/intake folder (read-only mount)
 
 ### Local storage
 
-- Intake files remain in `data/intake`.
-- Docker mounts the intake folder read-only.
+- Pending files remain in `data/intake`.
+- Explicitly filed documents are stored under `data/library`.
+- Docker mounts the local `data` root so the guarded action boundary can move
+  approved files; scanning and recommendation paths do not write to files.
 - SQLite lives in the `nova_data` Docker volume.
 - Runtime data is excluded from Git.
 
@@ -120,7 +132,7 @@ Each file also receives a versioned recommendation record:
 Recommendations are recalculated after content, understanding-result, or
 duplicate-status changes and when the rules version changes. Exact duplicates
 are never recommended for independent filing. These records are proposals only:
-there is no execution path in the current milestone.
+they cannot invoke execution.
 
 Each suggested recommendation may also have one current approval record:
 
@@ -132,18 +144,35 @@ Each suggested recommendation may also have one current approval record:
 An edit stores corrected fields with `pending` status. Approval without new
 fields uses the latest edited values. When the recommendation generation
 changes, its earlier review no longer joins to the current result and the file
-returns to the review queue. This table stores current review state, not the
-append-only execution audit planned for the next slice.
+returns to the review queue. This table stores current review state separately
+from the append-only action audit.
+
+Every execution or undo operation writes immutable action events:
+
+- Stable operation and file IDs
+- Kind: `move` or `undo`
+- State: `started`, `succeeded`, or `failed`
+- Relative source and destination paths
+- Verified SHA-256 fingerprint
+- Related move operation for undo
+- Safe detail and timestamp
+
+The latest event presents the operation's current state, while all preceding
+events remain in SQLite. A `started` event is committed before touching the
+filesystem so interrupted work remains visible rather than being guessed away.
 
 ## Security baseline
 
 - Local-only deployment
-- Read-only intake mount
 - Non-root backend container
 - Explicit CORS origins
 - No secrets or runtime files in source control
-- No automatic rename, move, delete, upload, or sharing
-- Approval records intent only and cannot invoke filesystem actions
+- No automatic move, overwrite, permanent deletion, upload, or sharing
+- Approval records intent only; execution requires a separate confirmed request
+- Source and destination containment checks
+- Exclusive destination creation
+- Destination and source SHA-256 verification before source removal
+- Guarded undo with path and fingerprint conflict checks
 - Bounded source-file and expanded-text processing
 - Parser errors are logged locally while safe diagnostics are returned to the UI
 - AI providers disabled until explicitly configured

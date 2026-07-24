@@ -1,5 +1,9 @@
 # Milestone 4 — Approval Boundary
 
+This document describes the approval-only boundary introduced in version
+0.4.0. Version 0.5.0 adds execution as a separate guarded operation; approval
+still never triggers a file move by itself.
+
 ## Outcome
 
 Nova can now record how the user reviews a deterministic recommendation:
