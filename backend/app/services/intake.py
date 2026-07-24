@@ -7,13 +7,25 @@ from pathlib import Path
 from threading import Lock
 from uuid import uuid4
 
-from app.schemas.intake import IntakeFile, IntakeScanResult, IntakeStatus
+from app.schemas.intake import (
+    IntakeFile,
+    IntakeScanResult,
+    IntakeStatus,
+    UnderstandingRecord,
+)
+from app.services.understanding import understand_file
 
 
 class IntakeService:
-    def __init__(self, intake_path: Path, database_path: Path) -> None:
+    def __init__(
+        self,
+        intake_path: Path,
+        database_path: Path,
+        max_text_bytes: int = 1_000_000,
+    ) -> None:
         self.intake_path = intake_path
         self.database_path = database_path
+        self.max_text_bytes = max_text_bytes
         self._lock = Lock()
 
     def initialize(self) -> None:
@@ -44,6 +56,24 @@ class IntakeService:
 
                 CREATE INDEX IF NOT EXISTS ix_intake_files_sha256
                 ON intake_files (sha256);
+
+                CREATE TABLE IF NOT EXISTS understanding_results (
+                    file_id TEXT PRIMARY KEY REFERENCES intake_files(id) ON DELETE CASCADE,
+                    source_sha256 TEXT NOT NULL,
+                    status TEXT NOT NULL CHECK (
+                        status IN ('ready', 'empty', 'unsupported', 'too_large', 'failed')
+                    ),
+                    document_type TEXT,
+                    title TEXT,
+                    text_preview TEXT,
+                    word_count INTEGER,
+                    character_count INTEGER,
+                    evidence TEXT NOT NULL,
+                    error TEXT,
+                    understood_at TEXT NOT NULL
+                );
+
+                UPDATE schema_meta SET version = 2;
                 """
             )
 
@@ -137,6 +167,7 @@ class IntakeService:
                 else:
                     updated += 1
             duplicates = self._reconcile_duplicates(connection)
+            self._refresh_understanding(connection)
 
         return IntakeScanResult(
             scanned=scanned,
@@ -149,13 +180,103 @@ class IntakeService:
         with self._lock, self._connection() as connection:
             rows = connection.execute(
                 """
-                SELECT id, relative_path, original_name, extension, size_bytes,
-                       modified_at, observed_at, sha256, status, duplicate_of
-                FROM intake_files
+                SELECT files.id, files.relative_path, files.original_name,
+                       files.extension, files.size_bytes, files.modified_at,
+                       files.observed_at, files.sha256, files.status,
+                       files.duplicate_of, understanding.status AS understanding_status,
+                       understanding.document_type, understanding.title,
+                       understanding.text_preview, understanding.word_count,
+                       understanding.character_count, understanding.evidence,
+                       understanding.error, understanding.understood_at
+                FROM intake_files AS files
+                LEFT JOIN understanding_results AS understanding
+                  ON understanding.file_id = files.id
                 ORDER BY observed_at DESC, relative_path
                 """
             ).fetchall()
-        return [IntakeFile.model_validate(dict(row)) for row in rows]
+        return [self._intake_file_from_row(row) for row in rows]
+
+    def _refresh_understanding(self, connection: sqlite3.Connection) -> None:
+        rows = connection.execute(
+            """
+            SELECT files.id, files.relative_path, files.extension, files.sha256,
+                   understanding.source_sha256
+            FROM intake_files AS files
+            LEFT JOIN understanding_results AS understanding
+              ON understanding.file_id = files.id
+            """
+        ).fetchall()
+        for row in rows:
+            if row["source_sha256"] == row["sha256"]:
+                continue
+            result = understand_file(
+                self.intake_path / row["relative_path"],
+                row["extension"],
+                self.max_text_bytes,
+            )
+            connection.execute(
+                """
+                INSERT INTO understanding_results (
+                    file_id, source_sha256, status, document_type, title,
+                    text_preview, word_count, character_count, evidence,
+                    error, understood_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(file_id) DO UPDATE SET
+                    source_sha256 = excluded.source_sha256,
+                    status = excluded.status,
+                    document_type = excluded.document_type,
+                    title = excluded.title,
+                    text_preview = excluded.text_preview,
+                    word_count = excluded.word_count,
+                    character_count = excluded.character_count,
+                    evidence = excluded.evidence,
+                    error = excluded.error,
+                    understood_at = excluded.understood_at
+                """,
+                (
+                    row["id"],
+                    row["sha256"],
+                    result.status.value,
+                    result.document_type,
+                    result.title,
+                    result.text_preview,
+                    result.word_count,
+                    result.character_count,
+                    result.evidence,
+                    result.error,
+                    result.understood_at,
+                ),
+            )
+
+    @staticmethod
+    def _intake_file_from_row(row: sqlite3.Row) -> IntakeFile:
+        understanding = None
+        if row["understanding_status"] is not None:
+            understanding = UnderstandingRecord(
+                status=row["understanding_status"],
+                document_type=row["document_type"],
+                title=row["title"],
+                text_preview=row["text_preview"],
+                word_count=row["word_count"],
+                character_count=row["character_count"],
+                evidence=row["evidence"],
+                error=row["error"],
+                understood_at=row["understood_at"],
+            )
+        return IntakeFile(
+            id=row["id"],
+            relative_path=row["relative_path"],
+            original_name=row["original_name"],
+            extension=row["extension"],
+            size_bytes=row["size_bytes"],
+            modified_at=row["modified_at"],
+            observed_at=row["observed_at"],
+            sha256=row["sha256"],
+            status=row["status"],
+            duplicate_of=row["duplicate_of"],
+            understanding=understanding,
+        )
 
     def _reconcile_duplicates(self, connection: sqlite3.Connection) -> int:
         canonical_by_hash: dict[str, str] = {}

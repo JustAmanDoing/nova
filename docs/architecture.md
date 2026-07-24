@@ -9,7 +9,8 @@ useful workflow before autonomy is introduced:
 Observe → Understand → Recommend → Approve → Execute → Audit → Learn
 ```
 
-Only **Observe** is active today. Nova records files without changing them.
+**Observe** and the first **Understand** slice are active today. Nova records files,
+extracts supported text locally, and never changes the source files.
 
 ## Current vertical slice
 
@@ -18,16 +19,18 @@ Local data/intake folder (read-only mount)
   └── periodic or manual scan
         └── metadata + SHA-256 fingerprint
               └── exact-duplicate check
-                    └── local SQLite inventory
-                          ├── versioned FastAPI endpoints
-                          └── React intake dashboard
+                    └── local TXT/Markdown understanding
+                          └── local SQLite inventory
+                                ├── versioned FastAPI endpoints
+                                └── React intake dashboard
 ```
 
 ## Boundaries
 
 ### Frontend
 
-- Displays service health, intake totals, file metadata, and duplicate status.
+- Displays service health, intake totals, file metadata, duplicate status, and
+  normalized understanding results.
 - Can request an immediate scan.
 - Does not receive file contents.
 - Owns interaction state, not authoritative inventory data.
@@ -35,8 +38,9 @@ Local data/intake folder (read-only mount)
 ### Backend
 
 - Scans the configured intake directory.
-- Reads files only to calculate their fingerprint.
-- Stores normalized metadata in SQLite.
+- Reads every file locally to calculate its fingerprint.
+- Extracts UTF-8 TXT and Markdown files up to the configured size limit.
+- Stores normalized metadata and understanding results in SQLite.
 - Exposes versioned endpoints under `/api/v1`.
 - Runs without an AI model or cloud service.
 
@@ -59,7 +63,18 @@ Each observed file has:
 - Status: `observed` or `duplicate`
 - Canonical file reference when it is an exact duplicate
 
-No classification or content extraction is performed yet.
+Supported text files also have a normalized understanding record:
+
+- Extraction status
+- Document type
+- Derived title
+- Short text preview
+- Word and character counts
+- Plain-language extraction evidence
+- Error detail when local extraction fails
+
+The database stores only a short preview, not a second full copy of the document.
+PDF and DOCX files remain `unsupported` until their local extractors are added.
 
 ## Security baseline
 

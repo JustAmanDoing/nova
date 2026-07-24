@@ -9,6 +9,26 @@ class IntakeStatus(StrEnum):
     duplicate = "duplicate"
 
 
+class UnderstandingStatus(StrEnum):
+    ready = "ready"
+    empty = "empty"
+    unsupported = "unsupported"
+    too_large = "too_large"
+    failed = "failed"
+
+
+class UnderstandingRecord(BaseModel):
+    status: UnderstandingStatus
+    document_type: str | None
+    title: str | None
+    text_preview: str | None
+    word_count: int | None
+    character_count: int | None
+    evidence: str
+    error: str | None
+    understood_at: datetime
+
+
 class IntakeFile(BaseModel):
     id: str
     relative_path: str
@@ -20,6 +40,7 @@ class IntakeFile(BaseModel):
     sha256: str
     status: IntakeStatus
     duplicate_of: str | None
+    understanding: UnderstandingRecord | None
 
 
 class IntakeScanResult(BaseModel):

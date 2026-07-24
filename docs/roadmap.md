@@ -17,12 +17,13 @@
 - Local SQLite inventory
 - Intake dashboard
 
-## Milestone 2 — Understand — next
+## Milestone 2 — Understand — in progress
 
-- Extract text from TXT and Markdown
+- Extract text from TXT and Markdown — complete
+- Store normalized title, preview, counts, status, and evidence — complete
+- Show understanding results in the dashboard — complete
+- Enforce a configurable local extraction size limit — complete
 - Add PDF and DOCX extraction
-- Produce one normalized understanding record
-- Show extraction status and evidence
 - Keep all processing local and make no file changes
 
 ## Milestone 3 — Recommend

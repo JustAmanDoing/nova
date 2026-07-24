@@ -18,6 +18,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         intake = IntakeService(
             intake_path=resolved_settings.intake_path,
             database_path=resolved_settings.database_path,
+            max_text_bytes=resolved_settings.max_text_bytes,
         )
         await asyncio.to_thread(intake.initialize)
         await asyncio.to_thread(intake.scan)

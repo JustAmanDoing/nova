@@ -19,6 +19,19 @@ export interface IntakeFile {
   sha256: string;
   status: "observed" | "duplicate";
   duplicate_of: string | null;
+  understanding: UnderstandingRecord | null;
+}
+
+export interface UnderstandingRecord {
+  status: "ready" | "empty" | "unsupported" | "too_large" | "failed";
+  document_type: string | null;
+  title: string | null;
+  text_preview: string | null;
+  word_count: number | null;
+  character_count: number | null;
+  evidence: string;
+  error: string | null;
+  understood_at: string;
 }
 
 export interface IntakeScanResult {

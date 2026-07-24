@@ -6,6 +6,7 @@ import {
   scanIntake,
   type HealthResponse,
   type IntakeFile,
+  type UnderstandingRecord,
 } from "./lib/api";
 
 type ServiceState =
@@ -53,6 +54,10 @@ function App() {
     () => files.filter((file) => file.status === "duplicate").length,
     [files],
   );
+  const understood = useMemo(
+    () => files.filter((file) => file.understanding?.status === "ready").length,
+    [files],
+  );
 
   async function handleScan() {
     setIsScanning(true);
@@ -75,25 +80,25 @@ function App() {
         </a>
         <div className="nav-status">
           <Status state={service} />
-          <span className="phase">Intake MVP · 0.1.0</span>
+          <span className="phase">Intake MVP · 0.2.0</span>
         </div>
       </nav>
 
       <section className="hero">
         <div>
-          <p className="eyebrow">Observe first · Never move files silently</p>
-          <h1>A safe landing place for every file.</h1>
+          <p className="eyebrow">Observe + understand · Files remain untouched</p>
+          <h1>Turn incoming files into useful context.</h1>
           <p className="lede">
-            Add a file to <code>data/intake</code>. Nova records its metadata,
-            creates a SHA-256 fingerprint, and flags exact duplicates without
-            renaming, moving, or deleting anything.
+            Add a TXT or Markdown file to <code>data/intake</code>. Nova reads it
+            locally, records a title and preview, and explains what was extracted.
+            Other formats remain safely marked as unsupported for now.
           </p>
         </div>
         <div className="safety-card">
           <span className="safety-icon" aria-hidden="true">✓</span>
           <div>
-            <strong>Observation mode</strong>
-            <p>Your intake folder is mounted read-only inside Nova.</p>
+            <strong>Local understanding</strong>
+            <p>Your intake folder stays read-only. No file is renamed, moved, or uploaded.</p>
           </div>
         </div>
       </section>
@@ -101,8 +106,8 @@ function App() {
       <section className="workspace" aria-labelledby="intake-title">
         <div className="workspace-heading">
           <div>
-            <p className="section-number">01 · Intake</p>
-            <h2 id="intake-title">Files Nova has observed</h2>
+            <p className="section-number">02 · Understand</p>
+            <h2 id="intake-title">What Nova knows about each file</h2>
           </div>
           <button type="button" onClick={handleScan} disabled={isScanning}>
             {isScanning ? "Scanning…" : "Scan now"}
@@ -111,6 +116,7 @@ function App() {
 
         <div className="metrics" aria-label="Intake summary">
           <Metric label="Files observed" value={files.length} />
+          <Metric label="Understood" value={understood} />
           <Metric label="Ready for review" value={files.length - duplicates} />
           <Metric label="Exact duplicates" value={duplicates} accent={duplicates > 0} />
         </div>
@@ -122,7 +128,7 @@ function App() {
             <div className="empty-state">
               <span aria-hidden="true">↓</span>
               <h3>Your intake is empty</h3>
-              <p>Drop a file into <code>data/intake</code>, then select Scan now.</p>
+              <p>Drop a TXT or Markdown file into <code>data/intake</code>.</p>
             </div>
           ) : (
             <div className="table-wrap">
@@ -130,9 +136,9 @@ function App() {
                 <thead>
                   <tr>
                     <th>File</th>
-                    <th>Status</th>
-                    <th>Size</th>
-                    <th>Fingerprint</th>
+                    <th>Intake</th>
+                    <th>Understanding</th>
+                    <th>Evidence</th>
                     <th>Observed</th>
                   </tr>
                 </thead>
@@ -141,15 +147,22 @@ function App() {
                     <tr key={file.id}>
                       <td>
                         <strong>{file.original_name}</strong>
-                        <span>{file.relative_path}</span>
+                        <span>
+                          {formatBytes(file.size_bytes)} · {file.sha256.slice(0, 12)}
+                        </span>
                       </td>
                       <td>
                         <span className={`badge ${file.status}`}>
                           {file.status === "duplicate" ? "Duplicate" : "Observed"}
                         </span>
                       </td>
-                      <td>{formatBytes(file.size_bytes)}</td>
-                      <td><code>{file.sha256.slice(0, 12)}</code></td>
+                      <td>
+                        <UnderstandingBadge understanding={file.understanding} />
+                      </td>
+                      <td className="understanding-cell">
+                        <strong>{understandingTitle(file.understanding)}</strong>
+                        <span>{understandingDetail(file.understanding)}</span>
+                      </td>
                       <td>{formatObserved(file.observed_at)}</td>
                     </tr>
                   ))}
@@ -161,6 +174,64 @@ function App() {
       </section>
     </main>
   );
+}
+
+function UnderstandingBadge({
+  understanding,
+}: {
+  understanding: UnderstandingRecord | null;
+}) {
+  const status = understanding?.status ?? "pending";
+  return (
+    <span className={`badge understanding ${status}`}>
+      {understandingLabel(understanding)}
+    </span>
+  );
+}
+
+function understandingLabel(understanding: UnderstandingRecord | null): string {
+  switch (understanding?.status) {
+    case "ready":
+      return "Understood";
+    case "empty":
+      return "Empty";
+    case "unsupported":
+      return "Not supported";
+    case "too_large":
+      return "Too large";
+    case "failed":
+      return "Needs attention";
+    default:
+      return "Pending";
+  }
+}
+
+function understandingTitle(understanding: UnderstandingRecord | null): string {
+  if (!understanding) return "Waiting for scan";
+  if (understanding.title) return understanding.title;
+  switch (understanding.status) {
+    case "empty":
+      return "Empty text file";
+    case "unsupported":
+      return "Format not supported yet";
+    case "too_large":
+      return "File exceeds the extraction limit";
+    case "failed":
+      return "Local extraction failed";
+    default:
+      return "Text extracted locally";
+  }
+}
+
+function understandingDetail(understanding: UnderstandingRecord | null): string {
+  if (!understanding) return "Nova has not processed this file yet.";
+  if (understanding.error) return understanding.error;
+  if (understanding.text_preview) {
+    const wordSummary =
+      understanding.word_count === null ? "" : ` · ${understanding.word_count} words`;
+    return `${understanding.text_preview}${wordSummary}`;
+  }
+  return understanding.evidence;
 }
 
 function Metric({

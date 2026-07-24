@@ -8,6 +8,9 @@ The current MVP can:
 - Observe files placed in a local intake folder
 - Record filename, path, size, timestamps, and SHA-256 fingerprint
 - Detect exact duplicates without deleting either copy
+- Extract TXT and Markdown content locally
+- Record a title, short preview, word count, and extraction evidence
+- Mark empty, oversized, failed, and not-yet-supported files clearly
 - Store the inventory in local SQLite
 - Display intake status in a responsive local dashboard
 - Run automatic background scans or a manual scan
@@ -28,9 +31,13 @@ Open:
 - API docs: http://localhost:8000/docs
 - API health: http://localhost:8000/api/v1/health
 
-Place a test file in `data/intake`. Nova scans automatically every three seconds,
-or you can select **Scan now** in the dashboard. The folder is mounted read-only
-inside the backend container.
+Place a TXT or Markdown test file in `data/intake`. Nova scans automatically every
+three seconds, or you can select **Scan now** in the dashboard. The folder is
+mounted read-only inside the backend container.
+
+Nova currently extracts UTF-8 TXT, MD, and MARKDOWN files up to 1 MB. The limit
+can be changed with `NOVA_MAX_TEXT_BYTES`. PDF and DOCX extraction are planned
+next; those files are observed safely but marked as not supported.
 
 Stop Nova with:
 
