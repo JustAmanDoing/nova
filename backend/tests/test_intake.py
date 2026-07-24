@@ -1,10 +1,14 @@
+import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings
 from app.main import create_app
 from app.schemas.intake import UnderstandingStatus
+from app.services import understanding as understanding_service
 from app.services.intake import IntakeService
 
 
@@ -101,14 +105,14 @@ def test_unsupported_and_large_files_are_not_extracted(tmp_path: Path) -> None:
         max_text_bytes=5,
     )
     service.initialize()
-    (service.intake_path / "scan.pdf").write_bytes(b"%PDF")
+    (service.intake_path / "scan.png").write_bytes(b"\x89PNG")
     (service.intake_path / "large.txt").write_text("too much text", encoding="utf-8")
 
     service.scan()
     records = {record.original_name: record for record in service.list_files()}
 
-    assert records["scan.pdf"].understanding is not None
-    assert records["scan.pdf"].understanding.status == "unsupported"
+    assert records["scan.png"].understanding is not None
+    assert records["scan.png"].understanding.status == "unsupported"
     assert records["large.txt"].understanding is not None
     assert records["large.txt"].understanding.status == "too_large"
 
@@ -137,7 +141,7 @@ def test_search_covers_filename_full_text_evidence_and_filters(tmp_path: Path) -
         "# Nova roadmap\n\nPrivate assistant milestones",
         encoding="utf-8",
     )
-    (service.intake_path / "scan.pdf").write_bytes(b"%PDF")
+    (service.intake_path / "scan.png").write_bytes(b"\x89PNG")
     service.scan()
 
     assert [item.original_name for item in service.list_files(query="INV-90210")] == [
@@ -147,7 +151,7 @@ def test_search_covers_filename_full_text_evidence_and_filters(tmp_path: Path) -
         "project.md"
     ]
     assert [item.original_name for item in service.list_files(query="not supported")] == [
-        "scan.pdf"
+        "scan.png"
     ]
     assert [
         item.original_name
@@ -172,6 +176,70 @@ def test_failed_extraction_has_actionable_diagnostics(tmp_path: Path) -> None:
     assert understanding.extraction_method == "utf-8"
     assert understanding.retryable is False
     assert understanding.error == "The file could not be decoded as UTF-8 text."
+
+
+def test_docx_text_is_extracted_and_searchable(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    source = service.intake_path / "brief.docx"
+    document_xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+      <w:body>
+        <w:p><w:r><w:t>Nova project brief</w:t></w:r></w:p>
+        <w:p><w:r><w:t>Reference DOCX-482</w:t></w:r></w:p>
+      </w:body>
+    </w:document>
+    """
+    with zipfile.ZipFile(source, "w") as archive:
+        archive.writestr("word/document.xml", document_xml)
+
+    service.scan()
+    record = service.list_files(query="DOCX-482")[0]
+
+    assert record.understanding is not None
+    assert record.understanding.status == "ready"
+    assert record.understanding.document_type == "word_document"
+    assert record.understanding.title == "Nova project brief"
+    assert record.understanding.extraction_method == "docx_xml"
+
+
+def test_pdf_text_is_extracted_and_searchable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakePage:
+        def extract_text(self) -> str:
+            return "PDF project report\nReference PDF-731"
+
+    monkeypatch.setattr(
+        understanding_service,
+        "PdfReader",
+        lambda _: SimpleNamespace(is_encrypted=False, pages=[FakePage()]),
+    )
+    service = make_service(tmp_path)
+    (service.intake_path / "report.pdf").write_bytes(b"%PDF-test")
+
+    service.scan()
+    record = service.list_files(query="PDF-731")[0]
+
+    assert record.understanding is not None
+    assert record.understanding.status == "ready"
+    assert record.understanding.document_type == "pdf"
+    assert record.understanding.title == "PDF project report"
+    assert record.understanding.extraction_method == "pypdf"
+
+
+def test_invalid_docx_has_structured_diagnostics(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    (service.intake_path / "broken.docx").write_bytes(b"not-a-zip")
+
+    service.scan()
+    understanding = service.list_files()[0].understanding
+
+    assert understanding is not None
+    assert understanding.status == "failed"
+    assert understanding.error_code == "invalid_docx"
+    assert understanding.extraction_method == "docx_xml"
+    assert understanding.retryable is False
 
 
 def test_intake_api_scans_and_lists_files(tmp_path: Path) -> None:

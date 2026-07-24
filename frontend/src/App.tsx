@@ -91,9 +91,9 @@ function App() {
           <p className="eyebrow">Observe + understand · Files remain untouched</p>
           <h1>Turn incoming files into useful context.</h1>
           <p className="lede">
-            Add a TXT or Markdown file to <code>data/intake</code>. Nova reads it
-            locally, records a title and preview, and explains what was extracted.
-            Other formats remain safely marked as unsupported for now.
+            Add a TXT, Markdown, PDF, or DOCX file to <code>data/intake</code>.
+            Nova reads it locally, records a title and preview, and explains what
+            was extracted. Other formats remain safely marked as unsupported.
           </p>
         </div>
         <div className="safety-card">
@@ -132,7 +132,7 @@ function App() {
             <div className="empty-state">
               <span aria-hidden="true">↓</span>
               <h3>Your intake is empty</h3>
-              <p>Drop a TXT or Markdown file into <code>data/intake</code>.</p>
+              <p>Drop a TXT, Markdown, PDF, or DOCX file into <code>data/intake</code>.</p>
             </div>
           ) : (
             <div className="table-wrap">

@@ -25,8 +25,9 @@
 - Store normalized title, preview, counts, status, and evidence — complete
 - Show understanding results in the dashboard — complete
 - Enforce a configurable local extraction size limit — complete
-- Add PDF and DOCX extraction
+- Add PDF and DOCX extraction — complete
 - Keep all processing local and make no file changes
+- Add local OCR for scanned PDFs and images
 
 ## Milestone 3 — Recommend
 

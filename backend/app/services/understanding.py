@@ -1,12 +1,18 @@
 import re
+import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from xml.etree import ElementTree
+
+from pypdf import PdfReader
+from pypdf.errors import FileNotDecryptedError, PdfReadError
 
 from app.schemas.intake import UnderstandingStatus
 
-SUPPORTED_TEXT_EXTENSIONS = {".txt", ".md", ".markdown"}
+SUPPORTED_EXTENSIONS = {".txt", ".md", ".markdown", ".pdf", ".docx"}
 PREVIEW_CHARACTERS = 320
+WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
 
 @dataclass(frozen=True)
@@ -34,7 +40,7 @@ def understand_file(
     understood_at = datetime.now(UTC).isoformat()
     normalized_extension = extension.lower()
 
-    if normalized_extension not in SUPPORTED_TEXT_EXTENSIONS:
+    if normalized_extension not in SUPPORTED_EXTENSIONS:
         return UnderstandingResult(
             status=UnderstandingStatus.unsupported,
             document_type=None,
@@ -63,12 +69,12 @@ def understand_file(
                 evidence=f"Local extraction is limited to {max_text_bytes} bytes.",
                 error=None,
                 error_code="file_too_large",
-                extraction_method="utf-8",
+                extraction_method=_extraction_method(normalized_extension),
                 retryable=False,
                 full_text=None,
                 understood_at=understood_at,
             )
-        text = path.read_text(encoding="utf-8-sig")
+        text, extraction_method = _extract_text(path, normalized_extension)
     except UnicodeDecodeError:
         return UnderstandingResult(
             status=UnderstandingStatus.failed,
@@ -80,10 +86,34 @@ def understand_file(
             evidence="Nova attempted local UTF-8 text extraction.",
             error="The file could not be decoded as UTF-8 text.",
             error_code="invalid_utf8",
-            extraction_method="utf-8",
+            extraction_method=_extraction_method(normalized_extension),
             retryable=False,
             full_text=None,
             understood_at=understood_at,
+        )
+    except FileNotDecryptedError:
+        return _failure(
+            normalized_extension,
+            understood_at,
+            "The PDF is encrypted and cannot be read without its password.",
+            "encrypted_pdf",
+            retryable=False,
+        )
+    except PdfReadError as error:
+        return _failure(
+            normalized_extension,
+            understood_at,
+            f"The PDF structure could not be read: {error}.",
+            "invalid_pdf",
+            retryable=False,
+        )
+    except (zipfile.BadZipFile, ElementTree.ParseError, KeyError) as error:
+        return _failure(
+            normalized_extension,
+            understood_at,
+            f"The Word document structure could not be read: {error}.",
+            "invalid_docx",
+            retryable=False,
         )
     except OSError as error:
         return UnderstandingResult(
@@ -96,7 +126,7 @@ def understand_file(
             evidence="Nova attempted to read the file locally.",
             error=f"Nova could not read the file: {error.strerror or type(error).__name__}.",
             error_code="file_read_error",
-            extraction_method="utf-8",
+            extraction_method=_extraction_method(normalized_extension),
             retryable=True,
             full_text=None,
             understood_at=understood_at,
@@ -114,7 +144,7 @@ def understand_file(
             evidence="The file was read locally and contains no text.",
             error=None,
             error_code=None,
-            extraction_method="utf-8",
+            extraction_method=extraction_method,
             retryable=False,
             full_text="",
             understood_at=understood_at,
@@ -131,7 +161,7 @@ def understand_file(
         evidence=f"Extracted locally from {document_type.replace('_', ' ')} content.",
         error=None,
         error_code=None,
-        extraction_method="utf-8",
+        extraction_method=extraction_method,
         retryable=False,
         full_text=normalized_text,
         understood_at=understood_at,
@@ -139,7 +169,71 @@ def understand_file(
 
 
 def _document_type(extension: str) -> str:
-    return "markdown" if extension in {".md", ".markdown"} else "plain_text"
+    if extension in {".md", ".markdown"}:
+        return "markdown"
+    if extension == ".pdf":
+        return "pdf"
+    if extension == ".docx":
+        return "word_document"
+    return "plain_text"
+
+
+def _extract_text(path: Path, extension: str) -> tuple[str, str]:
+    if extension == ".pdf":
+        reader = PdfReader(path)
+        if reader.is_encrypted:
+            raise FileNotDecryptedError("PDF is encrypted")
+        pages = [page.extract_text() or "" for page in reader.pages]
+        return "\n\n".join(pages), "pypdf"
+    if extension == ".docx":
+        return _extract_docx(path), "docx_xml"
+    return path.read_text(encoding="utf-8-sig"), "utf-8"
+
+
+def _extract_docx(path: Path) -> str:
+    with zipfile.ZipFile(path) as archive:
+        document = ElementTree.fromstring(archive.read("word/document.xml"))
+    paragraphs: list[str] = []
+    for paragraph in document.iter(f"{{{WORD_NAMESPACE}}}p"):
+        text = "".join(
+            node.text or "" for node in paragraph.iter(f"{{{WORD_NAMESPACE}}}t")
+        ).strip()
+        if text:
+            paragraphs.append(text)
+    return "\n".join(paragraphs)
+
+
+def _extraction_method(extension: str) -> str:
+    if extension == ".pdf":
+        return "pypdf"
+    if extension == ".docx":
+        return "docx_xml"
+    return "utf-8"
+
+
+def _failure(
+    extension: str,
+    understood_at: str,
+    error: str,
+    error_code: str,
+    *,
+    retryable: bool,
+) -> UnderstandingResult:
+    return UnderstandingResult(
+        status=UnderstandingStatus.failed,
+        document_type=_document_type(extension),
+        title=None,
+        text_preview=None,
+        word_count=None,
+        character_count=None,
+        evidence=f"Nova attempted local {_extraction_method(extension)} extraction.",
+        error=error,
+        error_code=error_code,
+        extraction_method=_extraction_method(extension),
+        retryable=retryable,
+        full_text=None,
+        understood_at=understood_at,
+    )
 
 
 def _extract_title(text: str, extension: str) -> str | None:

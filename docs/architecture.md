@@ -19,7 +19,7 @@ Local data/intake folder (read-only mount)
   └── periodic or manual scan
         └── metadata + SHA-256 fingerprint
               └── exact-duplicate check
-                    └── local TXT/Markdown understanding
+                    └── local TXT/Markdown/PDF/DOCX understanding
                           └── local SQLite inventory
                                 ├── versioned FastAPI endpoints
                                 └── React intake dashboard
@@ -41,7 +41,8 @@ Local data/intake folder (read-only mount)
 
 - Scans the configured intake directory.
 - Reads every file locally to calculate its fingerprint.
-- Extracts UTF-8 TXT and Markdown files up to the configured size limit.
+- Extracts UTF-8 text, PDF text layers, and DOCX document text up to the
+  configured size limit.
 - Stores normalized metadata and understanding results in SQLite.
 - Indexes supported extracted text locally for case-insensitive search across
   filenames, paths, titles, content, evidence, and extraction errors.
@@ -81,7 +82,9 @@ Supported text files also have a normalized understanding record:
 The database stores searchable extracted text for supported files, alongside the
 short preview returned by the API. Full extracted content never leaves the
 backend through the intake listing endpoint.
-PDF and DOCX files remain `unsupported` until their local extractors are added.
+PDF extraction uses pypdf; DOCX extraction reads the Open XML package locally.
+Scanned PDFs without a text layer produce an empty result rather than invoking a
+cloud OCR service.
 
 ## Security baseline
 
