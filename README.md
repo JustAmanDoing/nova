@@ -16,6 +16,9 @@ The current MVP can:
 - Search filenames, paths, extracted text, titles, evidence, and extraction errors
 - Filter by intake status, understanding status, extension, and document type
 - Show structured extraction diagnostics with method, error code, and retry guidance
+- Recover background monitoring after an individual scan or parser failure
+- Reconcile removed files and duplicate ownership with the current intake folder
+- Keep dashboard totals accurate while search filters are active
 - Run automatic background scans or a manual scan
 
 Nova does not rename, move, delete, upload, or share intake files.
@@ -39,10 +42,15 @@ automatically every three seconds, or you can select **Scan now** in the
 dashboard. The folder is mounted read-only inside the backend container.
 
 Nova currently extracts and locally indexes UTF-8 text, PDF text layers, and DOCX
-document text up to 1 MB. Scanned PDFs without a text layer remain empty until OCR
-is added. Search is case-insensitive and runs against the local SQLite inventory;
-file contents are never returned by the API. The limit can be changed with
-`NOVA_MAX_TEXT_BYTES`.
+document text. Scanned PDFs without a text layer remain empty until OCR is added.
+Search is case-insensitive and runs against the local SQLite inventory; file
+contents are never returned by the API.
+
+Two independent limits protect local resources:
+
+- `NOVA_MAX_TEXT_BYTES` limits the source file size accepted for extraction.
+- `NOVA_MAX_EXTRACTED_TEXT_BYTES` limits expanded text from parsers such as PDF
+  and DOCX, including compressed document content.
 
 Stop Nova with:
 
@@ -126,5 +134,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Architecture review — 25 July 2026](docs/architecture-review-2026-07-25.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

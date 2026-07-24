@@ -1,3 +1,4 @@
+import logging
 import re
 import zipfile
 from dataclasses import dataclass
@@ -13,6 +14,11 @@ from app.schemas.intake import UnderstandingStatus
 SUPPORTED_EXTENSIONS = {".txt", ".md", ".markdown", ".pdf", ".docx"}
 PREVIEW_CHARACTERS = 320
 WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+logger = logging.getLogger(__name__)
+
+
+class ExtractedContentTooLarge(Exception):
+    """Raised before extracted document content can exhaust local resources."""
 
 
 @dataclass(frozen=True)
@@ -36,6 +42,7 @@ def understand_file(
     path: Path,
     extension: str,
     max_text_bytes: int,
+    max_extracted_text_bytes: int = 1_000_000,
 ) -> UnderstandingResult:
     understood_at = datetime.now(UTC).isoformat()
     normalized_extension = extension.lower()
@@ -74,7 +81,30 @@ def understand_file(
                 full_text=None,
                 understood_at=understood_at,
             )
-        text, extraction_method = _extract_text(path, normalized_extension)
+        text, extraction_method = _extract_text(
+            path,
+            normalized_extension,
+            max_extracted_text_bytes,
+        )
+    except ExtractedContentTooLarge:
+        return UnderstandingResult(
+            status=UnderstandingStatus.too_large,
+            document_type=_document_type(normalized_extension),
+            title=None,
+            text_preview=None,
+            word_count=None,
+            character_count=None,
+            evidence=(
+                "Extracted text exceeded the configured local limit of "
+                f"{max_extracted_text_bytes} bytes."
+            ),
+            error=None,
+            error_code="extracted_text_too_large",
+            extraction_method=_extraction_method(normalized_extension),
+            retryable=False,
+            full_text=None,
+            understood_at=understood_at,
+        )
     except UnicodeDecodeError:
         return UnderstandingResult(
             status=UnderstandingStatus.failed,
@@ -131,6 +161,15 @@ def understand_file(
             full_text=None,
             understood_at=understood_at,
         )
+    except Exception:
+        logger.exception("Unexpected extraction failure for %s", path.name)
+        return _failure(
+            normalized_extension,
+            understood_at,
+            "The local extractor failed unexpectedly. Review the Nova logs and retry.",
+            "extractor_error",
+            retryable=True,
+        )
 
     normalized_text = text.strip()
     if not normalized_text:
@@ -178,29 +217,56 @@ def _document_type(extension: str) -> str:
     return "plain_text"
 
 
-def _extract_text(path: Path, extension: str) -> tuple[str, str]:
+def _extract_text(
+    path: Path,
+    extension: str,
+    max_extracted_text_bytes: int,
+) -> tuple[str, str]:
     if extension == ".pdf":
         reader = PdfReader(path)
         if reader.is_encrypted:
             raise FileNotDecryptedError("PDF is encrypted")
-        pages = [page.extract_text() or "" for page in reader.pages]
-        return "\n\n".join(pages), "pypdf"
+        pages: list[str] = []
+        extracted_bytes = 0
+        for page in reader.pages:
+            page_text = page.extract_text() or ""
+            extracted_bytes += len(page_text.encode("utf-8"))
+            if extracted_bytes > max_extracted_text_bytes:
+                raise ExtractedContentTooLarge
+            pages.append(page_text)
+        text = "\n\n".join(pages)
+        _ensure_extracted_size(text, max_extracted_text_bytes)
+        return text, "pypdf"
     if extension == ".docx":
-        return _extract_docx(path), "docx_xml"
-    return path.read_text(encoding="utf-8-sig"), "utf-8"
+        return _extract_docx(path, max_extracted_text_bytes), "docx_xml"
+    text = path.read_text(encoding="utf-8-sig")
+    _ensure_extracted_size(text, max_extracted_text_bytes)
+    return text, "utf-8"
 
 
-def _extract_docx(path: Path) -> str:
+def _extract_docx(path: Path, max_extracted_text_bytes: int) -> str:
     with zipfile.ZipFile(path) as archive:
+        document_info = archive.getinfo("word/document.xml")
+        if document_info.file_size > max_extracted_text_bytes * 8:
+            raise ExtractedContentTooLarge
         document = ElementTree.fromstring(archive.read("word/document.xml"))
     paragraphs: list[str] = []
+    extracted_bytes = 0
     for paragraph in document.iter(f"{{{WORD_NAMESPACE}}}p"):
         text = "".join(
             node.text or "" for node in paragraph.iter(f"{{{WORD_NAMESPACE}}}t")
         ).strip()
         if text:
+            extracted_bytes += len(text.encode("utf-8")) + 1
+            if extracted_bytes > max_extracted_text_bytes:
+                raise ExtractedContentTooLarge
             paragraphs.append(text)
     return "\n".join(paragraphs)
+
+
+def _ensure_extracted_size(text: str, max_extracted_text_bytes: int) -> None:
+    if len(text.encode("utf-8")) > max_extracted_text_bytes:
+        raise ExtractedContentTooLarge
 
 
 def _extraction_method(extension: str) -> str:

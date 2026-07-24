@@ -1,3 +1,4 @@
+import asyncio
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -6,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings
-from app.main import create_app
+from app.main import create_app, watch_intake
 from app.schemas.intake import UnderstandingStatus
 from app.services import understanding as understanding_service
 from app.services.intake import IntakeService
@@ -78,6 +79,27 @@ def test_duplicate_status_is_reconciled_when_content_changes(tmp_path: Path) -> 
     assert result.duplicates == 0
     assert all(record.status == "observed" for record in records)
     assert all(record.duplicate_of is None for record in records)
+
+
+def test_scan_removes_missing_records_and_promotes_remaining_duplicate(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    first = service.intake_path / "first.txt"
+    second = service.intake_path / "second.txt"
+    first.write_text("same content", encoding="utf-8")
+    second.write_text("same content", encoding="utf-8")
+    service.scan()
+
+    first.unlink()
+    result = service.scan()
+    records = service.list_files()
+
+    assert result.removed == 1
+    assert result.duplicates == 0
+    assert [record.original_name for record in records] == ["second.txt"]
+    assert records[0].status == "observed"
+    assert records[0].duplicate_of is None
 
 
 def test_markdown_understanding_uses_first_heading_as_title(tmp_path: Path) -> None:
@@ -228,6 +250,59 @@ def test_pdf_text_is_extracted_and_searchable(
     assert record.understanding.extraction_method == "pypdf"
 
 
+def test_extracted_content_limit_stops_document_expansion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakePage:
+        def extract_text(self) -> str:
+            return "expanded PDF text"
+
+    monkeypatch.setattr(
+        understanding_service,
+        "PdfReader",
+        lambda _: SimpleNamespace(is_encrypted=False, pages=[FakePage()]),
+    )
+    service = IntakeService(
+        intake_path=tmp_path / "intake",
+        database_path=tmp_path / "nova.db",
+        max_text_bytes=1_000,
+        max_extracted_text_bytes=5,
+    )
+    service.initialize()
+    (service.intake_path / "report.pdf").write_bytes(b"%PDF")
+
+    service.scan()
+    understanding = service.list_files()[0].understanding
+
+    assert understanding is not None
+    assert understanding.status == "too_large"
+    assert understanding.error_code == "extracted_text_too_large"
+    assert understanding.extraction_method == "pypdf"
+
+
+def test_unexpected_extractor_failure_is_isolated(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_reader(_: Path) -> None:
+        raise RuntimeError("internal parser detail")
+
+    monkeypatch.setattr(understanding_service, "PdfReader", fail_reader)
+    service = make_service(tmp_path)
+    (service.intake_path / "report.pdf").write_bytes(b"%PDF")
+
+    service.scan()
+    understanding = service.list_files()[0].understanding
+
+    assert understanding is not None
+    assert understanding.status == "failed"
+    assert understanding.error_code == "extractor_error"
+    assert understanding.retryable is True
+    assert understanding.error is not None
+    assert "internal parser detail" not in understanding.error
+
+
 def test_invalid_docx_has_structured_diagnostics(tmp_path: Path) -> None:
     service = make_service(tmp_path)
     (service.intake_path / "broken.docx").write_bytes(b"not-a-zip")
@@ -256,6 +331,7 @@ def test_intake_api_scans_and_lists_files(tmp_path: Path) -> None:
 
         scan_response = client.post("/api/v1/intake/scan")
         files_response = client.get("/api/v1/intake/files")
+        summary_response = client.get("/api/v1/intake/summary")
 
     assert scan_response.status_code == 200
     assert scan_response.json()["added"] == 1
@@ -263,6 +339,13 @@ def test_intake_api_scans_and_lists_files(tmp_path: Path) -> None:
     assert files_response.json()[0]["original_name"] == "note.md"
     assert files_response.json()[0]["understanding"]["status"] == "ready"
     assert files_response.json()[0]["understanding"]["title"] == "Nova"
+    assert summary_response.status_code == 200
+    assert summary_response.json() == {
+        "files_observed": 1,
+        "understood": 1,
+        "ready_for_review": 1,
+        "exact_duplicates": 0,
+    }
 
 
 def test_intake_api_searches_extracted_text_and_status(tmp_path: Path) -> None:
@@ -288,3 +371,28 @@ def test_intake_api_searches_extracted_text_and_status(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert [item["original_name"] for item in response.json()] == ["notes.txt"]
+
+
+def test_background_watcher_continues_after_scan_failure() -> None:
+    class FlakyService:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def scan(self) -> None:
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("temporary failure")
+
+    async def exercise_watcher() -> int:
+        service = FlakyService()
+        task = asyncio.create_task(watch_intake(service, 0))  # type: ignore[arg-type]
+        for _ in range(100):
+            if service.calls >= 2:
+                break
+            await asyncio.sleep(0.001)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        return service.calls
+
+    assert asyncio.run(exercise_watcher()) >= 2

@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   getHealth,
   getIntakeFiles,
+  getIntakeSummary,
   scanIntake,
   type HealthResponse,
   type IntakeFilters,
   type IntakeFile,
+  type IntakeSummary,
   type UnderstandingRecord,
 } from "./lib/api";
 
@@ -18,14 +20,24 @@ type ServiceState =
 function App() {
   const [service, setService] = useState<ServiceState>({ kind: "loading" });
   const [files, setFiles] = useState<IntakeFile[]>([]);
+  const [summary, setSummary] = useState<IntakeSummary>({
+    files_observed: 0,
+    understood: 0,
+    ready_for_review: 0,
+    exact_duplicates: 0,
+  });
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [filters, setFilters] = useState<IntakeFilters>({});
 
-  const loadFiles = useCallback(async (signal?: AbortSignal) => {
+  const loadIntake = useCallback(async (signal?: AbortSignal) => {
     try {
-      const nextFiles = await getIntakeFiles(filters, signal);
+      const [nextFiles, nextSummary] = await Promise.all([
+        getIntakeFiles(filters, signal),
+        getIntakeSummary(signal),
+      ]);
       setFiles(nextFiles);
+      setSummary(nextSummary);
       setIntakeError(null);
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -43,29 +55,28 @@ function App() {
         const message = error instanceof Error ? error.message : "Unknown error";
         setService({ kind: "offline", message });
       });
-    void loadFiles(controller.signal);
+    return () => controller.abort();
+  }, []);
 
-    const refresh = window.setInterval(() => void loadFiles(), 5_000);
+  useEffect(() => {
+    const controller = new AbortController();
+    const initialLoad = window.setTimeout(
+      () => void loadIntake(controller.signal),
+      200,
+    );
+    const refresh = window.setInterval(() => void loadIntake(), 5_000);
     return () => {
       controller.abort();
+      window.clearTimeout(initialLoad);
       window.clearInterval(refresh);
     };
-  }, [loadFiles]);
-
-  const duplicates = useMemo(
-    () => files.filter((file) => file.status === "duplicate").length,
-    [files],
-  );
-  const understood = useMemo(
-    () => files.filter((file) => file.understanding?.status === "ready").length,
-    [files],
-  );
+  }, [loadIntake]);
 
   async function handleScan() {
     setIsScanning(true);
     try {
       await scanIntake();
-      await loadFiles();
+      await loadIntake();
     } catch (error: unknown) {
       setIntakeError(error instanceof Error ? error.message : "Scan failed");
     } finally {
@@ -117,10 +128,14 @@ function App() {
         </div>
 
         <div className="metrics" aria-label="Intake summary">
-          <Metric label="Files observed" value={files.length} />
-          <Metric label="Understood" value={understood} />
-          <Metric label="Ready for review" value={files.length - duplicates} />
-          <Metric label="Exact duplicates" value={duplicates} accent={duplicates > 0} />
+          <Metric label="Files observed" value={summary.files_observed} />
+          <Metric label="Understood" value={summary.understood} />
+          <Metric label="Ready for review" value={summary.ready_for_review} />
+          <Metric
+            label="Exact duplicates"
+            value={summary.exact_duplicates}
+            accent={summary.exact_duplicates > 0}
+          />
         </div>
 
         <SearchControls filters={filters} onChange={setFilters} resultCount={files.length} />

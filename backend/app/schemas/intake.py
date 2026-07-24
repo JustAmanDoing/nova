@@ -50,4 +50,12 @@ class IntakeScanResult(BaseModel):
     scanned: int
     added: int
     updated: int
+    removed: int
     duplicates: int
+
+
+class IntakeSummary(BaseModel):
+    files_observed: int
+    understood: int
+    ready_for_review: int
+    exact_duplicates: int

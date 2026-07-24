@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -28,6 +28,14 @@ describe("App", () => {
             version: "0.1.0",
             environment: "test",
             timestamp: "2026-07-24T00:00:00Z",
+          });
+        }
+        if (url.endsWith("/summary")) {
+          return response({
+            files_observed: 1,
+            understood: 1,
+            ready_for_review: 0,
+            exact_duplicates: 1,
           });
         }
         return response([
@@ -85,6 +93,14 @@ describe("App", () => {
             timestamp: "2026-07-24T00:00:00Z",
           });
         }
+        if (url.endsWith("/summary")) {
+          return response({
+            files_observed: 1,
+            understood: 0,
+            ready_for_review: 0,
+            exact_duplicates: 0,
+          });
+        }
         return response([
           {
             id: "file-2",
@@ -115,7 +131,8 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Not supported")).toBeInTheDocument();
+    expect(await screen.findByText("scan.pdf")).toBeInTheDocument();
+    expect(screen.getAllByText("Not supported")).toHaveLength(2);
     expect(screen.getByText("Format not supported yet")).toBeInTheDocument();
     expect(screen.getByText(".pdf files are not supported yet.")).toBeInTheDocument();
   });
@@ -133,7 +150,21 @@ describe("App", () => {
         });
       }
       if (url.endsWith("/scan")) {
-        return response({ scanned: 0, added: 0, updated: 0, duplicates: 0 });
+        return response({
+          scanned: 0,
+          added: 0,
+          updated: 0,
+          removed: 0,
+          duplicates: 0,
+        });
+      }
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 0,
+          understood: 0,
+          ready_for_review: 0,
+          exact_duplicates: 0,
+        });
       }
       return response([]);
     });
@@ -161,10 +192,21 @@ describe("App", () => {
           timestamp: "2026-07-24T00:00:00Z",
         });
       }
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 0,
+          understood: 0,
+          ready_for_review: 0,
+          exact_duplicates: 0,
+        });
+      }
       return response([]);
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    });
 
     fireEvent.change(
       await screen.findByRole("searchbox", {
@@ -176,6 +218,9 @@ describe("App", () => {
       target: { value: "duplicate" },
     });
 
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    });
     await vi.waitFor(() => {
       expect(
         fetchMock.mock.calls.some(([input]) => {
@@ -197,6 +242,14 @@ describe("App", () => {
             version: "0.2.0",
             environment: "test",
             timestamp: "2026-07-24T00:00:00Z",
+          });
+        }
+        if (input.toString().endsWith("/summary")) {
+          return response({
+            files_observed: 1,
+            understood: 0,
+            ready_for_review: 0,
+            exact_duplicates: 0,
           });
         }
         return response([

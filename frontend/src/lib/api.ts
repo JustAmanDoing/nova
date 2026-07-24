@@ -49,7 +49,15 @@ export interface IntakeScanResult {
   scanned: number;
   added: number;
   updated: number;
+  removed: number;
   duplicates: number;
+}
+
+export interface IntakeSummary {
+  files_observed: number;
+  understood: number;
+  ready_for_review: number;
+  exact_duplicates: number;
 }
 
 export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
@@ -72,6 +80,10 @@ export async function getIntakeFiles(
   }
   const query = parameters.size ? `?${parameters.toString()}` : "";
   return request<IntakeFile[]>(`/api/v1/intake/files${query}`, { signal });
+}
+
+export async function getIntakeSummary(signal?: AbortSignal): Promise<IntakeSummary> {
+  return request<IntakeSummary>("/api/v1/intake/summary", { signal });
 }
 
 export async function scanIntake(): Promise<IntakeScanResult> {

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     database_path: Path = Path("data/nova.db")
     intake_scan_seconds: float = 3.0
     max_text_bytes: int = 1_000_000
+    max_extracted_text_bytes: int = 1_000_000
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -36,4 +37,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

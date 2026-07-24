@@ -11,6 +11,7 @@ from app.schemas.intake import (
     IntakeFile,
     IntakeScanResult,
     IntakeStatus,
+    IntakeSummary,
     UnderstandingRecord,
     UnderstandingStatus,
 )
@@ -23,10 +24,12 @@ class IntakeService:
         intake_path: Path,
         database_path: Path,
         max_text_bytes: int = 1_000_000,
+        max_extracted_text_bytes: int = 1_000_000,
     ) -> None:
         self.intake_path = intake_path
         self.database_path = database_path
         self.max_text_bytes = max_text_bytes
+        self.max_extracted_text_bytes = max_extracted_text_bytes
         self._lock = Lock()
 
     def initialize(self) -> None:
@@ -96,17 +99,25 @@ class IntakeService:
 
     def scan(self) -> IntakeScanResult:
         scanned = added = updated = 0
+        seen_paths: set[str] = set()
+        intake_root = self.intake_path.resolve()
         with self._lock, self._connection() as connection:
             for path in sorted(self.intake_path.rglob("*")):
                 if not path.is_file():
                     continue
+                try:
+                    if not path.resolve(strict=True).is_relative_to(intake_root):
+                        continue
+                except OSError:
+                    continue
+                relative_path = path.relative_to(self.intake_path).as_posix()
+                seen_paths.add(relative_path)
                 try:
                     stat = path.stat()
                 except OSError:
                     continue
 
                 scanned += 1
-                relative_path = path.relative_to(self.intake_path).as_posix()
                 modified_at = datetime.fromtimestamp(stat.st_mtime, UTC).isoformat()
                 existing = connection.execute(
                     """
@@ -183,6 +194,7 @@ class IntakeService:
                     added += 1
                 else:
                     updated += 1
+            removed = self._remove_missing_files(connection, seen_paths)
             duplicates = self._reconcile_duplicates(connection)
             self._refresh_understanding(connection)
 
@@ -190,7 +202,32 @@ class IntakeService:
             scanned=scanned,
             added=added,
             updated=updated,
+            removed=removed,
             duplicates=duplicates,
+        )
+
+    def summary(self) -> IntakeSummary:
+        with self._lock, self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    COUNT(files.id) AS files_observed,
+                    COALESCE(SUM(understanding.status = 'ready'), 0) AS understood,
+                    COALESCE(SUM(
+                        files.status = 'observed'
+                        AND understanding.status = 'ready'
+                    ), 0) AS ready_for_review,
+                    COALESCE(SUM(files.status = 'duplicate'), 0) AS exact_duplicates
+                FROM intake_files AS files
+                LEFT JOIN understanding_results AS understanding
+                  ON understanding.file_id = files.id
+                """
+            ).fetchone()
+        return IntakeSummary(
+            files_observed=row["files_observed"],
+            understood=row["understood"],
+            ready_for_review=row["ready_for_review"],
+            exact_duplicates=row["exact_duplicates"],
         )
 
     def list_files(
@@ -273,6 +310,7 @@ class IntakeService:
                 self.intake_path / row["relative_path"],
                 row["extension"],
                 self.max_text_bytes,
+                self.max_extracted_text_bytes,
             )
             connection.execute(
                 """
@@ -377,6 +415,28 @@ class IntakeService:
                 (status.value, canonical_id, row["id"]),
             )
         return duplicates
+
+    @staticmethod
+    def _remove_missing_files(
+        connection: sqlite3.Connection,
+        seen_paths: set[str],
+    ) -> int:
+        rows = connection.execute("SELECT id, relative_path FROM intake_files").fetchall()
+        missing_ids = [row["id"] for row in rows if row["relative_path"] not in seen_paths]
+        if missing_ids:
+            connection.executemany(
+                """
+                UPDATE intake_files
+                SET status = 'observed', duplicate_of = NULL
+                WHERE duplicate_of = ?
+                """,
+                ((file_id,) for file_id in missing_ids),
+            )
+            connection.executemany(
+                "DELETE FROM intake_files WHERE id = ?",
+                ((file_id,) for file_id in missing_ids),
+            )
+        return len(missing_ids)
 
     @staticmethod
     def _escape_like(value: str) -> str:

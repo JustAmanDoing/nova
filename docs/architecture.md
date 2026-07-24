@@ -31,6 +31,8 @@ Local data/intake folder (read-only mount)
 
 - Displays service health, intake totals, file metadata, duplicate status, and
   normalized understanding results.
+- Reads authoritative, unfiltered totals from a dedicated summary endpoint so
+  dashboard metrics do not change when search filters are active.
 - Provides server-backed text search and metadata/status filters.
 - Displays structured extraction diagnostics without exposing stack traces.
 - Can request an immediate scan.
@@ -42,7 +44,11 @@ Local data/intake folder (read-only mount)
 - Scans the configured intake directory.
 - Reads every file locally to calculate its fingerprint.
 - Extracts UTF-8 text, PDF text layers, and DOCX document text up to the
-  configured size limit.
+  configured source and expanded-content limits.
+- Isolates parser failures to an individual understanding record and continues
+  background monitoring after a failed scan.
+- Reconciles inventory records and duplicate ownership when source files are
+  removed from the intake folder.
 - Stores normalized metadata and understanding results in SQLite.
 - Indexes supported extracted text locally for case-insensitive search across
   filenames, paths, titles, content, evidence, and extraction errors.
@@ -94,6 +100,8 @@ cloud OCR service.
 - Explicit CORS origins
 - No secrets or runtime files in source control
 - No automatic rename, move, delete, upload, or sharing
+- Bounded source-file and expanded-text processing
+- Parser errors are logged locally while safe diagnostics are returned to the UI
 - AI providers disabled until explicitly configured
 
 ## Evolution rules

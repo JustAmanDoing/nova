@@ -3,7 +3,13 @@ from typing import cast
 
 from fastapi import APIRouter, Query, Request
 
-from app.schemas.intake import IntakeFile, IntakeScanResult, IntakeStatus, UnderstandingStatus
+from app.schemas.intake import (
+    IntakeFile,
+    IntakeScanResult,
+    IntakeStatus,
+    IntakeSummary,
+    UnderstandingStatus,
+)
 from app.services.intake import IntakeService
 
 router = APIRouter(prefix="/intake", tags=["intake"])
@@ -37,3 +43,9 @@ async def list_intake_files(
 async def scan_intake(request: Request) -> IntakeScanResult:
     service = get_intake_service(request)
     return await asyncio.to_thread(service.scan)
+
+
+@router.get("/summary", response_model=IntakeSummary)
+async def get_intake_summary(request: Request) -> IntakeSummary:
+    service = get_intake_service(request)
+    return await asyncio.to_thread(service.summary)

@@ -11,6 +11,7 @@ services:
       NOVA_DATABASE_PATH: /data/nova.db
       NOVA_INTAKE_SCAN_SECONDS: ${NOVA_INTAKE_SCAN_SECONDS:-3}
       NOVA_MAX_TEXT_BYTES: ${NOVA_MAX_TEXT_BYTES:-1000000}
+      NOVA_MAX_EXTRACTED_TEXT_BYTES: ${NOVA_MAX_EXTRACTED_TEXT_BYTES:-1000000}
     volumes:
       - ./data/intake:/intake:ro
       - nova_data:/data
@@ -40,4 +41,3 @@ services:
 
 volumes:
   nova_data:
-

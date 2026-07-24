@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.core.config import Settings
+from app.main import app, create_app
 
 client = TestClient(app)
 
@@ -23,3 +24,23 @@ def test_openapi_document_is_available() -> None:
     assert response.status_code == 200
     assert response.json()["info"]["title"] == "Nova API"
 
+
+def test_health_uses_the_application_configuration(tmp_path) -> None:
+    application = create_app(
+        Settings(
+            app_name="Nova Review API",
+            app_version="9.9.9",
+            environment="review",
+            intake_path=tmp_path / "intake",
+            database_path=tmp_path / "nova.db",
+            intake_scan_seconds=60,
+        )
+    )
+
+    with TestClient(application) as configured_client:
+        response = configured_client.get("/api/v1/health")
+
+    assert response.status_code == 200
+    assert response.json()["service"] == "Nova Review API"
+    assert response.json()["version"] == "9.9.9"
+    assert response.json()["environment"] == "review"

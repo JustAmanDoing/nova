@@ -9,6 +9,9 @@
 - Reproducible Node 20 and pnpm 9.15.5 build
 - Structured extraction diagnostics
 - Filename, extracted-text, evidence, and metadata/status search
+- Resilient background scanning and per-file parser isolation
+- Stale inventory reconciliation and stable unfiltered dashboard totals
+- Independent source-file and expanded-text safety limits
 
 ## Milestone 1 — Observe — complete
 
