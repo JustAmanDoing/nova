@@ -297,14 +297,28 @@ class IntakeService:
         rows = connection.execute(
             """
             SELECT files.id, files.relative_path, files.extension, files.sha256,
-                   understanding.source_sha256
+                   understanding.source_sha256,
+                   understanding.status AS understanding_status,
+                   understanding.extraction_method,
+                   understanding.full_text
             FROM intake_files AS files
             LEFT JOIN understanding_results AS understanding
               ON understanding.file_id = files.id
             """
         ).fetchall()
         for row in rows:
-            if row["source_sha256"] == row["sha256"]:
+            is_current = row["source_sha256"] == row["sha256"]
+            has_complete_result = (
+                row["understanding_status"] == UnderstandingStatus.unsupported.value
+                or (
+                    row["extraction_method"] != "none"
+                    and (
+                        row["understanding_status"] != UnderstandingStatus.ready.value
+                        or row["full_text"] is not None
+                    )
+                )
+            )
+            if is_current and has_complete_result:
                 continue
             result = understand_file(
                 self.intake_path / row["relative_path"],

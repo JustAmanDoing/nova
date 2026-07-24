@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -151,6 +152,35 @@ def test_understanding_refreshes_when_file_content_changes(tmp_path: Path) -> No
 
     assert understanding is not None
     assert understanding.title == "A different and longer title"
+
+
+def test_scan_backfills_search_data_from_an_older_understanding_record(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    source = service.intake_path / "invoice.txt"
+    source.write_text(
+        "NOVA TEST DOCUMENT\nInvoice number: TEST-2026-001",
+        encoding="utf-8",
+    )
+    service.scan()
+
+    with sqlite3.connect(service.database_path) as connection:
+        connection.execute(
+            """
+            UPDATE understanding_results
+            SET full_text = NULL, extraction_method = 'none'
+            """
+        )
+
+    assert service.list_files(query="TEST-2026-001") == []
+
+    service.scan()
+    records = service.list_files(query="TEST-2026-001")
+
+    assert [record.original_name for record in records] == ["invoice.txt"]
+    assert records[0].understanding is not None
+    assert records[0].understanding.extraction_method == "utf-8"
 
 
 def test_search_covers_filename_full_text_evidence_and_filters(tmp_path: Path) -> None:

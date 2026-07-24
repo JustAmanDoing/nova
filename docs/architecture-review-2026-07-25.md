@@ -44,6 +44,9 @@ Source files themselves are never changed.
 Dashboard totals now use a dedicated unfiltered summary endpoint. Searching or
 filtering the visible table no longer changes the overall inventory metrics.
 Search requests are lightly delayed to avoid unnecessary requests while typing.
+Existing understanding records are backfilled automatically when a newer schema
+requires searchable text or extraction metadata, even when the source file has
+not changed.
 
 ### Boundary consistency
 
