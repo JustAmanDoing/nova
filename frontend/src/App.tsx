@@ -884,6 +884,9 @@ function BackupPanel({
   onBackup: () => Promise<void>;
   onRestore: (backup: BackupRecord) => Promise<void>;
 }) {
+  const [showAllBackups, setShowAllBackups] = useState(false);
+  const visibleBackups = showAllBackups ? backups : backups.slice(0, 5);
+
   return (
     <section className="backup-panel" aria-labelledby="backup-title">
       <div className="history-heading">
@@ -915,51 +918,66 @@ function BackupPanel({
       {backups.length === 0 ? (
         <p className="history-empty">No database backups have been created yet.</p>
       ) : (
-        <ul className="backup-list">
-          {backups.slice(0, 5).map((backup) => (
-            <li key={backup.filename}>
-              <div>
-                <strong>{backup.filename}</strong>
-                <span>
-                  {formatBytes(backup.size_bytes)} ·{" "}
-                  {backup.verified ? "SHA-256 verified" : "Checksum unavailable"} ·{" "}
-                  {formatObserved(backup.created_at)}
-                </span>
-              </div>
-              <div className="backup-actions">
-                {backup.verified ? (
-                  <>
-                    <a
-                      href={backupDownloadUrl(backup.filename)}
-                      download
-                      aria-label={`Download verified copy of ${backup.filename}`}
-                    >
-                      Download
-                    </a>
-                    <a
-                      href={backupChecksumDownloadUrl(backup.filename)}
-                      download
-                      aria-label={`Download checksum for ${backup.filename}`}
-                    >
-                      Checksum
-                    </a>
-                    <button
-                      type="button"
-                      className="restore-button"
-                      aria-label={`Restore ${backup.filename}`}
-                      disabled={restoringFilename !== null || isBackingUp}
-                      onClick={() => void onRestore(backup)}
-                    >
-                      {restoringFilename === backup.filename
-                        ? "Restoring…"
-                        : "Restore"}
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="backup-list" id="backup-history-list">
+            {visibleBackups.map((backup) => (
+              <li key={backup.filename}>
+                <div>
+                  <strong>{backup.filename}</strong>
+                  <span>
+                    {formatBytes(backup.size_bytes)} ·{" "}
+                    {backup.verified ? "SHA-256 verified" : "Checksum unavailable"} ·{" "}
+                    {formatObserved(backup.created_at)}
+                  </span>
+                </div>
+                <div className="backup-actions">
+                  {backup.verified ? (
+                    <>
+                      <a
+                        href={backupDownloadUrl(backup.filename)}
+                        download
+                        aria-label={`Download verified copy of ${backup.filename}`}
+                      >
+                        Download
+                      </a>
+                      <a
+                        href={backupChecksumDownloadUrl(backup.filename)}
+                        download
+                        aria-label={`Download checksum for ${backup.filename}`}
+                      >
+                        Checksum
+                      </a>
+                      <button
+                        type="button"
+                        className="restore-button"
+                        aria-label={`Restore ${backup.filename}`}
+                        disabled={restoringFilename !== null || isBackingUp}
+                        onClick={() => void onRestore(backup)}
+                      >
+                        {restoringFilename === backup.filename
+                          ? "Restoring…"
+                          : "Restore"}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {backups.length > 5 ? (
+            <button
+              type="button"
+              className="backup-history-toggle"
+              aria-controls="backup-history-list"
+              aria-expanded={showAllBackups}
+              onClick={() => setShowAllBackups((current) => !current)}
+            >
+              {showAllBackups
+                ? "Show latest 5"
+                : `Show all ${backups.length} backups`}
+            </button>
+          ) : null}
+        </>
       )}
     </section>
   );

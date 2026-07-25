@@ -925,6 +925,63 @@ describe("App", () => {
     ).toBe(true);
   });
 
+  it("reveals the complete retained backup history on request", async () => {
+    const backups = Array.from({ length: 8 }, (_, index) => ({
+      filename: `nova-20260725T0${9 - index}0000.000000Z.db`,
+      size_bytes: 8192,
+      sha256: `${index}`.repeat(64),
+      created_at: `2026-07-25T0${9 - index}:00:00Z`,
+      verified: true,
+    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = input.toString();
+        if (url.endsWith("/health")) {
+          return response({
+            status: "ok",
+            service: "Nova API",
+            version: "0.41.0",
+            environment: "test",
+            timestamp: "2026-07-25T09:00:00Z",
+          });
+        }
+        if (url.endsWith("/backups")) return response(backups);
+        if (url.endsWith("/actions/recovery")) return response([]);
+        if (url.endsWith("/actions")) return response([]);
+        if (url.endsWith("/summary")) {
+          return response({
+            files_observed: 0,
+            understood: 0,
+            ready_for_review: 0,
+            exact_duplicates: 0,
+          });
+        }
+        return response([]);
+      }),
+    );
+
+    render(<App />);
+
+    const showAll = await screen.findByRole("button", {
+      name: "Show all 8 backups",
+    });
+    expect(showAll).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText(backups[4].filename)).toBeInTheDocument();
+    expect(screen.queryByText(backups[5].filename)).toBeNull();
+
+    fireEvent.click(showAll);
+
+    expect(screen.getByText(backups[7].filename)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Show latest 5" }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show latest 5" }));
+
+    expect(screen.queryByText(backups[5].filename)).toBeNull();
+  });
+
   it("restores a verified backup only after exact typed confirmation", async () => {
     const backup = {
       filename: "nova-20260725T100000.000000Z.db",

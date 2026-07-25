@@ -664,6 +664,22 @@ h2 {
   opacity: 0.55;
 }
 
+.backup-history-toggle {
+  margin-top: 12px;
+  padding: 8px 12px;
+  color: #b9f7d1;
+  border: 1px solid #315440;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.backup-history-toggle:hover {
+  background: #13251a;
+}
+
 .history-heading {
   display: flex;
   gap: 20px;
