@@ -112,7 +112,7 @@ describe("App", () => {
         return response({
           status: "ok",
           service: "Nova API",
-          version: "0.46.0",
+          version: "0.47.0",
           environment: "test",
           timestamp: "2026-07-25T09:00:00Z",
         });
@@ -261,6 +261,46 @@ describe("App", () => {
     });
 
     expect(backupRequests).toBe(2);
+  });
+
+  it("keeps core dashboard state current when backup history fails", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/health")) {
+        return response({
+          status: "ok",
+          service: "Nova API",
+          version: "0.47.0",
+          environment: "test",
+          timestamp: "2026-07-25T09:00:00Z",
+        });
+      }
+      if (url.endsWith("/backups")) {
+        return Promise.reject(new Error("Backup inventory unavailable"));
+      }
+      if (url.endsWith("/actions/recovery")) return response([]);
+      if (url.endsWith("/actions")) return response([]);
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 3,
+          understood: 2,
+          ready_for_review: 1,
+          exact_duplicates: 0,
+        });
+      }
+      return response([]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    const observedMetric = screen.getByText("Files observed").closest("article");
+    await vi.waitFor(() => expect(observedMetric).toHaveTextContent("3"));
+    expect(
+      screen.getByRole("alert", {
+        name: "",
+      }),
+    ).toHaveTextContent("Backup history: Backup inventory unavailable");
   });
 
   it("shows observed files and duplicate totals", async () => {

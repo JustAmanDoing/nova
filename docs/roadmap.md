@@ -50,6 +50,7 @@
 - Precise backup-history wording that distinguishes a recorded checksum from
   full download or restore verification
 - Prompt retry after a failed automatic backup-history refresh
+- Core dashboard updates remain available when optional backup history fails
 
 ## Milestone 1 — Observe — complete
 

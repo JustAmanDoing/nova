@@ -85,35 +85,77 @@ function App() {
       const backupRequest: Promise<BackupRecord[] | null> = includeBackups
         ? getBackups(signal)
         : Promise.resolve(null);
-      const [
-        nextFiles,
-        nextSummary,
-        nextActions,
-        nextRecoveries,
-        nextBackups,
-        nextPreferences,
-        nextOperations,
-      ] = await Promise.all([
+      const coreRequest = Promise.all([
         getIntakeFiles(filters, signal),
         getIntakeSummary(signal),
         getActionHistory(signal),
         getRecoveryAssessments(signal),
-        backupRequest,
         getLearningPreferences(signal),
         getOperationalStatus(signal),
       ]);
+      const [coreResult, backupResult] = await Promise.allSettled([
+        coreRequest,
+        backupRequest,
+      ]);
       if (requestId !== latestLoadRequest.current) return false;
-      setFiles(nextFiles);
-      setSummary(nextSummary);
-      setActions(nextActions);
-      setRecoveries(nextRecoveries);
-      if (nextBackups !== null) setBackups(nextBackups);
-      setPreferences(nextPreferences);
-      setOperations(
-        isOperationalStatus(nextOperations) ? nextOperations : null,
-      );
-      setIntakeError(null);
-      return true;
+
+      const failedReason =
+        coreResult.status === "rejected"
+          ? coreResult.reason
+          : backupResult.status === "rejected"
+            ? backupResult.reason
+            : null;
+      if (
+        failedReason instanceof DOMException &&
+        failedReason.name === "AbortError"
+      ) {
+        return false;
+      }
+
+      if (coreResult.status === "fulfilled") {
+        const [
+          nextFiles,
+          nextSummary,
+          nextActions,
+          nextRecoveries,
+          nextPreferences,
+          nextOperations,
+        ] = coreResult.value;
+        setFiles(nextFiles);
+        setSummary(nextSummary);
+        setActions(nextActions);
+        setRecoveries(nextRecoveries);
+        setPreferences(nextPreferences);
+        setOperations(
+          isOperationalStatus(nextOperations) ? nextOperations : null,
+        );
+      }
+      if (
+        backupResult.status === "fulfilled" &&
+        backupResult.value !== null
+      ) {
+        setBackups(backupResult.value);
+      }
+
+      if (coreResult.status === "rejected") {
+        setIntakeError(
+          coreResult.reason instanceof Error
+            ? coreResult.reason.message
+            : "Unable to load intake",
+        );
+      } else if (backupResult.status === "rejected") {
+        const message =
+          backupResult.reason instanceof Error
+            ? backupResult.reason.message
+            : "Unable to load backup history";
+        setIntakeError(`Backup history: ${message}`);
+      } else {
+        setIntakeError(null);
+      }
+
+      return includeBackups
+        ? backupResult.status === "fulfilled"
+        : coreResult.status === "fulfilled";
     } catch (error: unknown) {
       if (requestId !== latestLoadRequest.current) return false;
       if (error instanceof DOMException && error.name === "AbortError") {

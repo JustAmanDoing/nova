@@ -169,9 +169,12 @@ inventory once per minute automatically and immediately after manual actions.
 This avoids repeatedly reading every retained checksum sidecar as the recovery
 history grows. A failed backup-history refresh is retried on the next
 five-second dashboard cycle instead of being treated as a successful
-minute-bounded refresh. If a slow earlier request finishes after a newer manual
-or automatic refresh, Nova discards the older result instead of rolling the
-dashboard back to stale state.
+minute-bounded refresh. The main intake, review, learning, and operations state
+can still update when only the optional backup-history request fails; Nova
+keeps the existing backup list, explains the partial failure, and retries it.
+If a slow earlier request finishes after a newer manual or automatic refresh,
+Nova discards the older result instead of rolling the dashboard back to stale
+state.
 
 The **Restore** action is available only for a backup with a valid checksum
 sidecar. The API verifies the SHA-256 value and SQLite integrity, creates a new
@@ -383,5 +386,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 44 latest dashboard state](docs/milestone-44-latest-dashboard-state.md)
 - [Milestone 45 precise backup integrity status](docs/milestone-45-precise-backup-integrity-status.md)
 - [Milestone 46 prompt backup refresh retry](docs/milestone-46-backup-refresh-retry.md)
+- [Milestone 47 isolated backup refresh failure](docs/milestone-47-backup-refresh-isolation.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
