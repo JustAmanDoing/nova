@@ -29,6 +29,7 @@
 - Read-only active-database integrity verification before migrations
 - Explicit `no-store` policy for every API response
 - Dashboard entry-page revalidation after application updates
+- Patched pytest and Vitest toolchains with an advisory-clean resolved lock set
 
 ## Milestone 1 — Observe — complete
 
