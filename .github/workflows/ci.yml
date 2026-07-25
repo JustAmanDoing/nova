@@ -104,9 +104,13 @@ jobs:
         run: |
           mkdir -p data/intake
           printf '%s\n' \
-            'Nova continuous verification document' \
-            'Project: CI runtime smoke test' \
-            > data/intake/ci-smoke.txt
+            'NOVA TEST DOCUMENT' \
+            'Document type: Invoice' \
+            'Invoice number: CI-2026-001' \
+            'Invoice date: 25-07-2026' \
+            'Supplier: Nova Runtime Verification' \
+            'Total: $35.15 AUD' \
+            > data/intake/ci-smoke-invoice.txt
       - name: Start production stack
         run: docker compose up --detach --wait --wait-timeout 120
       - name: Verify API, dashboard, and intake
@@ -159,7 +163,8 @@ jobs:
           for attempt in $(seq 1 15); do
             if curl --fail --silent --show-error \
               http://127.0.0.1:8000/api/v1/intake/files \
-              | grep --fixed-strings --quiet '"original_name":"ci-smoke.txt"'
+              | grep --fixed-strings --quiet \
+                  '"original_name":"ci-smoke-invoice.txt"'
             then
               indexed=true
               break
@@ -167,6 +172,100 @@ jobs:
             sleep 2
           done
           test "$indexed" = true
+      - name: Exercise approval, recovery, and backup boundaries
+        run: |
+          api='http://127.0.0.1:8000/api/v1'
+          intent='X-Nova-Intent: local-user-action'
+          files="$(
+            curl --fail --silent --show-error "$api/intake/files"
+          )"
+          file_id="$(
+            printf '%s' "$files" \
+              | jq --exit-status --raw-output \
+                  '.[] | select(.original_name == "ci-smoke-invoice.txt") | .id'
+          )"
+          recommendation="$(
+            printf '%s' "$files" \
+              | jq --exit-status --raw-output \
+                  '.[] | select(.id == "'"$file_id"'") | .recommendation.outcome'
+          )"
+          test "$recommendation" = 'suggested'
+
+          approval="$(
+            curl --fail --silent --show-error \
+              --request PUT \
+              --header "$intent" \
+              --header 'Content-Type: application/json' \
+              --data '{"action":"approve"}' \
+              "$api/intake/files/$file_id/approval"
+          )"
+          test "$(printf '%s' "$approval" | jq --raw-output '.status')" = 'approved'
+
+          move="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header "$intent" \
+              "$api/intake/files/$file_id/execute"
+          )"
+          test "$(printf '%s' "$move" | jq --raw-output '.status')" = 'succeeded'
+          test "$(printf '%s' "$move" | jq --raw-output '.can_undo')" = 'true'
+          operation_id="$(printf '%s' "$move" | jq --raw-output '.operation_id')"
+          destination="$(
+            printf '%s' "$move" | jq --raw-output '.destination_path'
+          )"
+          test ! -e data/intake/ci-smoke-invoice.txt
+          test -f "data/library/$destination"
+
+          actions="$(
+            curl --fail --silent --show-error "$api/intake/actions"
+          )"
+          printf '%s' "$actions" \
+            | jq --exit-status \
+                '.[] | select(
+                  .operation_id == "'"$operation_id"'"
+                  and .status == "succeeded"
+                  and .can_undo == true
+                )' \
+            > /dev/null
+
+          undo="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header "$intent" \
+              "$api/intake/actions/$operation_id/undo"
+          )"
+          test "$(printf '%s' "$undo" | jq --raw-output '.kind')" = 'undo'
+          test "$(printf '%s' "$undo" | jq --raw-output '.status')" = 'succeeded'
+          test -f data/intake/ci-smoke-invoice.txt
+          test ! -e "data/library/$destination"
+
+          backup="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header "$intent" \
+              "$api/backups"
+          )"
+          test "$(printf '%s' "$backup" | jq --raw-output '.verified')" = 'true'
+          backup_name="$(printf '%s' "$backup" | jq --raw-output '.filename')"
+          test -f "data/backups/$backup_name"
+          test "$(head --bytes 15 "data/backups/$backup_name")" = 'SQLite format 3'
+
+          restore="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header "$intent" \
+              --header 'Content-Type: application/json' \
+              --data '{"confirmation":"RESTORE '"$backup_name"'"}' \
+              "$api/backups/$backup_name/restore"
+          )"
+          test "$(
+            printf '%s' "$restore" | jq --raw-output '.restored_from'
+          )" = "$backup_name"
+          test "$(
+            printf '%s' "$restore" | jq --raw-output '.safety_backup.verified'
+          )" = 'true'
+          curl --fail --silent --show-error "$api/health" \
+            | grep --fixed-strings --quiet '"status":"ok"'
       - name: Show container diagnostics after failure
         if: failure()
         run: |

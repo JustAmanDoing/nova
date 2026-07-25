@@ -31,6 +31,8 @@
 - Dashboard entry-page revalidation after application updates
 - Patched pytest and Vitest toolchains with an advisory-clean resolved lock set
 - Immutable commit pinning for every external GitHub Actions dependency
+- Isolated production verification of approval, move, audit, undo, backup, and
+  restore boundaries
 
 ## Milestone 1 — Observe — complete
 

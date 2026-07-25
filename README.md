@@ -57,6 +57,7 @@ The current MVP can:
 - Revalidate the dashboard entry page after updates to avoid stale asset links
 - Use patched test-tool versions with a vulnerability-reviewed dependency lock
 - Pin external CI actions to verified immutable commits
+- Verify guarded move, undo, backup, and restore against the production stack
 - Report database size, local storage headroom, and latest scan health without
   exposing paths or document content
 
@@ -335,5 +336,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 28 fresh dashboard entry page](docs/milestone-28-dashboard-cache-policy.md)
 - [Milestone 29 dependency advisory remediation](docs/milestone-29-dependency-advisories.md)
 - [Milestone 30 immutable CI actions](docs/milestone-30-immutable-ci-actions.md)
+- [Milestone 31 full runtime workflow](docs/milestone-31-full-runtime-workflow.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
