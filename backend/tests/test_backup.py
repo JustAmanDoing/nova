@@ -113,6 +113,33 @@ def test_backup_list_rejects_malformed_or_mismatched_checksum_sidecars(
             backups.get_verified_backup_path(created.filename)
 
 
+def test_backup_list_keeps_remaining_records_when_one_disappears(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = tmp_path / "nova.db"
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("CREATE TABLE sample (value TEXT)")
+    backups = BackupService(database_path, tmp_path / "backups")
+    backups.initialize()
+    first = backups.create_backup()
+    second = backups.create_backup()
+    disappearing_path = backups.get_backup_path(second.filename)
+    read_checksum = backups._read_checksum
+
+    def read_then_remove(path: Path) -> str | None:
+        checksum = read_checksum(path)
+        if path == disappearing_path:
+            path.unlink()
+        return checksum
+
+    monkeypatch.setattr(backups, "_read_checksum", read_then_remove)
+
+    listed = backups.list_backups()
+
+    assert [record.filename for record in listed] == [first.filename]
+
+
 def test_backup_failure_removes_unpublished_temporary_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

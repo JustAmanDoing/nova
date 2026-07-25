@@ -112,7 +112,7 @@ describe("App", () => {
         return response({
           status: "ok",
           service: "Nova API",
-          version: "0.50.0",
+          version: "0.51.0",
           environment: "test",
           timestamp: "2026-07-25T09:00:00Z",
         });

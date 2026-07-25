@@ -171,11 +171,14 @@ The foreground intake dashboard remains current on its bounded five-second
 cycle. Backup history changes less frequently, so Nova refreshes that directory
 inventory once per minute automatically and immediately after manual actions.
 This avoids repeatedly reading every retained checksum sidecar as the recovery
-history grows. A failed backup-history refresh is retried on the next
-five-second dashboard cycle instead of being treated as a successful
-minute-bounded refresh. Every dashboard data source settles independently, so a
-failure in one panel does not prevent successful file, summary, review,
-recovery, backup, learning, or operational updates from appearing. Nova
+history grows. If a backup is removed by another local process while that
+inventory is being read, Nova keeps the remaining recovery points available
+instead of failing the entire history request. A failed backup-history refresh
+is retried on the next five-second dashboard cycle instead of being treated as
+a successful minute-bounded refresh. Every dashboard data source settles
+independently, so a failure in one panel does not prevent successful file,
+summary, review, recovery, backup, learning, or operational updates from
+appearing. Nova
 preserves the last known data for the failed source, labels the affected area
 in a scoped diagnostic, and retries it. A failed file-list request is kept
 distinct from a genuinely empty intake.
@@ -397,5 +400,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 48 independent dashboard resources](docs/milestone-48-independent-dashboard-resources.md)
 - [Milestone 49 filename-bound backup checksums](docs/milestone-49-filename-bound-checksums.md)
 - [Milestone 50 precise backup API states](docs/milestone-50-precise-backup-api-states.md)
+- [Milestone 51 resilient backup inventory](docs/milestone-51-resilient-backup-inventory.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

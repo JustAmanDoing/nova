@@ -148,7 +148,9 @@ Local data/intake folder
 - Backup creation reports full verification only after SQLite integrity and
   SHA-256 checks pass. Backup history reports filename-bound checksum
   availability separately and never presents an un-rechecked historical item
-  as currently verified.
+  as currently verified. Inventory assembly tolerates a backup disappearing
+  between directory discovery and metadata capture, so one external local
+  deletion does not suppress the remaining recovery points.
 - Missing Docker, inactive Docker Desktop, missing Git, build failures, and
   startup timeouts produce direct recovery guidance.
 

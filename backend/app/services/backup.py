@@ -183,16 +183,23 @@ class BackupService:
 
     def list_backups(self) -> list[BackupRecord]:
         with self._lock:
-            paths = sorted(
-                (
-                    path
-                    for path in self.backup_path.glob("nova-*.db")
-                    if path.is_file() and BACKUP_NAME.fullmatch(path.name)
-                ),
-                key=lambda path: path.stat().st_mtime,
+            records: list[BackupRecord] = []
+            for path in self.backup_path.glob("nova-*.db"):
+                if not path.is_file() or not BACKUP_NAME.fullmatch(path.name):
+                    continue
+                try:
+                    records.append(
+                        self._record(path, self._read_checksum(path))
+                    )
+                except FileNotFoundError:
+                    # A backup may be removed by an external local process after
+                    # discovery. Keep the remaining recovery points available.
+                    continue
+            return sorted(
+                records,
+                key=lambda record: record.created_at,
                 reverse=True,
             )
-            return [self._record(path, self._read_checksum(path)) for path in paths]
 
     def get_verified_backup_path(self, filename: str) -> Path:
         """Return a backup only after rechecking its checksum and SQLite integrity."""

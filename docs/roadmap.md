@@ -54,6 +54,7 @@
 - Independent dashboard resource refresh with scoped partial-failure diagnostics
 - Filename-bound checksum sidecars for portable backup integrity
 - Distinct current-verification and checksum-recorded backup API states
+- Backup inventory remains available when one discovered snapshot disappears
 
 ## Milestone 1 — Observe — complete
 
