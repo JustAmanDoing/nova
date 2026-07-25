@@ -56,6 +56,7 @@ The current MVP can:
 - Prevent browsers and intermediaries from caching Nova API responses
 - Revalidate the dashboard entry page after updates to avoid stale asset links
 - Use patched test-tool versions with a vulnerability-reviewed dependency lock
+- Pin external CI actions to verified immutable commits
 - Report database size, local storage headroom, and latest scan health without
   exposing paths or document content
 
@@ -333,5 +334,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 27 private API cache policy](docs/milestone-27-private-api-cache-policy.md)
 - [Milestone 28 fresh dashboard entry page](docs/milestone-28-dashboard-cache-policy.md)
 - [Milestone 29 dependency advisory remediation](docs/milestone-29-dependency-advisories.md)
+- [Milestone 30 immutable CI actions](docs/milestone-30-immutable-ci-actions.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
