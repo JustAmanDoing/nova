@@ -57,6 +57,7 @@ The current MVP can:
 - Revalidate the dashboard entry page after updates to avoid stale asset links
 - Use patched test-tool versions with a vulnerability-reviewed dependency lock
 - Pin external CI actions to verified immutable commits
+- Pin each container base-image tag to a verified immutable image-index digest
 - Verify guarded move, undo, backup, and restore against the production stack
 - Preserve Linux container entrypoints across Windows Git checkouts
 - Report database size, local storage headroom, and latest scan health without
@@ -352,5 +353,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 34 pre-update backup](docs/milestone-34-pre-update-backup.md)
 - [Milestone 35 resilient Windows readiness](docs/milestone-35-windows-readiness.md)
 - [Milestone 36 public repository hygiene](docs/milestone-36-repository-hygiene.md)
+- [Milestone 37 immutable container bases](docs/milestone-37-immutable-container-bases.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

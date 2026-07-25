@@ -38,6 +38,7 @@
 - Verified online database snapshot before a running Windows deployment updates
 - Explicit loopback readiness probes with a diagnostic three-minute startup window
 - Public-repository ignore rules, private vulnerability reporting, and tracked-file checks
+- Immutable verified digests for all production container base images
 
 ## Milestone 1 — Observe — complete
 
