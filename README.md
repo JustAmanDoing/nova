@@ -161,6 +161,12 @@ SHA-256 checksum and SQLite integrity before returning the database or checksum
 sidecar. Keep both downloaded files together on a different trusted drive;
 backups can contain sensitive extracted text.
 
+The foreground intake dashboard remains current on its bounded five-second
+cycle. Backup history changes less frequently, so Nova refreshes that directory
+inventory once per minute automatically and immediately after manual actions.
+This avoids repeatedly reading every retained checksum sidecar as the recovery
+history grows.
+
 The **Restore** action is available only for a backup with a valid checksum
 sidecar. The API verifies the SHA-256 value and SQLite integrity, creates a new
 verified safety snapshot of the current database, and then replaces the
@@ -367,5 +373,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 40 verified backup export](docs/milestone-40-verified-backup-export.md)
 - [Milestone 41 backup history visibility](docs/milestone-41-backup-history-visibility.md)
 - [Milestone 42 backup capacity visibility](docs/milestone-42-backup-capacity-visibility.md)
+- [Milestone 43 bounded backup refresh](docs/milestone-43-bounded-backup-refresh.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

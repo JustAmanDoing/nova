@@ -15,3 +15,8 @@ requests when the view changes or closes.
 This preserves the five-second foreground update interval while keeping at most
 one automatic dashboard request batch active. Manual actions still refresh the
 dashboard immediately after they finish.
+
+From Nova 0.43.0 onward, the growing backup directory inventory is included in
+the first batch and then at most once per minute. Live intake, review, action,
+recovery, learning, and operational state retain the five-second cadence.
+Manual actions still request a complete refresh.

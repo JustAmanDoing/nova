@@ -45,6 +45,7 @@
 - Checksum- and integrity-verified backup downloads for independent recovery copies
 - Accessible full backup history with the newest five shown by default
 - Read-only retained-backup count, storage use, and verification summary
+- Minute-bounded automatic backup inventory refresh with immediate manual refresh
 
 ## Milestone 1 — Observe — complete
 

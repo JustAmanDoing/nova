@@ -6,6 +6,7 @@ import App from "./App";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 function response(body: unknown) {
@@ -90,6 +91,60 @@ function healthyOperations() {
 }
 
 describe("App", () => {
+  it("refreshes backup history less often than live intake state", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/health")) {
+        return response({
+          status: "ok",
+          service: "Nova API",
+          version: "0.43.0",
+          environment: "test",
+          timestamp: "2026-07-25T09:00:00Z",
+        });
+      }
+      if (url.endsWith("/backups")) return response([]);
+      if (url.endsWith("/actions/recovery")) return response([]);
+      if (url.endsWith("/actions")) return response([]);
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 0,
+          understood: 0,
+          ready_for_review: 0,
+          exact_duplicates: 0,
+        });
+      }
+      return response([]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+
+    const countRequests = (suffix: string) =>
+      fetchMock.mock.calls.filter(([input]) =>
+        input.toString().endsWith(suffix),
+      ).length;
+    expect(countRequests("/backups")).toBe(1);
+    const initialSummaryRequests = countRequests("/summary");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(countRequests("/summary")).toBeGreaterThan(initialSummaryRequests);
+    expect(countRequests("/backups")).toBe(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(55_000);
+    });
+
+    expect(countRequests("/backups")).toBe(2);
+  });
+
   it("shows observed files and duplicate totals", async () => {
     vi.stubGlobal(
       "fetch",

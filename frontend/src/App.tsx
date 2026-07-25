@@ -39,6 +39,8 @@ type ServiceState =
   | { kind: "online"; health: HealthResponse }
   | { kind: "offline"; message: string };
 
+const BACKUP_REFRESH_INTERVAL_MS = 60_000;
+
 function App() {
   const [service, setService] = useState<ServiceState>({ kind: "loading" });
   const [files, setFiles] = useState<IntakeFile[]>([]);
@@ -66,8 +68,14 @@ function App() {
   const [learningNotice, setLearningNotice] = useState<string | null>(null);
   const [filters, setFilters] = useState<IntakeFilters>({});
 
-  const loadIntake = useCallback(async (signal?: AbortSignal) => {
+  const loadIntake = useCallback(async (
+    signal?: AbortSignal,
+    includeBackups = true,
+  ) => {
     try {
+      const backupRequest: Promise<BackupRecord[] | null> = includeBackups
+        ? getBackups(signal)
+        : Promise.resolve(null);
       const [
         nextFiles,
         nextSummary,
@@ -81,7 +89,7 @@ function App() {
         getIntakeSummary(signal),
         getActionHistory(signal),
         getRecoveryAssessments(signal),
-        getBackups(signal),
+        backupRequest,
         getLearningPreferences(signal),
         getOperationalStatus(signal),
       ]);
@@ -89,7 +97,7 @@ function App() {
       setSummary(nextSummary);
       setActions(nextActions);
       setRecoveries(nextRecoveries);
-      setBackups(nextBackups);
+      if (nextBackups !== null) setBackups(nextBackups);
       setPreferences(nextPreferences);
       setOperations(
         isOperationalStatus(nextOperations) ? nextOperations : null,
@@ -118,10 +126,15 @@ function App() {
     const controller = new AbortController();
     let stopped = false;
     let refreshTimer: number | undefined;
+    let lastBackupRefreshAt = Number.NEGATIVE_INFINITY;
 
     async function refreshIntake() {
       if (document.visibilityState !== "hidden") {
-        await loadIntake(controller.signal);
+        const now = Date.now();
+        const includeBackups =
+          now - lastBackupRefreshAt >= BACKUP_REFRESH_INTERVAL_MS;
+        await loadIntake(controller.signal, includeBackups);
+        if (includeBackups) lastBackupRefreshAt = Date.now();
       }
       if (!stopped) {
         refreshTimer = window.setTimeout(() => void refreshIntake(), 5_000);
