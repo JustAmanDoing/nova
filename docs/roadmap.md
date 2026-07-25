@@ -21,6 +21,7 @@
 - Local Host validation and restrictive dashboard browser security headers
 - Portable bind-mount initialization with an immediate application privilege drop
 - Keyboard-visible focus, live status announcements, and accessible intake table context
+- Startup rejection of overlapping intake, library, backup, and database paths
 
 ## Milestone 1 — Observe — complete
 

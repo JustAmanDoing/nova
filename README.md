@@ -272,6 +272,9 @@ and database directories before immediately dropping to its unprivileged
 Linux, and hosted verification runners without running the application as root.
 Continuous verification checks this property against the live container.
 
+Nova also rejects overlapping intake, library, backup, and database paths
+before scanning begins. Keep these locations as separate sibling paths.
+
 The frontend container also pins Node 20 and pnpm 9.15.5. Update both
 `frontend/package.json` and `frontend/Dockerfile` together when changing pnpm.
 
@@ -315,5 +318,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 18 production runtime smoke test](docs/milestone-18-runtime-smoke-test.md)
 - [Milestone 19 local HTTP hardening](docs/milestone-19-local-http-hardening.md)
 - [Milestone 20 container storage portability](docs/milestone-20-container-storage-portability.md)
+- [Milestone 21 validated storage boundaries](docs/milestone-21-storage-boundaries.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

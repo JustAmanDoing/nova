@@ -1,8 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Self
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "Nova API"
-    app_version: str = "0.20.0"
+    app_version: str = "0.21.0"
     environment: str = "development"
     api_prefix: str = "/api/v1"
     api_host: str = "0.0.0.0"
@@ -52,6 +52,39 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @model_validator(mode="after")
+    def validate_storage_boundaries(self) -> Self:
+        directories = {
+            "intake": self.intake_path.resolve(),
+            "library": (
+                self.library_path or self.intake_path.parent / "library"
+            ).resolve(),
+            "backup": self.backup_path.resolve(),
+        }
+        directory_items = list(directories.items())
+        for index, (left_name, left_path) in enumerate(directory_items):
+            for right_name, right_path in directory_items[index + 1 :]:
+                if (
+                    left_path == right_path
+                    or left_path.is_relative_to(right_path)
+                    or right_path.is_relative_to(left_path)
+                ):
+                    raise ValueError(
+                        "Nova storage directories must not overlap: "
+                        f"{left_name} and {right_name}."
+                    )
+
+        database_path = self.database_path.resolve()
+        for directory_name, directory_path in directory_items:
+            if database_path == directory_path or database_path.is_relative_to(
+                directory_path
+            ):
+                raise ValueError(
+                    "The Nova database must remain outside the "
+                    f"{directory_name} directory."
+                )
+        return self
 
 
 @lru_cache
