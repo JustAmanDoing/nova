@@ -112,7 +112,7 @@ describe("App", () => {
         return response({
           status: "ok",
           service: "Nova API",
-          version: "0.45.0",
+          version: "0.46.0",
           environment: "test",
           timestamp: "2026-07-25T09:00:00Z",
         });
@@ -213,6 +213,54 @@ describe("App", () => {
     });
 
     expect(countRequests("/backups")).toBe(2);
+  });
+
+  it("retries backup history promptly after a failed refresh", async () => {
+    vi.useFakeTimers();
+    let backupRequests = 0;
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/health")) {
+        return response({
+          status: "ok",
+          service: "Nova API",
+          version: "0.46.0",
+          environment: "test",
+          timestamp: "2026-07-25T09:00:00Z",
+        });
+      }
+      if (url.endsWith("/backups")) {
+        backupRequests += 1;
+        if (backupRequests === 1) {
+          return Promise.reject(new Error("Backup inventory unavailable"));
+        }
+        return response([]);
+      }
+      if (url.endsWith("/actions/recovery")) return response([]);
+      if (url.endsWith("/actions")) return response([]);
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 0,
+          understood: 0,
+          ready_for_review: 0,
+          exact_duplicates: 0,
+        });
+      }
+      return response([]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+    expect(backupRequests).toBe(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(backupRequests).toBe(2);
   });
 
   it("shows observed files and duplicate totals", async () => {

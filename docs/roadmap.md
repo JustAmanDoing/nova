@@ -49,6 +49,7 @@
 - Latest-request-wins dashboard state during overlapping manual and background loads
 - Precise backup-history wording that distinguishes a recorded checksum from
   full download or restore verification
+- Prompt retry after a failed automatic backup-history refresh
 
 ## Milestone 1 — Observe — complete
 

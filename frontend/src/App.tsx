@@ -78,7 +78,7 @@ function App() {
   const loadIntake = useCallback(async (
     signal?: AbortSignal,
     includeBackups = true,
-  ) => {
+  ): Promise<boolean> => {
     const requestId = latestLoadRequest.current + 1;
     latestLoadRequest.current = requestId;
     try {
@@ -102,7 +102,7 @@ function App() {
         getLearningPreferences(signal),
         getOperationalStatus(signal),
       ]);
-      if (requestId !== latestLoadRequest.current) return;
+      if (requestId !== latestLoadRequest.current) return false;
       setFiles(nextFiles);
       setSummary(nextSummary);
       setActions(nextActions);
@@ -113,10 +113,14 @@ function App() {
         isOperationalStatus(nextOperations) ? nextOperations : null,
       );
       setIntakeError(null);
+      return true;
     } catch (error: unknown) {
-      if (requestId !== latestLoadRequest.current) return;
-      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (requestId !== latestLoadRequest.current) return false;
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return false;
+      }
       setIntakeError(error instanceof Error ? error.message : "Unable to load intake");
+      return false;
     }
   }, [filters]);
 
@@ -144,8 +148,8 @@ function App() {
         const now = Date.now();
         const includeBackups =
           now - lastBackupRefreshAt >= BACKUP_REFRESH_INTERVAL_MS;
-        await loadIntake(controller.signal, includeBackups);
-        if (includeBackups) lastBackupRefreshAt = Date.now();
+        const loaded = await loadIntake(controller.signal, includeBackups);
+        if (includeBackups && loaded) lastBackupRefreshAt = Date.now();
       }
       if (!stopped) {
         refreshTimer = window.setTimeout(() => void refreshIntake(), 5_000);
