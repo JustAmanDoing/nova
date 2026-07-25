@@ -13,9 +13,11 @@ def test_health_endpoint() -> None:
     body = response.json()
     assert body["status"] == "ok"
     assert body["service"] == "Nova API"
-    assert body["version"] == "0.26.0"
+    assert body["version"] == "0.27.0"
     assert body["environment"] == "development"
     assert body["timestamp"]
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["pragma"] == "no-cache"
 
 
 def test_openapi_document_is_available() -> None:

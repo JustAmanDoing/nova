@@ -1,10 +1,10 @@
 import asyncio
 import logging
 from _thread import RLock
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -89,6 +89,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         TrustedHostMiddleware,
         allowed_hosts=resolved_settings.allowed_hosts,
     )
+
+    @application.middleware("http")
+    async def prevent_api_caching(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+        if request.url.path.startswith(resolved_settings.api_prefix):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
     application.state.settings = resolved_settings
     application.include_router(api_router, prefix=resolved_settings.api_prefix)
     return application

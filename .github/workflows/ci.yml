@@ -116,6 +116,13 @@ jobs:
           curl --fail --silent --show-error \
             http://127.0.0.1:8000/api/v1/health \
             | grep --fixed-strings --quiet '"status":"ok"'
+          api_response_headers="$(
+            curl --fail --silent --show-error \
+              --dump-header - --output /dev/null \
+              http://127.0.0.1:8000/api/v1/health
+          )"
+          printf '%s\n' "$api_response_headers" \
+            | grep --ignore-case --quiet '^cache-control: no-store'
           curl --fail --silent --show-error \
             http://127.0.0.1:8000/api/v1/system/status \
             | grep --fixed-strings --quiet '"last_scan_status":"ok"'

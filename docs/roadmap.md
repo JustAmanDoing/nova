@@ -27,6 +27,7 @@
 - Cross-platform Python dependency constraints used by CI and production builds
 - Automatic bounded container diagnostics after a failed Windows startup
 - Read-only active-database integrity verification before migrations
+- Explicit `no-store` policy for every API response
 
 ## Milestone 1 — Observe — complete
 
