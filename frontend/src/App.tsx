@@ -886,6 +886,12 @@ function BackupPanel({
 }) {
   const [showAllBackups, setShowAllBackups] = useState(false);
   const visibleBackups = showAllBackups ? backups : backups.slice(0, 5);
+  const backupTotalBytes = backups.reduce(
+    (total, backup) => total + backup.size_bytes,
+    0,
+  );
+  const verifiedBackupCount = backups.filter((backup) => backup.verified).length;
+  const unverifiedBackupCount = backups.length - verifiedBackupCount;
 
   return (
     <section className="backup-panel" aria-labelledby="backup-title">
@@ -913,6 +919,18 @@ function BackupPanel({
       {notice ? (
         <p className="backup-notice" role="status">
           {notice}
+        </p>
+      ) : null}
+      {backups.length > 0 ? (
+        <p className="backup-summary">
+          <strong>
+            {backups.length} backup{backups.length === 1 ? "" : "s"} retained
+          </strong>
+          <span>{formatBytes(backupTotalBytes)} total</span>
+          <span>{verifiedBackupCount} verified</span>
+          {unverifiedBackupCount > 0 ? (
+            <span>{unverifiedBackupCount} need attention</span>
+          ) : null}
         </p>
       ) : null}
       {backups.length === 0 ? (

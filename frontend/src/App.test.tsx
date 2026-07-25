@@ -941,7 +941,7 @@ describe("App", () => {
           return response({
             status: "ok",
             service: "Nova API",
-            version: "0.41.0",
+            version: "0.42.0",
             environment: "test",
             timestamp: "2026-07-25T09:00:00Z",
           });
@@ -966,6 +966,9 @@ describe("App", () => {
     const showAll = await screen.findByRole("button", {
       name: "Show all 8 backups",
     });
+    expect(screen.getByText("8 backups retained")).toBeInTheDocument();
+    expect(screen.getByText("64.0 KB total")).toBeInTheDocument();
+    expect(screen.getByText("8 verified")).toBeInTheDocument();
     expect(showAll).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByText(backups[4].filename)).toBeInTheDocument();
     expect(screen.queryByText(backups[5].filename)).toBeNull();

@@ -595,6 +595,19 @@ h2 {
   font-size: 0.78rem;
 }
 
+.backup-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 14px 0 0;
+  color: #91a79a;
+  font-size: 0.78rem;
+}
+
+.backup-summary strong {
+  color: #d8e4dc;
+}
+
 .backup-list {
   display: grid;
   gap: 10px;

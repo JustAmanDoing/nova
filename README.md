@@ -154,11 +154,12 @@ consistent snapshot under `data/backups`. Every successful backup passes
 SQLite's integrity check and receives a SHA-256 checksum sidecar. Nova never
 overwrites or automatically deletes an earlier backup. The dashboard shows the
 five newest snapshots first and provides a **Show all** control when additional
-recovery points exist. A download link appears only when a checksum is
-available. Every download rechecks both the SHA-256 checksum and SQLite
-integrity before returning the database or checksum sidecar. Keep both
-downloaded files together on a different trusted drive; backups can contain
-sensitive extracted text.
+recovery points exist. It also summarizes the total retained backup count,
+storage use, and verification state without deleting anything. A download link
+appears only when a checksum is available. Every download rechecks both the
+SHA-256 checksum and SQLite integrity before returning the database or checksum
+sidecar. Keep both downloaded files together on a different trusted drive;
+backups can contain sensitive extracted text.
 
 The **Restore** action is available only for a backup with a valid checksum
 sidecar. The API verifies the SHA-256 value and SQLite integrity, creates a new
@@ -365,5 +366,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 39 storage capacity planning](docs/milestone-39-capacity-planning.md)
 - [Milestone 40 verified backup export](docs/milestone-40-verified-backup-export.md)
 - [Milestone 41 backup history visibility](docs/milestone-41-backup-history-visibility.md)
+- [Milestone 42 backup capacity visibility](docs/milestone-42-backup-capacity-visibility.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
