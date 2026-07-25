@@ -23,6 +23,7 @@
 - Keyboard-visible focus, live status announcements, and accessible intake table context
 - Startup rejection of overlapping intake, library, backup, and database paths
 - Non-overlapping dashboard refresh that pauses while the page is hidden
+- Current supported Starlette `httpx2` test transport without deprecation warnings
 
 ## Milestone 1 — Observe — complete
 
