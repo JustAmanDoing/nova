@@ -1,22 +1,35 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import {
+  backupDownloadUrl,
+  createDatabaseBackup,
   executeApproved,
   getActionHistory,
+  getBackups,
   getHealth,
   getIntakeFiles,
+  getLearningPreferences,
+  getOperationalStatus,
+  getRecoveryAssessments,
   getIntakeSummary,
+  resetLearningPreference,
+  restoreDatabaseBackup,
   reviewRecommendation,
   scanIntake,
   undoAction,
   type ActionRecord,
   type ApprovalRecord,
   type ApprovalRequest,
+  type BackupRecord,
   type HealthResponse,
   type IntakeFilters,
   type IntakeFile,
   type IntakeSummary,
+  type LearningPreferenceRecord,
+  type OperationalStatus,
   type RecommendationRecord,
+  type RecoveryAssessment,
+  type RecoveryState,
   type UnderstandingRecord,
 } from "./lib/api";
 
@@ -39,18 +52,47 @@ function App() {
   const [reviewingFileId, setReviewingFileId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const [actions, setActions] = useState<ActionRecord[]>([]);
+  const [recoveries, setRecoveries] = useState<RecoveryAssessment[]>([]);
+  const [backups, setBackups] = useState<BackupRecord[]>([]);
+  const [preferences, setPreferences] = useState<LearningPreferenceRecord[]>([]);
+  const [operations, setOperations] = useState<OperationalStatus | null>(null);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [restoringFilename, setRestoringFilename] = useState<string | null>(null);
+  const [resettingPreference, setResettingPreference] = useState<string | null>(
+    null,
+  );
+  const [backupNotice, setBackupNotice] = useState<string | null>(null);
+  const [learningNotice, setLearningNotice] = useState<string | null>(null);
   const [filters, setFilters] = useState<IntakeFilters>({});
 
   const loadIntake = useCallback(async (signal?: AbortSignal) => {
     try {
-      const [nextFiles, nextSummary, nextActions] = await Promise.all([
+      const [
+        nextFiles,
+        nextSummary,
+        nextActions,
+        nextRecoveries,
+        nextBackups,
+        nextPreferences,
+        nextOperations,
+      ] = await Promise.all([
         getIntakeFiles(filters, signal),
         getIntakeSummary(signal),
         getActionHistory(signal),
+        getRecoveryAssessments(signal),
+        getBackups(signal),
+        getLearningPreferences(signal),
+        getOperationalStatus(signal),
       ]);
       setFiles(nextFiles);
       setSummary(nextSummary);
       setActions(nextActions);
+      setRecoveries(nextRecoveries);
+      setBackups(nextBackups);
+      setPreferences(nextPreferences);
+      setOperations(
+        isOperationalStatus(nextOperations) ? nextOperations : null,
+      );
       setIntakeError(null);
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -152,6 +194,100 @@ function App() {
     }
   }
 
+  async function handleBackup() {
+    setIsBackingUp(true);
+    setBackupNotice(null);
+    try {
+      await createDatabaseBackup();
+      await loadIntake();
+      setBackupNotice("Verified database backup created.");
+    } catch (error: unknown) {
+      setIntakeError(error instanceof Error ? error.message : "Backup failed");
+    } finally {
+      setIsBackingUp(false);
+    }
+  }
+
+  async function handleRestore(backup: BackupRecord) {
+    const requiredConfirmation = `RESTORE ${backup.filename}`;
+    const confirmation = window.prompt(
+      [
+        "Restore this database backup?",
+        "Nova will first create a safety snapshot of the current database.",
+        "Document files are not changed.",
+        `Type exactly: ${requiredConfirmation}`,
+      ].join("\n\n"),
+    );
+    if (confirmation === null) return;
+    if (confirmation !== requiredConfirmation) {
+      setIntakeError("Restore cancelled because the confirmation did not match.");
+      return;
+    }
+
+    setRestoringFilename(backup.filename);
+    setBackupNotice(null);
+    try {
+      const result = await restoreDatabaseBackup(
+        backup.filename,
+        confirmation,
+      );
+      await loadIntake();
+      setBackupNotice(
+        `Restored ${result.restored_from}. Safety snapshot: ${result.safety_backup.filename}.`,
+      );
+    } catch (error: unknown) {
+      setIntakeError(error instanceof Error ? error.message : "Restore failed");
+    } finally {
+      setRestoringFilename(null);
+    }
+  }
+
+  async function handleLearningReset(preference: LearningPreferenceRecord) {
+    const requiredConfirmation =
+      `FORGET ${preference.document_type} / ${preference.base_category}`;
+    const confirmation = window.prompt(
+      [
+        "Forget this learned filing preference?",
+        `Nova will remove ${preference.stored_examples} stored example${
+          preference.stored_examples === 1 ? "" : "s"
+        }.`,
+        "Document files and file-action history are not changed.",
+        `Type exactly: ${requiredConfirmation}`,
+      ].join("\n\n"),
+    );
+    if (confirmation === null) return;
+    if (confirmation !== requiredConfirmation) {
+      setIntakeError(
+        "Learning reset cancelled because the confirmation did not match.",
+      );
+      return;
+    }
+
+    const preferenceKey =
+      `${preference.document_type}\u0000${preference.base_category}`;
+    setResettingPreference(preferenceKey);
+    setLearningNotice(null);
+    try {
+      const result = await resetLearningPreference(
+        preference.document_type,
+        preference.base_category,
+        confirmation,
+      );
+      await loadIntake();
+      setLearningNotice(
+        `Forgot ${result.removed_examples} stored learning example${
+          result.removed_examples === 1 ? "" : "s"
+        }.`,
+      );
+    } catch (error: unknown) {
+      setIntakeError(
+        error instanceof Error ? error.message : "Learning reset failed",
+      );
+    } finally {
+      setResettingPreference(null);
+    }
+  }
+
   return (
     <main className="shell">
       <nav className="nav" aria-label="Primary navigation">
@@ -161,7 +297,11 @@ function App() {
         </a>
         <div className="nav-status">
           <Status state={service} />
-          <span className="phase">Intake MVP · 0.5.0</span>
+          <span className="phase">
+            {service.kind === "online"
+              ? `Intake MVP · ${service.health.version}`
+              : "Intake MVP"}
+          </span>
         </div>
       </nav>
 
@@ -172,8 +312,9 @@ function App() {
           </p>
           <h1>Turn incoming files into useful context.</h1>
           <p className="lede">
-            Add a TXT, Markdown, PDF, or DOCX file to <code>data/intake</code>.
-            Nova reads it locally, records what it understands, and applies
+            Add a TXT, Markdown, PDF, DOCX, or supported image file to{" "}
+            <code>data/intake</code>. Nova reads it locally, uses bounded local
+            OCR when needed, records what it understands, and applies
             deterministic filing rules when evidence is strong enough. Review
             decisions remain separate from execution. Only the explicit Move
             file action can place an approved item into Nova’s library.
@@ -209,6 +350,8 @@ function App() {
             accent={summary.exact_duplicates > 0}
           />
         </div>
+
+        {operations ? <OperationalHealth operations={operations} /> : null}
 
         <SearchControls filters={filters} onChange={setFilters} resultCount={files.length} />
 
@@ -275,10 +418,25 @@ function App() {
             </div>
           )}
         </div>
+        <LearningPanel
+          preferences={preferences}
+          resettingPreference={resettingPreference}
+          notice={learningNotice}
+          onReset={handleLearningReset}
+        />
         <ActionHistory
           actions={actions}
           actingId={actingId}
           onUndo={handleUndo}
+        />
+        <RecoveryPanel assessments={recoveries} />
+        <BackupPanel
+          backups={backups}
+          isBackingUp={isBackingUp}
+          restoringFilename={restoringFilename}
+          notice={backupNotice}
+          onBackup={handleBackup}
+          onRestore={handleRestore}
         />
       </section>
     </main>
@@ -480,6 +638,90 @@ function RecommendationView({
   );
 }
 
+function LearningPanel({
+  preferences,
+  resettingPreference,
+  notice,
+  onReset,
+}: {
+  preferences: LearningPreferenceRecord[];
+  resettingPreference: string | null;
+  notice: string | null;
+  onReset: (preference: LearningPreferenceRecord) => Promise<void>;
+}) {
+  return (
+    <section className="learning-panel" aria-labelledby="learning-title">
+      <div className="history-heading">
+        <div>
+          <p className="section-number">07 · Learn</p>
+          <h3 id="learning-title">Learned filing preferences</h3>
+        </div>
+        <span>
+          {preferences.length} group{preferences.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <p className="learning-guidance">
+        Nova learns destinations only from successful approved moves. Learning
+        never approves or moves a file, and you can forget every stored example
+        for a group here.
+      </p>
+      {notice ? (
+        <p className="backup-notice" role="status">
+          {notice}
+        </p>
+      ) : null}
+      {preferences.length === 0 ? (
+        <p className="history-empty">
+          No filing preferences stored yet. Nova needs at least three consistent
+          successful moves before changing a future destination suggestion.
+        </p>
+      ) : (
+        <ul className="learning-list">
+          {preferences.map((preference) => {
+            const preferenceKey =
+              `${preference.document_type}\u0000${preference.base_category}`;
+            return (
+              <li key={preferenceKey}>
+                <div>
+                  <span
+                    className={`badge learning ${
+                      preference.eligible ? "eligible" : "gathering"
+                    }`}
+                  >
+                    {preference.eligible ? "Active suggestion" : "Gathering evidence"}
+                  </span>
+                  <strong>
+                    {preference.document_type} · {preference.base_category}
+                  </strong>
+                  <span>
+                    {preference.candidate_destination ??
+                      "No single destination currently leads"}
+                  </span>
+                  <small>
+                    {preference.supporting_examples} supporting ·{" "}
+                    {preference.active_examples} active ·{" "}
+                    {preference.stored_examples} stored
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="forget-button"
+                  disabled={resettingPreference !== null}
+                  onClick={() => void onReset(preference)}
+                >
+                  {resettingPreference === preferenceKey
+                    ? "Forgetting…"
+                    : "Forget examples"}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function ActionHistory({
   actions,
   actingId,
@@ -526,6 +768,161 @@ function ActionHistory({
                   Undo move
                 </button>
               ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function RecoveryPanel({
+  assessments,
+}: {
+  assessments: RecoveryAssessment[];
+}) {
+  return (
+    <section
+      className={`recovery-panel ${assessments.length > 0 ? "attention" : ""}`}
+      aria-labelledby="recovery-title"
+    >
+      <div className="history-heading">
+        <div>
+          <p className="section-number">Operational safety</p>
+          <h3 id="recovery-title">Interrupted operation check</h3>
+        </div>
+        <span>
+          {assessments.length === 0
+            ? "No incomplete operations"
+            : `${assessments.length} need${assessments.length === 1 ? "s" : ""} review`}
+        </span>
+      </div>
+      {assessments.length === 0 ? (
+        <p className="history-empty">
+          Nova found no operation left unfinished after the safety delay.
+        </p>
+      ) : (
+        <>
+          <p className="recovery-warning">
+            Nova has not changed these files. Review both paths before retrying
+            or manually reconciling an operation.
+          </p>
+          <ul className="recovery-list">
+            {assessments.map((assessment) => (
+              <li key={assessment.operation_id}>
+                <span className={`badge recovery ${assessment.state}`}>
+                  {recoveryLabel(assessment.state)}
+                </span>
+                <strong>
+                  {assessment.source_path} → {assessment.destination_path}
+                </strong>
+                <span>{assessment.detail}</span>
+                <small>
+                  {assessment.kind === "undo" ? "Undo" : "Move"} started{" "}
+                  {formatObserved(assessment.started_at)}
+                </small>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+function recoveryLabel(state: RecoveryState): string {
+  switch (state) {
+    case "ready_to_retry":
+      return "Source safe";
+    case "completed_without_audit":
+      return "Likely completed";
+    case "copy_incomplete":
+      return "Two verified copies";
+    case "missing":
+      return "Files missing";
+    case "unsafe_path":
+      return "Unsafe path";
+    case "unreadable":
+      return "Cannot inspect";
+    default:
+      return "Conflict";
+  }
+}
+
+function BackupPanel({
+  backups,
+  isBackingUp,
+  restoringFilename,
+  notice,
+  onBackup,
+  onRestore,
+}: {
+  backups: BackupRecord[];
+  isBackingUp: boolean;
+  restoringFilename: string | null;
+  notice: string | null;
+  onBackup: () => Promise<void>;
+  onRestore: (backup: BackupRecord) => Promise<void>;
+}) {
+  return (
+    <section className="backup-panel" aria-labelledby="backup-title">
+      <div className="history-heading">
+        <div>
+          <p className="section-number">Local resilience</p>
+          <h3 id="backup-title">Database backups</h3>
+        </div>
+        <button
+          type="button"
+          disabled={isBackingUp}
+          onClick={() => void onBackup()}
+        >
+          {isBackingUp ? "Creating backup…" : "Create backup"}
+        </button>
+      </div>
+      <p className="backup-guidance">
+        Creates a verified SQLite snapshot in <code>data/backups</code>. Backups
+        can contain extracted document text, so keep them private. Restore changes
+        Nova&apos;s database history and index only; it never restores, removes, or
+        overwrites document files. Nova creates a safety snapshot before every
+        restore.
+      </p>
+      {notice ? (
+        <p className="backup-notice" role="status">
+          {notice}
+        </p>
+      ) : null}
+      {backups.length === 0 ? (
+        <p className="history-empty">No database backups have been created yet.</p>
+      ) : (
+        <ul className="backup-list">
+          {backups.slice(0, 5).map((backup) => (
+            <li key={backup.filename}>
+              <div>
+                <strong>{backup.filename}</strong>
+                <span>
+                  {formatBytes(backup.size_bytes)} ·{" "}
+                  {backup.verified ? "SHA-256 verified" : "Checksum unavailable"} ·{" "}
+                  {formatObserved(backup.created_at)}
+                </span>
+              </div>
+              <div className="backup-actions">
+                <a href={backupDownloadUrl(backup.filename)} download>
+                  Download
+                </a>
+                {backup.verified ? (
+                  <button
+                    type="button"
+                    className="restore-button"
+                    aria-label={`Restore ${backup.filename}`}
+                    disabled={restoringFilename !== null || isBackingUp}
+                    onClick={() => void onRestore(backup)}
+                  >
+                    {restoringFilename === backup.filename
+                      ? "Restoring…"
+                      : "Restore"}
+                  </button>
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>
@@ -626,10 +1023,13 @@ function SearchControls({
         <input
           type="search"
           value={filters.query ?? ""}
-          placeholder="Filename, content, evidence, category, destination, or error"
+          placeholder='Words must all match; use quotes for a phrase'
           onChange={(event) => onChange({ ...filters, query: event.target.value })}
         />
       </label>
+      <p className="search-help">
+        Filename and title matches rank above content and evidence matches.
+      </p>
       <div className="filter-row">
         <label>
           <span>Intake status</span>
@@ -747,10 +1147,95 @@ function Status({ state }: { state: ServiceState }) {
   return <p className="status online"><span />Nova online</p>;
 }
 
+function OperationalHealth({
+  operations,
+}: {
+  operations: OperationalStatus;
+}) {
+  const scanDetail =
+    operations.last_scan_status === "never"
+      ? "Waiting for first scan"
+      : operations.last_scan_status === "failed"
+        ? "Latest scan failed"
+        : operations.last_scan_duration_ms === null
+          ? "Latest scan completed"
+          : `Latest scan ${formatDuration(operations.last_scan_duration_ms)}`;
+  const storageDetail =
+    operations.storage_free_bytes === null
+      ? "Storage unavailable"
+      : `${formatBytes(operations.storage_free_bytes)} free${
+          operations.storage_free_percent === null
+            ? ""
+            : ` (${operations.storage_free_percent.toFixed(1)}%)`
+        }`;
+
+  return (
+    <section
+      className={`operations-panel ${operations.status}`}
+      aria-label="System health"
+    >
+      <div>
+        <span className="operations-label">System health</span>
+        <strong>
+          {operations.status === "healthy" ? "Healthy" : "Needs attention"}
+        </strong>
+      </div>
+      <dl>
+        <div>
+          <dt>Local storage</dt>
+          <dd>{storageDetail}</dd>
+        </div>
+        <div>
+          <dt>Database</dt>
+          <dd>
+            {operations.database_size_bytes === null
+              ? "Unavailable"
+              : formatBytes(operations.database_size_bytes)}
+          </dd>
+        </div>
+        <div>
+          <dt>Intake monitor</dt>
+          <dd>{scanDetail}</dd>
+        </div>
+      </dl>
+      {operations.warnings.length > 0 ? (
+        <ul>
+          {operations.warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+function isOperationalStatus(value: unknown): value is OperationalStatus {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Partial<OperationalStatus>;
+  return (
+    (candidate.status === "healthy" || candidate.status === "attention")
+    && Array.isArray(candidate.warnings)
+    && (
+      candidate.last_scan_status === "ok"
+      || candidate.last_scan_status === "failed"
+      || candidate.last_scan_status === "never"
+    )
+  );
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1_024) return `${bytes} B`;
   if (bytes < 1_048_576) return `${(bytes / 1_024).toFixed(1)} KB`;
-  return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  if (bytes < 1_073_741_824) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  if (bytes < 1_099_511_627_776) {
+    return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
+  }
+  return `${(bytes / 1_099_511_627_776).toFixed(1)} TB`;
+}
+
+function formatDuration(milliseconds: number): string {
+  if (milliseconds < 1_000) return `${milliseconds} ms`;
+  return `${(milliseconds / 1_000).toFixed(1)} s`;
 }
 
 function formatObserved(value: string): string {

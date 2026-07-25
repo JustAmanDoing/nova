@@ -4,13 +4,17 @@ import os
 import re
 import shutil
 import sqlite3
+import time
+from _thread import RLock
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
-from datetime import UTC, datetime
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
-from threading import Lock
+from typing import Literal
 from uuid import uuid4
 
+from app.schemas.health import OperationalStatus
 from app.schemas.intake import (
     ActionKind,
     ActionRecord,
@@ -24,11 +28,29 @@ from app.schemas.intake import (
     IntakeStatus,
     IntakeSummary,
     RecommendationRecord,
+    RecoveryAssessment,
+    RecoveryState,
     UnderstandingRecord,
     UnderstandingStatus,
 )
+from app.schemas.learning import (
+    LearningPreferenceRecord,
+    LearningResetRequest,
+    LearningResetResult,
+)
+from app.services.database import migrate_database
+from app.services.learning import (
+    current_learning_revision,
+    learned_destination,
+    list_learning_preferences,
+    record_confirmed_move,
+    reset_learning_preference,
+    revert_confirmed_move,
+)
+from app.services.ocr import OcrEngine
 from app.services.recommendation import RULES_VERSION, recommend_file
-from app.services.understanding import understand_file
+from app.services.search import build_search_plan
+from app.services.understanding import IMAGE_EXTENSIONS, understand_file
 
 
 class ActionConflict(RuntimeError):
@@ -44,7 +66,6 @@ WINDOWS_RESERVED_NAMES = {
     *(f"LPT{number}" for number in range(1, 10)),
 }
 
-
 class IntakeService:
     def __init__(
         self,
@@ -53,150 +74,46 @@ class IntakeService:
         library_path: Path | None = None,
         max_text_bytes: int = 1_000_000,
         max_extracted_text_bytes: int = 1_000_000,
+        action_stale_seconds: float = 300.0,
+        operation_lock: RLock | None = None,
+        ocr_engine: OcrEngine | None = None,
     ) -> None:
         self.intake_path = intake_path
         self.library_path = library_path or intake_path.parent / "library"
         self.database_path = database_path
         self.max_text_bytes = max_text_bytes
         self.max_extracted_text_bytes = max_extracted_text_bytes
-        self._lock = Lock()
+        self.action_stale_seconds = max(action_stale_seconds, 1.0)
+        self._lock = operation_lock or RLock()
+        self.ocr_engine = ocr_engine
+        self._started_at = datetime.now(UTC)
+        self._last_scan_status: Literal["ok", "failed", "never"] = "never"
+        self._last_scan_completed_at: datetime | None = None
+        self._last_scan_duration_ms: int | None = None
 
     def initialize(self) -> None:
         self.intake_path.mkdir(parents=True, exist_ok=True)
         self.library_path.mkdir(parents=True, exist_ok=True)
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connection() as connection:
-            connection.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS schema_meta (
-                    version INTEGER NOT NULL
-                );
-                INSERT INTO schema_meta (version)
-                SELECT 1
-                WHERE NOT EXISTS (SELECT 1 FROM schema_meta);
-
-                CREATE TABLE IF NOT EXISTS intake_files (
-                    id TEXT PRIMARY KEY,
-                    relative_path TEXT NOT NULL UNIQUE,
-                    original_name TEXT NOT NULL,
-                    extension TEXT NOT NULL,
-                    size_bytes INTEGER NOT NULL,
-                    modified_at TEXT NOT NULL,
-                    observed_at TEXT NOT NULL,
-                    sha256 TEXT NOT NULL,
-                    status TEXT NOT NULL CHECK (status IN ('observed', 'duplicate')),
-                    duplicate_of TEXT REFERENCES intake_files(id)
-                );
-
-                CREATE INDEX IF NOT EXISTS ix_intake_files_sha256
-                ON intake_files (sha256);
-
-                CREATE TABLE IF NOT EXISTS understanding_results (
-                    file_id TEXT PRIMARY KEY REFERENCES intake_files(id) ON DELETE CASCADE,
-                    source_sha256 TEXT NOT NULL,
-                    status TEXT NOT NULL CHECK (
-                        status IN ('ready', 'empty', 'unsupported', 'too_large', 'failed')
-                    ),
-                    document_type TEXT,
-                    title TEXT,
-                    text_preview TEXT,
-                    word_count INTEGER,
-                    character_count INTEGER,
-                    evidence TEXT NOT NULL,
-                    error TEXT,
-                    error_code TEXT,
-                    extraction_method TEXT NOT NULL DEFAULT 'none',
-                    retryable INTEGER NOT NULL DEFAULT 0,
-                    full_text TEXT,
-                    understood_at TEXT NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS recommendation_results (
-                    file_id TEXT PRIMARY KEY
-                        REFERENCES intake_files(id) ON DELETE CASCADE,
-                    source_sha256 TEXT NOT NULL,
-                    source_status TEXT NOT NULL,
-                    source_understood_at TEXT,
-                    rules_version INTEGER NOT NULL,
-                    outcome TEXT NOT NULL CHECK (
-                        outcome IN ('suggested', 'insufficient_evidence')
-                    ),
-                    category TEXT,
-                    suggested_filename TEXT,
-                    destination TEXT,
-                    confidence REAL NOT NULL CHECK (
-                        confidence >= 0 AND confidence <= 1
-                    ),
-                    reasons TEXT NOT NULL,
-                    generated_at TEXT NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS approval_reviews (
-                    file_id TEXT PRIMARY KEY
-                        REFERENCES intake_files(id) ON DELETE CASCADE,
-                    recommendation_generated_at TEXT NOT NULL,
-                    status TEXT NOT NULL CHECK (
-                        status IN ('pending', 'approved', 'rejected', 'ignored')
-                    ),
-                    category TEXT NOT NULL,
-                    suggested_filename TEXT NOT NULL,
-                    destination TEXT NOT NULL,
-                    reviewed_at TEXT NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS action_events (
-                    event_id TEXT PRIMARY KEY,
-                    operation_id TEXT NOT NULL,
-                    file_id TEXT NOT NULL,
-                    kind TEXT NOT NULL CHECK (kind IN ('move', 'undo')),
-                    status TEXT NOT NULL CHECK (
-                        status IN ('started', 'succeeded', 'failed')
-                    ),
-                    source_path TEXT NOT NULL,
-                    destination_path TEXT NOT NULL,
-                    sha256 TEXT NOT NULL,
-                    related_operation_id TEXT,
-                    detail TEXT NOT NULL,
-                    created_at TEXT NOT NULL
-                );
-
-                CREATE INDEX IF NOT EXISTS ix_action_events_operation
-                ON action_events (operation_id);
-
-                CREATE INDEX IF NOT EXISTS ix_action_events_related
-                ON action_events (related_operation_id);
-
-                UPDATE schema_meta SET version = 6;
-                """
-            )
-            self._add_column_if_missing(connection, "understanding_results", "error_code TEXT")
-            self._add_column_if_missing(
-                connection,
-                "understanding_results",
-                "extraction_method TEXT NOT NULL DEFAULT 'none'",
-            )
-            self._add_column_if_missing(
-                connection,
-                "understanding_results",
-                "retryable INTEGER NOT NULL DEFAULT 0",
-            )
-            self._add_column_if_missing(connection, "understanding_results", "full_text TEXT")
-            self._add_column_if_missing(
-                connection,
-                "recommendation_results",
-                "source_status TEXT NOT NULL DEFAULT 'observed'",
-            )
-            self._add_column_if_missing(
-                connection,
-                "recommendation_results",
-                "source_understood_at TEXT",
-            )
+            migrate_database(connection)
 
     def scan(self) -> IntakeScanResult:
+        started = time.perf_counter()
+        with self._lock:
+            try:
+                result = self._scan_once()
+            except Exception:
+                self._record_scan("failed", started)
+                raise
+            self._record_scan("ok", started)
+            return result
+
+    def _scan_once(self) -> IntakeScanResult:
         scanned = added = updated = 0
         seen_paths: set[str] = set()
         intake_root = self.intake_path.resolve()
-        with self._lock, self._connection() as connection:
+        with self._connection() as connection:
             for path in sorted(self.intake_path.rglob("*")):
                 if not path.is_file():
                     continue
@@ -302,6 +219,78 @@ class IntakeService:
             duplicates=duplicates,
         )
 
+    def operational_status(self) -> OperationalStatus:
+        with self._lock:
+            now = datetime.now(UTC)
+            warnings: list[str] = []
+            try:
+                database_size = (
+                    self.database_path.stat().st_size
+                    if self.database_path.is_file()
+                    else 0
+                )
+            except OSError:
+                database_size = None
+                warnings.append("Nova could not read the local database size.")
+
+            try:
+                storage = shutil.disk_usage(self.intake_path)
+                storage_total = storage.total
+                storage_free = storage.free
+                storage_free_percent = (
+                    storage_free / storage_total * 100 if storage_total else 0.0
+                )
+                if storage_free < 5 * 1024**3 or storage_free_percent < 10:
+                    warnings.append(
+                        "Local storage headroom is low; plan additional space "
+                        "before importing many files or models."
+                    )
+            except OSError:
+                storage_total = None
+                storage_free = None
+                storage_free_percent = None
+                warnings.append("Nova could not read local storage capacity.")
+
+            if self._last_scan_status == "failed":
+                warnings.append(
+                    "The latest intake scan failed; Nova will retry automatically."
+                )
+            elif (
+                self._last_scan_duration_ms is not None
+                and self._last_scan_duration_ms > 30_000
+            ):
+                warnings.append(
+                    "The latest intake scan took longer than 30 seconds."
+                )
+
+            return OperationalStatus(
+                status="attention" if warnings else "healthy",
+                uptime_seconds=max(
+                    0,
+                    int((now - self._started_at).total_seconds()),
+                ),
+                database_size_bytes=database_size,
+                storage_free_bytes=storage_free,
+                storage_total_bytes=storage_total,
+                storage_free_percent=storage_free_percent,
+                last_scan_status=self._last_scan_status,
+                last_scan_completed_at=self._last_scan_completed_at,
+                last_scan_duration_ms=self._last_scan_duration_ms,
+                warnings=warnings,
+            )
+
+    def _record_scan(
+        self,
+        status: Literal["ok", "failed"],
+        started: float,
+    ) -> None:
+        self._last_scan_status = status
+        self._last_scan_completed_at = datetime.now(UTC)
+        self._last_scan_duration_ms = max(
+            0,
+            round((time.perf_counter() - started) * 1000),
+        )
+
     def summary(self) -> IntakeSummary:
         with self._lock, self._connection() as connection:
             row = connection.execute(
@@ -335,6 +324,51 @@ class IntakeService:
             exact_duplicates=row["exact_duplicates"],
         )
 
+    def learning_preferences(self) -> list[LearningPreferenceRecord]:
+        with self._lock, self._connection() as connection:
+            preferences = list_learning_preferences(connection)
+        return [
+            LearningPreferenceRecord(
+                document_type=preference.document_type,
+                base_category=preference.base_category,
+                candidate_destination=preference.candidate_destination,
+                supporting_examples=preference.supporting_examples,
+                active_examples=preference.active_examples,
+                stored_examples=preference.stored_examples,
+                preference_share=preference.share,
+                eligible=preference.eligible,
+                revision=preference.revision,
+            )
+            for preference in preferences
+        ]
+
+    def reset_learning(
+        self,
+        request: LearningResetRequest,
+    ) -> LearningResetResult:
+        document_type = request.document_type.strip()
+        base_category = request.base_category.strip()
+        if not document_type or not base_category:
+            raise ValueError("Document type and category cannot be empty.")
+        reset_at = datetime.now(UTC).isoformat()
+        with self._lock, self._connection() as connection:
+            reset = reset_learning_preference(
+                connection,
+                document_type=document_type,
+                base_category=base_category,
+                confirmation=request.confirmation,
+                reset_at=reset_at,
+            )
+            self._refresh_recommendations(connection)
+            connection.commit()
+        return LearningResetResult(
+            document_type=reset.document_type,
+            base_category=reset.base_category,
+            removed_examples=reset.removed_examples,
+            reset_at=reset.reset_at,
+            detail=reset.detail,
+        )
+
     def list_files(
         self,
         query: str | None = None,
@@ -346,27 +380,10 @@ class IntakeService:
     ) -> list[IntakeFile]:
         clauses: list[str] = []
         parameters: list[str] = []
-        if query and (term := query.strip()):
-            clauses.append(
-                """(
-                    files.original_name LIKE ? ESCAPE '\\'
-                    OR files.relative_path LIKE ? ESCAPE '\\'
-                    OR understanding.title LIKE ? ESCAPE '\\'
-                    OR understanding.full_text LIKE ? ESCAPE '\\'
-                    OR understanding.evidence LIKE ? ESCAPE '\\'
-                    OR understanding.error LIKE ? ESCAPE '\\'
-                    OR recommendation.category LIKE ? ESCAPE '\\'
-                    OR recommendation.suggested_filename LIKE ? ESCAPE '\\'
-                    OR recommendation.destination LIKE ? ESCAPE '\\'
-                    OR recommendation.reasons LIKE ? ESCAPE '\\'
-                    OR approval.status LIKE ? ESCAPE '\\'
-                    OR approval.category LIKE ? ESCAPE '\\'
-                    OR approval.suggested_filename LIKE ? ESCAPE '\\'
-                    OR approval.destination LIKE ? ESCAPE '\\'
-                )"""
-            )
-            pattern = f"%{self._escape_like(term)}%"
-            parameters.extend([pattern] * 14)
+        search = build_search_plan(query)
+        if search.clause is not None:
+            clauses.append(f"({search.clause})")
+            parameters.extend(search.parameters)
         if status is not None:
             clauses.append("files.status = ?")
             parameters.append(status.value)
@@ -394,6 +411,13 @@ class IntakeService:
             clauses.append("approval.status = ?")
             parameters.append(approval_status.value)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        order = (
+            f"ORDER BY {search.rank_expression} DESC, "
+            "observed_at DESC, relative_path"
+            if search.rank_expression is not None
+            else "ORDER BY observed_at DESC, relative_path"
+        )
+        parameters.extend(search.rank_parameters)
         with self._lock, self._connection() as connection:
             rows = connection.execute(
                 f"""
@@ -429,7 +453,7 @@ class IntakeService:
                   ON approval.file_id = files.id
                  AND approval.recommendation_generated_at = recommendation.generated_at
                 {where}
-                ORDER BY observed_at DESC, relative_path
+                {order}
                 """,
                 parameters,
             ).fetchall()
@@ -568,6 +592,28 @@ class IntakeService:
             ).fetchall()
         return [self._action_record_from_row(row) for row in rows]
 
+    def list_recovery_assessments(self) -> list[RecoveryAssessment]:
+        cutoff = datetime.now(UTC) - timedelta(seconds=self.action_stale_seconds)
+        with self._lock, self._connection() as connection:
+            rows = connection.execute(
+                """
+                WITH latest AS (
+                    SELECT operation_id, MAX(rowid) AS event_rowid
+                    FROM action_events
+                    GROUP BY operation_id
+                )
+                SELECT event.operation_id, event.kind, event.source_path,
+                       event.destination_path, event.sha256, event.created_at
+                FROM action_events AS event
+                JOIN latest ON latest.event_rowid = event.rowid
+                WHERE event.status = 'started'
+                  AND event.created_at <= ?
+                ORDER BY event.rowid DESC
+                """,
+                (cutoff.isoformat(),),
+            ).fetchall()
+        return [self._assess_incomplete_operation(row) for row in rows]
+
     def execute_approved(self, file_id: str) -> ActionRecord:
         with self._lock, self._connection() as connection:
             row = connection.execute(
@@ -577,6 +623,9 @@ class IntakeService:
                        recommendation.source_sha256,
                        recommendation.source_status,
                        recommendation.generated_at,
+                       recommendation.category AS base_category,
+                       recommendation.destination AS base_destination,
+                       understanding.document_type,
                        approval.status AS approval_status,
                        approval.category AS approval_category,
                        approval.suggested_filename AS approval_suggested_filename,
@@ -584,6 +633,8 @@ class IntakeService:
                 FROM intake_files AS files
                 JOIN recommendation_results AS recommendation
                   ON recommendation.file_id = files.id
+                JOIN understanding_results AS understanding
+                  ON understanding.file_id = files.id
                 LEFT JOIN approval_reviews AS approval
                   ON approval.file_id = files.id
                  AND approval.recommendation_generated_at =
@@ -696,6 +747,27 @@ class IntakeService:
                 created_at=completed_at,
             )
             connection.commit()
+            if (
+                row["document_type"] is not None
+                and row["base_category"] is not None
+                and row["base_destination"] is not None
+                and row["approval_category"] == row["base_category"]
+            ):
+                with suppress(sqlite3.Error):
+                    record_confirmed_move(
+                        connection,
+                        operation_id=operation_id,
+                        file_id=file_id,
+                        source_sha256=current_hash,
+                        document_type=row["document_type"],
+                        base_category=row["base_category"],
+                        base_destination=row["base_destination"],
+                        approved_category=row["approval_category"],
+                        approved_destination=row["approval_destination"],
+                        approved_filename=row["approval_suggested_filename"],
+                        created_at=completed_at,
+                    )
+                    connection.commit()
 
         with suppress(Exception):
             self.scan()
@@ -829,6 +901,13 @@ class IntakeService:
                 created_at=completed_at,
             )
             connection.commit()
+            with suppress(sqlite3.Error):
+                revert_confirmed_move(
+                    connection,
+                    operation_id=operation_id,
+                    reverted_at=completed_at,
+                )
+                connection.commit()
 
         with suppress(Exception):
             self.scan()
@@ -871,13 +950,25 @@ class IntakeService:
                     )
                 )
             )
-            if is_current and has_complete_result:
+            needs_ocr_refresh = self.ocr_engine is not None and (
+                (
+                    row["extension"] in IMAGE_EXTENSIONS
+                    and row["extraction_method"] == "none"
+                )
+                or (
+                    row["extension"] == ".pdf"
+                    and row["understanding_status"] == UnderstandingStatus.empty.value
+                    and row["extraction_method"] == "pypdf"
+                )
+            )
+            if is_current and has_complete_result and not needs_ocr_refresh:
                 continue
             result = understand_file(
                 self.intake_path / row["relative_path"],
                 row["extension"],
                 self.max_text_bytes,
                 self.max_extracted_text_bytes,
+                self.ocr_engine,
             )
             connection.execute(
                 """
@@ -929,12 +1020,15 @@ class IntakeService:
             SELECT files.id, files.original_name, files.extension, files.modified_at,
                    files.sha256, files.status,
                    understanding.status AS understanding_status,
-                   understanding.title, understanding.full_text,
+                   understanding.document_type, understanding.title,
+                   understanding.full_text,
                    understanding.understood_at AS understanding_understood_at,
                    recommendation.source_sha256,
                    recommendation.source_status,
                    recommendation.source_understood_at,
-                   recommendation.rules_version
+                   recommendation.rules_version,
+                   recommendation.category AS current_category,
+                   recommendation.learning_revision
             FROM intake_files AS files
             LEFT JOIN understanding_results AS understanding
               ON understanding.file_id = files.id
@@ -943,11 +1037,17 @@ class IntakeService:
             """
         ).fetchall()
         for row in rows:
+            stored_learning_revision = current_learning_revision(
+                connection,
+                document_type=row["document_type"],
+                base_category=row["current_category"],
+            )
             if (
                 row["source_sha256"] == row["sha256"]
                 and row["source_status"] == row["status"]
                 and row["source_understood_at"] == row["understanding_understood_at"]
                 and row["rules_version"] == RULES_VERSION
+                and row["learning_revision"] == stored_learning_revision
             ):
                 continue
             result = recommend_file(
@@ -959,19 +1059,55 @@ class IntakeService:
                 understanding_status=row["understanding_status"],
                 is_duplicate=row["status"] == IntakeStatus.duplicate.value,
             )
+            learning_revision = current_learning_revision(
+                connection,
+                document_type=row["document_type"],
+                base_category=result.category,
+            )
+            if (
+                result.outcome.value == "suggested"
+                and result.category is not None
+                and result.destination is not None
+                and row["document_type"] is not None
+            ):
+                preference = learned_destination(
+                    connection,
+                    document_type=row["document_type"],
+                    base_category=result.category,
+                )
+                if (
+                    preference is not None
+                    and preference.destination != result.destination
+                ):
+                    result = replace(
+                        result,
+                        destination=preference.destination,
+                        reasons=[
+                            *result.reasons,
+                            (
+                                "Learned the destination from "
+                                f"{preference.supporting_examples} of "
+                                f"{preference.total_examples} active, confirmed "
+                                "moves with the same document type and category."
+                            ),
+                            "The learned destination still requires explicit approval.",
+                        ],
+                    )
             connection.execute(
                 """
                 INSERT INTO recommendation_results (
                     file_id, source_sha256, source_status, source_understood_at,
-                    rules_version, outcome, category, suggested_filename,
+                    rules_version, learning_revision, outcome, category,
+                    suggested_filename,
                     destination, confidence, reasons, generated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(file_id) DO UPDATE SET
                     source_sha256 = excluded.source_sha256,
                     source_status = excluded.source_status,
                     source_understood_at = excluded.source_understood_at,
                     rules_version = excluded.rules_version,
+                    learning_revision = excluded.learning_revision,
                     outcome = excluded.outcome,
                     category = excluded.category,
                     suggested_filename = excluded.suggested_filename,
@@ -986,6 +1122,7 @@ class IntakeService:
                     row["status"],
                     row["understanding_understood_at"],
                     RULES_VERSION,
+                    learning_revision,
                     result.outcome.value,
                     result.category,
                     result.suggested_filename,
@@ -1102,10 +1239,6 @@ class IntakeService:
         return len(missing_ids)
 
     @staticmethod
-    def _escape_like(value: str) -> str:
-        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-    @staticmethod
     def _insert_action_event(
         connection: sqlite3.Connection,
         *,
@@ -1159,6 +1292,147 @@ class IntakeService:
             created_at=row["created_at"],
             can_undo=bool(row["can_undo"]),
         )
+
+    def _assess_incomplete_operation(
+        self,
+        row: sqlite3.Row,
+    ) -> RecoveryAssessment:
+        kind = ActionKind(row["kind"])
+        source_root, destination_root = (
+            (self.intake_path, self.library_path)
+            if kind == ActionKind.move
+            else (self.library_path, self.intake_path)
+        )
+        assessed_at = datetime.now(UTC)
+        source = self._diagnostic_candidate(source_root, row["source_path"])
+        destination = self._diagnostic_candidate(
+            destination_root,
+            row["destination_path"],
+        )
+        if source is None or destination is None:
+            return self._recovery_assessment(
+                row,
+                state=RecoveryState.unsafe_path,
+                source_sha256=None,
+                destination_sha256=None,
+                detail=(
+                    "A recorded path is outside Nova's managed folders. "
+                    "Nova made no recovery change."
+                ),
+                assessed_at=assessed_at,
+            )
+
+        try:
+            source_exists = source.exists()
+            destination_exists = destination.exists()
+            if (source_exists and not source.is_file()) or (
+                destination_exists and not destination.is_file()
+            ):
+                return self._recovery_assessment(
+                    row,
+                    state=RecoveryState.conflict,
+                    source_sha256=None,
+                    destination_sha256=None,
+                    detail=(
+                        "A recorded file path is occupied by a non-file item. "
+                        "Manual review is required."
+                    ),
+                    assessed_at=assessed_at,
+                )
+            source_hash = hash_file(source) if source_exists else None
+            destination_hash = hash_file(destination) if destination_exists else None
+        except OSError:
+            return self._recovery_assessment(
+                row,
+                state=RecoveryState.unreadable,
+                source_sha256=None,
+                destination_sha256=None,
+                detail=(
+                    "Nova could not inspect one or both recorded paths. "
+                    "Permissions or storage availability need manual review."
+                ),
+                assessed_at=assessed_at,
+            )
+
+        expected_hash = row["sha256"]
+        if source_hash == expected_hash and destination_hash is None:
+            state = RecoveryState.ready_to_retry
+            detail = (
+                "The verified source remains and the destination is empty. "
+                "No completed filesystem change was detected; review before retrying."
+            )
+        elif source_hash is None and destination_hash == expected_hash:
+            state = RecoveryState.completed_without_audit
+            detail = (
+                "The verified file is at the destination, but the success event "
+                "is missing. Treat the action as completed and review the audit."
+            )
+        elif source_hash == expected_hash and destination_hash == expected_hash:
+            state = RecoveryState.copy_incomplete
+            detail = (
+                "Verified copies exist at both paths. The copy finished before "
+                "source removal; manual review is required."
+            )
+        elif source_hash is None and destination_hash is None:
+            state = RecoveryState.missing
+            detail = (
+                "Neither recorded file exists. Nova cannot infer the outcome; "
+                "manual recovery from storage or backup may be required."
+            )
+        else:
+            state = RecoveryState.conflict
+            detail = (
+                "The current file state does not match the recorded SHA-256. "
+                "Nova will not retry or alter either path."
+            )
+        return self._recovery_assessment(
+            row,
+            state=state,
+            source_sha256=source_hash,
+            destination_sha256=destination_hash,
+            detail=detail,
+            assessed_at=assessed_at,
+        )
+
+    @staticmethod
+    def _recovery_assessment(
+        row: sqlite3.Row,
+        *,
+        state: RecoveryState,
+        source_sha256: str | None,
+        destination_sha256: str | None,
+        detail: str,
+        assessed_at: datetime,
+    ) -> RecoveryAssessment:
+        return RecoveryAssessment(
+            operation_id=row["operation_id"],
+            kind=row["kind"],
+            state=state,
+            source_path=row["source_path"],
+            destination_path=row["destination_path"],
+            expected_sha256=row["sha256"],
+            source_sha256=source_sha256,
+            destination_sha256=destination_sha256,
+            detail=detail,
+            started_at=row["created_at"],
+            assessed_at=assessed_at,
+        )
+
+    @staticmethod
+    def _diagnostic_candidate(root: Path, relative_path: str) -> Path | None:
+        relative = PurePosixPath(relative_path)
+        if relative.is_absolute() or any(
+            part in {"", ".", ".."} for part in relative.parts
+        ):
+            return None
+        try:
+            resolved_root = root.resolve(strict=True)
+            candidate = (root / Path(*relative.parts)).resolve(strict=False)
+        except OSError:
+            return None
+        if not candidate.is_relative_to(resolved_root):
+            return None
+        return candidate
 
     @staticmethod
     def _resolve_existing_file(
@@ -1279,19 +1553,6 @@ class IntakeService:
             normalized_filename,
             destination_path.as_posix(),
         )
-
-    @staticmethod
-    def _add_column_if_missing(
-        connection: sqlite3.Connection,
-        table: str,
-        definition: str,
-    ) -> None:
-        column = definition.split()[0]
-        columns = {
-            row["name"] for row in connection.execute(f"PRAGMA table_info({table})")
-        }
-        if column not in columns:
-            connection.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
 
     @contextmanager
     def _connection(self) -> Iterator[sqlite3.Connection]:

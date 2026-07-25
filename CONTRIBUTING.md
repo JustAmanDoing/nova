@@ -15,6 +15,16 @@
 4. Document behavior changes.
 5. Open a pull request with the rationale and validation results.
 
+On Windows, validate the friendly launchers with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-NovaScripts.ps1
+```
+
+GitHub Actions repeats the complete backend and frontend suites, validates the
+Windows controls on Windows, and builds the Docker Compose services. Do not
+merge a change while any required check is failing.
+
 ## Commit style
 
 Use concise, imperative commit messages, for example:
@@ -22,4 +32,3 @@ Use concise, imperative commit messages, for example:
 ```text
 Add comparison workspace
 ```
-

@@ -1,0 +1,164 @@
+name: Continuous verification
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        run: python -m pip install -e ".[dev]"
+      - name: Lint
+        run: python -m ruff check app tests
+      - name: Type check
+        run: python -m mypy app
+      - name: Test
+        run: python -m pytest
+
+  frontend:
+    name: Frontend quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          package-manager-cache: false
+      - name: Activate pinned pnpm
+        run: corepack enable && corepack prepare pnpm@9.15.5 --activate
+      - name: Install frontend
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm run lint
+      - name: Type check
+        run: pnpm run typecheck
+      - name: Test
+        run: pnpm run test
+      - name: Build
+        run: pnpm run build
+
+  windows-controls:
+    name: Windows controls
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Validate launchers and controller
+        shell: powershell
+        run: .\scripts\Test-NovaScripts.ps1
+
+  containers:
+    name: Production runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Build production containers
+        run: docker compose build
+      - name: Create isolated intake fixture
+        run: |
+          mkdir -p data/intake
+          printf '%s\n' \
+            'Nova continuous verification document' \
+            'Project: CI runtime smoke test' \
+            > data/intake/ci-smoke.txt
+      - name: Start production stack
+        run: docker compose up --detach --wait --wait-timeout 120
+      - name: Verify API, dashboard, and intake
+        run: |
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8000/api/v1/health \
+            | grep --fixed-strings --quiet '"status":"ok"'
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8000/api/v1/system/status \
+            | grep --fixed-strings --quiet '"last_scan_status":"ok"'
+          curl --fail --silent --show-error \
+            http://127.0.0.1:5173/ \
+            | grep --fixed-strings --quiet '<title>Nova</title>'
+          response_headers="$(
+            curl --fail --silent --show-error --head \
+              http://127.0.0.1:5173/
+          )"
+          printf '%s\n' "$response_headers" \
+            | grep --ignore-case --quiet '^content-security-policy:'
+          printf '%s\n' "$response_headers" \
+            | grep --ignore-case --quiet '^x-content-type-options: nosniff'
+          printf '%s\n' "$response_headers" \
+            | grep --ignore-case --quiet '^x-frame-options: deny'
+          if curl --fail --silent --output /dev/null \
+            --header 'Host: unexpected.example' \
+            http://127.0.0.1:5173/
+          then
+            echo 'Dashboard accepted an unexpected Host header.'
+            exit 1
+          fi
+          if curl --fail --silent --output /dev/null \
+            --header 'Host: unexpected.example' \
+            http://127.0.0.1:8000/api/v1/health
+          then
+            echo 'API accepted an unexpected Host header.'
+            exit 1
+          fi
+          indexed=false
+          for attempt in $(seq 1 15); do
+            if curl --fail --silent --show-error \
+              http://127.0.0.1:8000/api/v1/intake/files \
+              | grep --fixed-strings --quiet '"original_name":"ci-smoke.txt"'
+            then
+              indexed=true
+              break
+            fi
+            sleep 2
+          done
+          test "$indexed" = true
+      - name: Show container diagnostics after failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color
+      - name: Stop isolated stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans

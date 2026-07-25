@@ -13,7 +13,7 @@ def test_health_endpoint() -> None:
     body = response.json()
     assert body["status"] == "ok"
     assert body["service"] == "Nova API"
-    assert body["version"] == "0.5.0"
+    assert body["version"] == "0.19.0"
     assert body["environment"] == "development"
     assert body["timestamp"]
 
@@ -23,6 +23,27 @@ def test_openapi_document_is_available() -> None:
 
     assert response.status_code == 200
     assert response.json()["info"]["title"] == "Nova API"
+
+
+def test_unexpected_host_is_rejected() -> None:
+    rejected = client.get(
+        "/api/v1/health",
+        headers={"Host": "unexpected.example"},
+    )
+    allowed = client.get(
+        "/api/v1/health",
+        headers={"Host": "localhost"},
+    )
+
+    assert rejected.status_code == 400
+    assert rejected.text == "Invalid host header"
+    assert allowed.status_code == 200
+
+
+def test_allowed_hosts_accept_comma_separated_configuration() -> None:
+    settings = Settings(allowed_hosts="localhost, 127.0.0.1")
+
+    assert settings.allowed_hosts == ["localhost", "127.0.0.1"]
 
 
 def test_health_uses_the_application_configuration(tmp_path) -> None:

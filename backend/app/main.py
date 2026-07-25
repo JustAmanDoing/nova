@@ -1,14 +1,18 @@
 import asyncio
 import logging
+from _thread import RLock
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.router import api_router
 from app.core.config import Settings, get_settings
+from app.services.backup import BackupService
 from app.services.intake import IntakeService
+from app.services.ocr import LocalOcrService
 
 logger = logging.getLogger(__name__)
 
@@ -18,16 +22,43 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        operation_lock = RLock()
+        ocr_engine = (
+            LocalOcrService(
+                max_pages=resolved_settings.ocr_max_pages,
+                timeout_seconds=resolved_settings.ocr_timeout_seconds,
+                max_render_dimension=resolved_settings.ocr_max_render_dimension,
+                max_rendered_bytes=resolved_settings.ocr_max_rendered_bytes,
+            )
+            if resolved_settings.ocr_enabled
+            else None
+        )
         intake = IntakeService(
             intake_path=resolved_settings.intake_path,
             library_path=resolved_settings.library_path,
             database_path=resolved_settings.database_path,
             max_text_bytes=resolved_settings.max_text_bytes,
             max_extracted_text_bytes=resolved_settings.max_extracted_text_bytes,
+            action_stale_seconds=resolved_settings.action_stale_seconds,
+            operation_lock=operation_lock,
+            ocr_engine=ocr_engine,
         )
         await asyncio.to_thread(intake.initialize)
         await asyncio.to_thread(intake.scan)
+
+        def reconcile_restored_database() -> None:
+            intake.initialize()
+            intake.scan()
+
+        backups = BackupService(
+            database_path=resolved_settings.database_path,
+            backup_path=resolved_settings.backup_path,
+            operation_lock=operation_lock,
+            post_restore=reconcile_restored_database,
+        )
+        await asyncio.to_thread(backups.initialize)
         application.state.intake = intake
+        application.state.backups = backups
         watcher = asyncio.create_task(
             watch_intake(intake, resolved_settings.intake_scan_seconds)
         )
@@ -53,6 +84,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
+    )
+    application.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=resolved_settings.allowed_hosts,
     )
     application.state.settings = resolved_settings
     application.include_router(api_router, prefix=resolved_settings.api_prefix)

@@ -10,8 +10,17 @@ from pypdf import PdfReader
 from pypdf.errors import FileNotDecryptedError, PdfReadError
 
 from app.schemas.intake import UnderstandingStatus
+from app.services.ocr import OcrEngine, OcrError
 
-SUPPORTED_EXTENSIONS = {".txt", ".md", ".markdown", ".pdf", ".docx"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
+SUPPORTED_EXTENSIONS = {
+    ".txt",
+    ".md",
+    ".markdown",
+    ".pdf",
+    ".docx",
+    *IMAGE_EXTENSIONS,
+}
 PREVIEW_CHARACTERS = 320
 WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 logger = logging.getLogger(__name__)
@@ -43,6 +52,7 @@ def understand_file(
     extension: str,
     max_text_bytes: int,
     max_extracted_text_bytes: int = 1_000_000,
+    ocr_engine: OcrEngine | None = None,
 ) -> UnderstandingResult:
     understood_at = datetime.now(UTC).isoformat()
     normalized_extension = extension.lower()
@@ -58,6 +68,26 @@ def understand_file(
             evidence=f"{normalized_extension or 'Unknown'} files are not supported yet.",
             error=None,
             error_code=None,
+            extraction_method="none",
+            retryable=False,
+            full_text=None,
+            understood_at=understood_at,
+        )
+
+    if normalized_extension in IMAGE_EXTENSIONS and ocr_engine is None:
+        return UnderstandingResult(
+            status=UnderstandingStatus.unsupported,
+            document_type="image",
+            title=None,
+            text_preview=None,
+            word_count=None,
+            character_count=None,
+            evidence=(
+                "Image OCR is disabled; this format is not supported in the "
+                "current Nova environment."
+            ),
+            error=None,
+            error_code="ocr_disabled",
             extraction_method="none",
             retryable=False,
             full_text=None,
@@ -85,6 +115,7 @@ def understand_file(
             path,
             normalized_extension,
             max_extracted_text_bytes,
+            ocr_engine,
         )
     except ExtractedContentTooLarge:
         return UnderstandingResult(
@@ -118,6 +149,25 @@ def understand_file(
             error_code="invalid_utf8",
             extraction_method=_extraction_method(normalized_extension),
             retryable=False,
+            full_text=None,
+            understood_at=understood_at,
+        )
+    except OcrError as error:
+        return UnderstandingResult(
+            status=UnderstandingStatus.failed,
+            document_type=_document_type(normalized_extension),
+            title=None,
+            text_preview=None,
+            word_count=None,
+            character_count=None,
+            evidence="Nova attempted bounded local OCR without uploading the file.",
+            error=error.public_message,
+            error_code=error.code,
+            extraction_method=_extraction_method(
+                normalized_extension,
+                uses_ocr=True,
+            ),
+            retryable=error.retryable,
             full_text=None,
             understood_at=understood_at,
         )
@@ -214,6 +264,8 @@ def _document_type(extension: str) -> str:
         return "pdf"
     if extension == ".docx":
         return "word_document"
+    if extension in IMAGE_EXTENSIONS:
+        return "image"
     return "plain_text"
 
 
@@ -221,6 +273,7 @@ def _extract_text(
     path: Path,
     extension: str,
     max_extracted_text_bytes: int,
+    ocr_engine: OcrEngine | None,
 ) -> tuple[str, str]:
     if extension == ".pdf":
         reader = PdfReader(path)
@@ -236,9 +289,25 @@ def _extract_text(
             pages.append(page_text)
         text = "\n\n".join(pages)
         _ensure_extracted_size(text, max_extracted_text_bytes)
+        if not text.strip() and ocr_engine is not None:
+            return (
+                ocr_engine.extract_pdf(
+                    path,
+                    len(reader.pages),
+                    max_extracted_text_bytes,
+                ),
+                "pypdf+tesseract",
+            )
         return text, "pypdf"
     if extension == ".docx":
         return _extract_docx(path, max_extracted_text_bytes), "docx_xml"
+    if extension in IMAGE_EXTENSIONS:
+        if ocr_engine is None:
+            return "", "none"
+        return (
+            ocr_engine.extract_image(path, max_extracted_text_bytes),
+            "tesseract",
+        )
     text = path.read_text(encoding="utf-8-sig")
     _ensure_extracted_size(text, max_extracted_text_bytes)
     return text, "utf-8"
@@ -269,11 +338,13 @@ def _ensure_extracted_size(text: str, max_extracted_text_bytes: int) -> None:
         raise ExtractedContentTooLarge
 
 
-def _extraction_method(extension: str) -> str:
+def _extraction_method(extension: str, *, uses_ocr: bool = False) -> str:
     if extension == ".pdf":
-        return "pypdf"
+        return "pypdf+tesseract" if uses_ocr else "pypdf"
     if extension == ".docx":
         return "docx_xml"
+    if extension in IMAGE_EXTENSIONS:
+        return "tesseract"
     return "utf-8"
 
 

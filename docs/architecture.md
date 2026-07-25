@@ -10,9 +10,10 @@ Observe → Understand → Recommend → Approve → Execute → Audit → Learn
 ```
 
 **Observe**, **Understand**, deterministic **Recommend**, explicit **Approve**,
-guarded **Execute**, and append-only **Audit** are active today. Nova changes a
-file only through a separate confirmed action that passes current-approval,
-path, conflict, and fingerprint checks.
+guarded **Execute**, append-only **Audit**, and conservative destination
+**Learn** are active today. Nova changes a file only through a separate
+confirmed action that passes current-approval, path, conflict, and fingerprint
+checks.
 
 ## Current vertical slice
 
@@ -33,13 +34,33 @@ Local data/intake folder
 
 ## Boundaries
 
+### Local API action guard
+
+- Keeps read-only local API requests available without an account.
+- Requires `X-Nova-Intent: local-user-action` on every request that changes
+  Nova's state.
+- Forces browser callers through the configured CORS origin check before a
+  mutating request can be sent.
+- Is a browser request-integrity boundary, not remote access or user
+  authentication.
+- Rejects unexpected Host values before a request reaches the API routes.
+
+### Local dashboard HTTP boundary
+
+- Serves the production dashboard only for `localhost` and `127.0.0.1`.
+- Closes requests carrying an unexpected Host value.
+- Uses a restrictive Content Security Policy and disables framing,
+  content-type guessing, referrer leakage, and unused device permissions.
+- Retains local HTTP because Docker publishes only to the loopback interface.
+
 ### Frontend
 
 - Displays service health, intake totals, file metadata, duplicate status, and
   normalized understanding results.
 - Reads authoritative, unfiltered totals from a dedicated summary endpoint so
   dashboard metrics do not change when search filters are active.
-- Provides server-backed text search and metadata/status filters.
+- Provides server-backed, relevance-ranked text search and metadata/status
+  filters.
 - Displays category, filename, destination, confidence, and explanation for
   deterministic recommendations.
 - Provides approve, edit, reject, ignore, and review-again controls.
@@ -47,6 +68,11 @@ Local data/intake folder
 - Requires confirmation for a move and presents guarded undo only when eligible.
 - Displays the latest state of each append-only audited operation.
 - Displays structured extraction diagnostics without exposing stack traces.
+- Displays stored learning groups, active/reverted example totals, and the
+  currently eligible destination candidate.
+- Displays read-only database size, intake-drive headroom, latest scan timing,
+  and conservative operational warnings without receiving host paths.
+- Requires exact typed confirmation before forgetting a learning group.
 - Can request an immediate scan.
 - Does not receive file contents.
 - Owns interaction state, not authoritative inventory data.
@@ -62,6 +88,8 @@ Local data/intake folder
 - Reconciles inventory records and duplicate ownership when source files are
   removed from the intake folder.
 - Stores normalized metadata and understanding results in SQLite.
+- Records the latest scan outcome and duration in process memory and reports
+  safe storage and database measurements through a read-only status endpoint.
 - Applies versioned deterministic invoice and project filing rules after local
   understanding completes.
 - Persists either an explainable suggestion or an explicit
@@ -78,6 +106,17 @@ Local data/intake folder
 - Indexes supported extracted text locally for case-insensitive search across
   filenames, paths, titles, content, evidence, extraction errors, and
   recommendation fields.
+- Requires every unquoted search term to match somewhere in the record, treats
+  quoted text as a phrase, and ranks exact filename, filename, and title matches
+  above metadata, content, and evidence matches.
+- Records a destination-learning example only after a successful approved move
+  whose category was not corrected.
+- Invalidates that example when the corresponding move is successfully undone.
+- Applies a learned destination only to future suggestions after the configured
+  minimum support and preference-share thresholds are met.
+- Lists learning summaries without exposing source document text or filenames.
+- Removes a learning group's derived examples transactionally only after exact
+  confirmation, advances its revision, and records a reset event.
 - Exposes versioned endpoints under `/api/v1`.
 - Runs without an AI model or cloud service.
 
@@ -89,6 +128,19 @@ Local data/intake folder
   approved files; scanning and recommendation paths do not write to files.
 - SQLite lives in the `nova_data` Docker volume.
 - Runtime data is excluded from Git.
+
+### Windows operations
+
+- Friendly root-level launchers delegate to one PowerShell controller.
+- Start builds in detached mode, waits for the API and dashboard, and opens the
+  loopback-only URL.
+- Stop uses ordinary Compose shutdown and never removes the named database
+  volume.
+- Status reports Compose state and the versioned health endpoint.
+- Update refuses a dirty worktree and uses Git fast-forward-only before
+  rebuilding, so it cannot silently replace local edits.
+- Missing Docker, inactive Docker Desktop, missing Git, build failures, and
+  startup timeouts produce direct recovery guidance.
 
 ## Intake record
 
@@ -133,6 +185,20 @@ Recommendations are recalculated after content, understanding-result, or
 duplicate-status changes and when the rules version changes. Exact duplicates
 are never recommended for independent filing. These records are proposals only:
 they cannot invoke execution.
+
+A destination preference may modify a future proposal only when at least three
+active successful moves share the same document type and unchanged base
+category, and one destination accounts for at least 75% of those examples.
+Ties and weaker evidence produce no preference. Each learning change advances a
+per-group revision so cached recommendations are refreshed without disturbing
+unrelated document groups. The explanation identifies the supporting example
+count and reminds the user that approval remains required.
+
+Users can inspect every stored learning group, including inactive examples
+retained after undo. Forgetting a group deletes its derived examples, refreshes
+affected recommendations, and records a local reset event with the group and
+removed count. It does not alter source files, filed documents, approvals, or
+the append-only file-action history.
 
 Each suggested recommendation may also have one current approval record:
 

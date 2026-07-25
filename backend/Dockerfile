@@ -5,6 +5,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+        poppler-utils \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN addgroup --system nova && adduser --system --ingroup nova nova
 RUN mkdir -p /data /intake && chown -R nova:nova /data /intake
 
@@ -16,4 +23,3 @@ USER nova
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-

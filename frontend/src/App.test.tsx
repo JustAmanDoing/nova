@@ -74,6 +74,21 @@ function approvedInvoice() {
   };
 }
 
+function healthyOperations() {
+  return {
+    status: "healthy",
+    uptime_seconds: 45,
+    database_size_bytes: 1_048_576,
+    storage_free_bytes: 20 * 1_073_741_824,
+    storage_total_bytes: 100 * 1_073_741_824,
+    storage_free_percent: 20,
+    last_scan_status: "ok",
+    last_scan_completed_at: "2026-07-25T00:00:00Z",
+    last_scan_duration_ms: 125,
+    warnings: [],
+  };
+}
+
 describe("App", () => {
   it("shows observed files and duplicate totals", async () => {
     vi.stubGlobal(
@@ -89,6 +104,12 @@ describe("App", () => {
             timestamp: "2026-07-24T00:00:00Z",
           });
         }
+        if (url.endsWith("/system/status")) {
+          return response(healthyOperations());
+        }
+        if (url.endsWith("/preferences")) return response([]);
+        if (url.endsWith("/backups")) return response([]);
+        if (url.endsWith("/actions/recovery")) return response([]);
         if (url.endsWith("/actions")) return response([]);
         if (url.endsWith("/summary")) {
           return response({
@@ -141,6 +162,10 @@ describe("App", () => {
 
     expect(await screen.findByText("Nova online")).toBeInTheDocument();
     expect(await screen.findByText("invoice.txt")).toBeInTheDocument();
+    expect(screen.getByText("Intake MVP · 0.1.0")).toBeInTheDocument();
+    expect(screen.getByText("Healthy")).toBeInTheDocument();
+    expect(screen.getByText("20.0 GB free (20.0%)")).toBeInTheDocument();
+    expect(screen.getByText("Latest scan 125 ms")).toBeInTheDocument();
     expect(screen.getAllByText("Duplicate")).toHaveLength(2);
     expect(screen.getAllByText("Understood")).toHaveLength(3);
     expect(screen.getByText("Office supply invoice")).toBeInTheDocument();
@@ -168,6 +193,9 @@ describe("App", () => {
             timestamp: "2026-07-24T00:00:00Z",
           });
         }
+        if (url.endsWith("/preferences")) return response([]);
+        if (url.endsWith("/backups")) return response([]);
+        if (url.endsWith("/actions/recovery")) return response([]);
         if (url.endsWith("/actions")) return response([]);
         if (url.endsWith("/summary")) {
           return response({
@@ -214,7 +242,8 @@ describe("App", () => {
   });
 
   it("requests a scan when the user selects Scan now", async () => {
-    const fetchMock = vi.fn((input: string | URL | Request) => {
+    const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      void init;
       const url = input.toString();
       if (url.endsWith("/health")) {
         return response({
@@ -234,7 +263,9 @@ describe("App", () => {
           duplicates: 0,
         });
       }
-      if (url.endsWith("/actions")) return response([]);
+        if (url.endsWith("/backups")) return response([]);
+        if (url.endsWith("/actions/recovery")) return response([]);
+        if (url.endsWith("/actions")) return response([]);
       if (url.endsWith("/summary")) {
         return response({
           files_observed: 0,
@@ -251,9 +282,19 @@ describe("App", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Scan now" }));
 
     await vi.waitFor(() => {
-      expect(
-        fetchMock.mock.calls.some(([input]) => input.toString().endsWith("/scan")),
-      ).toBe(true);
+      const scanCall = fetchMock.mock.calls.find(([input]) =>
+        input.toString().endsWith("/scan"),
+      );
+      expect(scanCall).toBeDefined();
+      expect(new Headers(scanCall?.[1]?.headers).get("X-Nova-Intent")).toBe(
+        "local-user-action",
+      );
+      const healthCall = fetchMock.mock.calls.find(([input]) =>
+        input.toString().endsWith("/health"),
+      );
+      expect(new Headers(healthCall?.[1]?.headers).has("X-Nova-Intent")).toBe(
+        false,
+      );
     });
   });
 
@@ -269,7 +310,9 @@ describe("App", () => {
           timestamp: "2026-07-24T00:00:00Z",
         });
       }
-      if (url.endsWith("/actions")) return response([]);
+        if (url.endsWith("/backups")) return response([]);
+        if (url.endsWith("/actions/recovery")) return response([]);
+        if (url.endsWith("/actions")) return response([]);
       if (url.endsWith("/summary")) {
         return response({
           files_observed: 0,
@@ -282,6 +325,9 @@ describe("App", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
+    expect(
+      screen.getByText(/Filename and title matches rank above content/i),
+    ).toBeInTheDocument();
     await act(async () => {
       await new Promise((resolve) => window.setTimeout(resolve, 250));
     });
@@ -329,6 +375,9 @@ describe("App", () => {
             timestamp: "2026-07-24T00:00:00Z",
           });
         }
+        if (input.toString().endsWith("/preferences")) return response([]);
+        if (input.toString().endsWith("/backups")) return response([]);
+        if (input.toString().endsWith("/actions/recovery")) return response([]);
         if (input.toString().endsWith("/actions")) return response([]);
         if (input.toString().endsWith("/summary")) {
           return response({
@@ -387,6 +436,9 @@ describe("App", () => {
             timestamp: "2026-07-25T00:00:00Z",
           });
         }
+        if (input.toString().endsWith("/preferences")) return response([]);
+        if (input.toString().endsWith("/backups")) return response([]);
+        if (input.toString().endsWith("/actions/recovery")) return response([]);
         if (input.toString().endsWith("/actions")) return response([]);
         if (input.toString().endsWith("/summary")) {
           return response({
@@ -473,6 +525,9 @@ describe("App", () => {
           timestamp: "2026-07-25T00:00:00Z",
         });
       }
+      if (url.endsWith("/preferences")) return response([]);
+      if (url.endsWith("/backups")) return response([]);
+      if (url.endsWith("/actions/recovery")) return response([]);
       if (url.endsWith("/actions")) return response([]);
       if (url.endsWith("/summary")) {
         return response({
@@ -534,6 +589,9 @@ describe("App", () => {
           timestamp: "2026-07-25T00:00:00Z",
         });
       }
+      if (url.endsWith("/preferences")) return response([]);
+      if (url.endsWith("/backups")) return response([]);
+      if (url.endsWith("/actions/recovery")) return response([]);
       if (url.endsWith("/actions")) return response([]);
       if (url.endsWith("/summary")) {
         return response({
@@ -614,6 +672,8 @@ describe("App", () => {
           can_undo: false,
         });
       }
+      if (url.endsWith("/backups")) return response([]);
+      if (url.endsWith("/actions/recovery")) return response([]);
       if (url.endsWith("/actions")) return response([moveAction]);
       if (url.endsWith("/summary")) {
         return response({
@@ -640,6 +700,281 @@ describe("App", () => {
             init?.method === "POST",
         ),
       ).toBe(true);
+    });
+  });
+
+  it("shows and forgets a learned destination only after typed confirmation", async () => {
+    let reset = false;
+    const preference = {
+      document_type: "plain_text",
+      base_category: "Financial",
+      candidate_destination: "Preferred",
+      supporting_examples: 3,
+      active_examples: 3,
+      stored_examples: 3,
+      preference_share: 1,
+      eligible: true,
+      revision: 3,
+    };
+    const fetchMock = vi.fn(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input.toString();
+        if (url.endsWith("/health")) {
+          return response({
+            status: "ok",
+            service: "Nova API",
+            version: "0.13.0",
+            environment: "test",
+            timestamp: "2026-07-25T00:00:00Z",
+          });
+        }
+        if (url.endsWith("/preferences/reset") && init?.method === "POST") {
+          reset = true;
+          return response({
+            document_type: preference.document_type,
+            base_category: preference.base_category,
+            removed_examples: 3,
+            reset_at: "2026-07-25T00:10:00Z",
+            detail: "Stored examples removed.",
+          });
+        }
+        if (url.endsWith("/preferences")) {
+          return response(reset ? [] : [preference]);
+        }
+        if (url.endsWith("/backups")) return response([]);
+        if (url.endsWith("/actions/recovery")) return response([]);
+        if (url.endsWith("/actions")) return response([]);
+        if (url.endsWith("/summary")) {
+          return response({
+            files_observed: 0,
+            understood: 0,
+            ready_for_review: 0,
+            exact_duplicates: 0,
+          });
+        }
+        return response([]);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(window, "prompt").mockReturnValue(
+      "FORGET plain_text / Financial",
+    );
+    render(<App />);
+
+    expect(await screen.findByText("Active suggestion")).toBeInTheDocument();
+    expect(screen.getByText("Preferred")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Forget examples" }),
+    );
+
+    expect(
+      await screen.findByText("Forgot 3 stored learning examples."),
+    ).toBeInTheDocument();
+    const resetCall = fetchMock.mock.calls.find(([input]) =>
+      input.toString().endsWith("/preferences/reset"),
+    );
+    expect(resetCall?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(resetCall?.[1]?.body))).toEqual({
+      document_type: "plain_text",
+      base_category: "Financial",
+      confirmation: "FORGET plain_text / Financial",
+    });
+  });
+
+  it("surfaces incomplete operation diagnostics without recovery controls", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = input.toString();
+        if (url.endsWith("/health")) {
+          return response({
+            status: "ok",
+            service: "Nova API",
+            version: "0.6.0",
+            environment: "test",
+            timestamp: "2026-07-25T00:00:00Z",
+          });
+        }
+        if (url.endsWith("/backups")) return response([]);
+        if (url.endsWith("/actions/recovery")) {
+          return response([
+            {
+              operation_id: "interrupted-operation",
+              kind: "move",
+              state: "ready_to_retry",
+              source_path: "invoice.txt",
+              destination_path: "Financial/Invoices/invoice.txt",
+              expected_sha256: "abcdef1234567890",
+              source_sha256: "abcdef1234567890",
+              destination_sha256: null,
+              detail:
+                "The verified source remains and the destination is empty.",
+              started_at: "2026-07-25T00:00:00Z",
+              assessed_at: "2026-07-25T00:10:00Z",
+            },
+          ]);
+        }
+        if (url.endsWith("/actions")) return response([]);
+        if (url.endsWith("/summary")) {
+          return response({
+            files_observed: 0,
+            understood: 0,
+            ready_for_review: 0,
+            exact_duplicates: 0,
+          });
+        }
+        return response([]);
+      }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByText("Source safe")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The verified source remains and the destination is empty.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Nova has not changed these files/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /recover/i })).toBeNull();
+  });
+
+  it("creates and exposes a verified local database backup", async () => {
+    let created = false;
+    const backup = {
+      filename: "nova-20260725T090000.000000Z.db",
+      size_bytes: 8192,
+      sha256: "a".repeat(64),
+      created_at: "2026-07-25T09:00:00Z",
+      verified: true,
+    };
+    const fetchMock = vi.fn(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input.toString();
+        if (url.endsWith("/health")) {
+          return response({
+            status: "ok",
+            service: "Nova API",
+            version: "0.7.0",
+            environment: "test",
+            timestamp: "2026-07-25T09:00:00Z",
+          });
+        }
+        if (url.endsWith("/backups")) {
+          if (init?.method === "POST") {
+            created = true;
+            return response(backup);
+          }
+          return response(created ? [backup] : []);
+        }
+        if (url.endsWith("/actions/recovery")) return response([]);
+        if (url.endsWith("/actions")) return response([]);
+        if (url.endsWith("/summary")) {
+          return response({
+            files_observed: 0,
+            understood: 0,
+            ready_for_review: 0,
+            exact_duplicates: 0,
+          });
+        }
+        return response([]);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Create backup" }));
+
+    expect(
+      await screen.findByText("nova-20260725T090000.000000Z.db"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/SHA-256 verified/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download" })).toHaveAttribute(
+      "href",
+      "http://localhost:8000/api/v1/backups/nova-20260725T090000.000000Z.db",
+    );
+    expect(
+      fetchMock.mock.calls.some(
+        ([input, init]) =>
+          input.toString().endsWith("/backups") && init?.method === "POST",
+      ),
+    ).toBe(true);
+  });
+
+  it("restores a verified backup only after exact typed confirmation", async () => {
+    const backup = {
+      filename: "nova-20260725T100000.000000Z.db",
+      size_bytes: 8192,
+      sha256: "a".repeat(64),
+      created_at: "2026-07-25T10:00:00Z",
+      verified: true,
+    };
+    const safetyBackup = {
+      ...backup,
+      filename: "nova-20260725T100500.000000Z.db",
+      created_at: "2026-07-25T10:05:00Z",
+    };
+    const fetchMock = vi.fn(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input.toString();
+        if (url.endsWith("/health")) {
+          return response({
+            status: "ok",
+            service: "Nova API",
+            version: "0.8.0",
+            environment: "test",
+            timestamp: "2026-07-25T10:00:00Z",
+          });
+        }
+        if (
+          url.endsWith(`/${backup.filename}/restore`) &&
+          init?.method === "POST"
+        ) {
+          return response({
+            restored_from: backup.filename,
+            restored_from_sha256: backup.sha256,
+            safety_backup: safetyBackup,
+            restored_at: "2026-07-25T10:05:00Z",
+            detail: "Restored verified backup.",
+          });
+        }
+        if (url.endsWith("/backups")) return response([backup, safetyBackup]);
+        if (url.endsWith("/actions/recovery")) return response([]);
+        if (url.endsWith("/actions")) return response([]);
+        if (url.endsWith("/summary")) {
+          return response({
+            files_observed: 0,
+            understood: 0,
+            ready_for_review: 0,
+            exact_duplicates: 0,
+          });
+        }
+        return response([]);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(window, "prompt").mockReturnValue(`RESTORE ${backup.filename}`);
+    render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: `Restore ${backup.filename}`,
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        `Restored ${backup.filename}. Safety snapshot: ${safetyBackup.filename}.`,
+      ),
+    ).toBeInTheDocument();
+    const restoreCall = fetchMock.mock.calls.find(([input]) =>
+      input.toString().endsWith(`/${backup.filename}/restore`),
+    );
+    expect(restoreCall?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(restoreCall?.[1]?.body))).toEqual({
+      confirmation: `RESTORE ${backup.filename}`,
     });
   });
 });

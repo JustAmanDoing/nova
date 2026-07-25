@@ -1,8 +1,9 @@
 import asyncio
 from typing import cast
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from app.api.dependencies import require_local_action
 from app.schemas.intake import (
     ActionRecord,
     ApprovalRecord,
@@ -12,7 +13,13 @@ from app.schemas.intake import (
     IntakeScanResult,
     IntakeStatus,
     IntakeSummary,
+    RecoveryAssessment,
     UnderstandingStatus,
+)
+from app.schemas.learning import (
+    LearningPreferenceRecord,
+    LearningResetRequest,
+    LearningResetResult,
 )
 from app.services.intake import ActionConflict, IntakeService
 
@@ -45,7 +52,11 @@ async def list_intake_files(
     )
 
 
-@router.post("/scan", response_model=IntakeScanResult)
+@router.post(
+    "/scan",
+    response_model=IntakeScanResult,
+    dependencies=[Depends(require_local_action)],
+)
 async def scan_intake(request: Request) -> IntakeScanResult:
     service = get_intake_service(request)
     return await asyncio.to_thread(service.scan)
@@ -57,9 +68,36 @@ async def get_intake_summary(request: Request) -> IntakeSummary:
     return await asyncio.to_thread(service.summary)
 
 
+@router.get("/preferences", response_model=list[LearningPreferenceRecord])
+async def get_learning_preferences(
+    request: Request,
+) -> list[LearningPreferenceRecord]:
+    service = get_intake_service(request)
+    return await asyncio.to_thread(service.learning_preferences)
+
+
+@router.post(
+    "/preferences/reset",
+    response_model=LearningResetResult,
+    dependencies=[Depends(require_local_action)],
+)
+async def reset_learning_preference(
+    reset: LearningResetRequest,
+    request: Request,
+) -> LearningResetResult:
+    service = get_intake_service(request)
+    try:
+        return await asyncio.to_thread(service.reset_learning, reset)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
 @router.put(
     "/files/{file_id}/approval",
     response_model=ApprovalRecord,
+    dependencies=[Depends(require_local_action)],
 )
 async def review_recommendation(
     file_id: str,
@@ -84,7 +122,19 @@ async def list_actions(
     return await asyncio.to_thread(service.list_actions, limit)
 
 
-@router.post("/files/{file_id}/execute", response_model=ActionRecord)
+@router.get("/actions/recovery", response_model=list[RecoveryAssessment])
+async def list_recovery_assessments(
+    request: Request,
+) -> list[RecoveryAssessment]:
+    service = get_intake_service(request)
+    return await asyncio.to_thread(service.list_recovery_assessments)
+
+
+@router.post(
+    "/files/{file_id}/execute",
+    response_model=ActionRecord,
+    dependencies=[Depends(require_local_action)],
+)
 async def execute_approved(file_id: str, request: Request) -> ActionRecord:
     service = get_intake_service(request)
     try:
@@ -97,7 +147,11 @@ async def execute_approved(file_id: str, request: Request) -> ActionRecord:
         raise HTTPException(status_code=409, detail=str(error)) from error
 
 
-@router.post("/actions/{operation_id}/undo", response_model=ActionRecord)
+@router.post(
+    "/actions/{operation_id}/undo",
+    response_model=ActionRecord,
+    dependencies=[Depends(require_local_action)],
+)
 async def undo_action(operation_id: str, request: Request) -> ActionRecord:
     service = get_intake_service(request)
     try:

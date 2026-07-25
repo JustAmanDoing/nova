@@ -12,6 +12,13 @@
 - Resilient background scanning and per-file parser isolation
 - Stale inventory reconciliation and stable unfiltered dashboard totals
 - Independent source-file and expanded-text safety limits
+- Ordered, recorded, transactional SQLite schema migrations
+- Double-click Windows start, stop, status, and guarded update controls
+- Automatic backend, frontend, Windows-control, and production-container checks
+- Browser-integrity guard on every state-changing local API request
+- Read-only storage, database-size, and intake-scan health measurements
+- Isolated production startup, dashboard, API, and intake smoke verification
+- Local Host validation and restrictive dashboard browser security headers
 
 ## Milestone 1 — Observe — complete
 
@@ -22,7 +29,7 @@
 - Local SQLite inventory
 - Intake dashboard
 
-## Milestone 2 — Understand — in progress
+## Milestone 2 — Understand — complete
 
 - Extract text from TXT and Markdown — complete
 - Store normalized title, preview, counts, status, and evidence — complete
@@ -30,7 +37,7 @@
 - Enforce a configurable local extraction size limit — complete
 - Add PDF and DOCX extraction — complete
 - Keep understanding and recommendation processing local and read-only — complete
-- Add local OCR for scanned PDFs and images
+- Add local OCR for scanned PDFs and images — complete
 
 ## Milestone 3 — Recommend — complete
 
@@ -54,10 +61,28 @@
 - Append-only operation event audit — complete
 - Reversible execution and guarded undo — complete
 
+## Operational hardening — recovery diagnostics — complete
+
+- Detect operations left in `started` state beyond a safety delay — complete
+- Reinspect source and destination paths without changing them — complete
+- Compare current files with the recorded SHA-256 — complete
+- Distinguish safe retry, likely completion, duplicate copy, conflict, missing,
+  unsafe-path, and unreadable outcomes — complete
+- Surface clear manual-review guidance in the dashboard — complete
+- Keep all recovery assessment read-only — complete
+- Create consistent, integrity-checked database backups — complete
+- Store backups outside the Docker database volume — complete
+- Bind the local deployment to the loopback interface — complete
+- Add an explicit verified restore workflow — complete
+
 ## Milestone 5 — Learn and advanced search
 
-- Learn patterns only from confirmed approvals
-- Semantic and ranked search
+- Learn preferred destinations only from successful confirmed moves — complete
+- Invalidate a learning example when its move is undone — complete
+- Keep learned suggestions behind explicit approval and execution — complete
+- Inspect and explicitly forget stored learning groups — complete
+- Deterministic multi-term and phrase-aware ranked search — complete
+- Semantic search
 - User-controlled automation rules
 - Measured thresholds before any automatic filing
 
@@ -66,4 +91,4 @@
 - Optional local or cloud AI provider adapters
 - Project and personal memory with source references
 - Plugin and agent interfaces
-- Backup, recovery, and operational hardening
+- Broader operational monitoring and disaster recovery

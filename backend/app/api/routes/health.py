@@ -1,10 +1,12 @@
+import asyncio
 from datetime import UTC, datetime
 from typing import cast
 
 from fastapi import APIRouter, Request
 
 from app.core.config import Settings
-from app.schemas.health import HealthResponse
+from app.schemas.health import HealthResponse, OperationalStatus
+from app.services.intake import IntakeService
 
 router = APIRouter(tags=["system"])
 
@@ -19,3 +21,9 @@ def health(request: Request) -> HealthResponse:
         environment=settings.environment,
         timestamp=datetime.now(UTC),
     )
+
+
+@router.get("/system/status", response_model=OperationalStatus)
+async def operational_status(request: Request) -> OperationalStatus:
+    intake = cast(IntakeService, request.app.state.intake)
+    return await asyncio.to_thread(intake.operational_status)

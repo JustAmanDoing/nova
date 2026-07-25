@@ -1,12 +1,14 @@
 import asyncio
 import sqlite3
 import zipfile
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import LOCAL_ACTION_HEADER, LOCAL_ACTION_VALUE
 from app.core.config import Settings
 from app.main import create_app, watch_intake
 from app.schemas.intake import (
@@ -16,7 +18,9 @@ from app.schemas.intake import (
     UnderstandingStatus,
 )
 from app.services import understanding as understanding_service
-from app.services.intake import ActionConflict, IntakeService
+from app.services.intake import ActionConflict, IntakeService, hash_file
+
+LOCAL_ACTION_HEADERS = {LOCAL_ACTION_HEADER: LOCAL_ACTION_VALUE}
 
 
 def make_service(tmp_path: Path) -> IntakeService:
@@ -392,6 +396,105 @@ def test_failed_move_is_journaled_without_removing_the_source(
     assert statuses == [("started",), ("failed",)]
 
 
+def test_stale_started_operations_are_diagnosed_without_changing_files(
+    tmp_path: Path,
+) -> None:
+    service = IntakeService(
+        intake_path=tmp_path / "intake",
+        library_path=tmp_path / "library",
+        database_path=tmp_path / "nova.db",
+        action_stale_seconds=60,
+    )
+    service.initialize()
+    content = b"verified recovery content"
+    retry_source = service.intake_path / "retry.txt"
+    retry_source.write_bytes(content)
+    expected_hash = hash_file(retry_source)
+    completed_destination = service.library_path / "completed.txt"
+    completed_destination.write_bytes(content)
+    copied_source = service.intake_path / "copied.txt"
+    copied_destination = service.library_path / "copied.txt"
+    copied_source.write_bytes(content)
+    copied_destination.write_bytes(content)
+    conflict_source = service.intake_path / "conflict.txt"
+    conflict_source.write_bytes(b"changed content")
+    started_at = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
+    operations = [
+        ("retry", "move", "retry.txt", "retry.txt"),
+        ("completed", "move", "gone.txt", "completed.txt"),
+        ("copied", "move", "copied.txt", "copied.txt"),
+        ("conflict", "move", "conflict.txt", "conflict-target.txt"),
+        ("missing", "move", "missing-source.txt", "missing-target.txt"),
+        ("unsafe", "move", "../escape.txt", "target.txt"),
+    ]
+    with sqlite3.connect(service.database_path) as connection:
+        connection.executemany(
+            """
+            INSERT INTO action_events (
+                event_id, operation_id, file_id, kind, status, source_path,
+                destination_path, sha256, related_operation_id, detail,
+                created_at
+            )
+            VALUES (?, ?, 'file-id', ?, 'started', ?, ?, ?, NULL, 'started', ?)
+            """,
+            (
+                (
+                    f"event-{operation_id}",
+                    operation_id,
+                    kind,
+                    source_path,
+                    destination_path,
+                    expected_hash,
+                    started_at,
+                )
+                for operation_id, kind, source_path, destination_path in operations
+            ),
+        )
+
+    assessments = {
+        assessment.operation_id: assessment
+        for assessment in service.list_recovery_assessments()
+    }
+
+    assert assessments["retry"].state == "ready_to_retry"
+    assert assessments["retry"].source_sha256 == expected_hash
+    assert assessments["completed"].state == "completed_without_audit"
+    assert assessments["completed"].destination_sha256 == expected_hash
+    assert assessments["copied"].state == "copy_incomplete"
+    assert assessments["conflict"].state == "conflict"
+    assert assessments["missing"].state == "missing"
+    assert assessments["unsafe"].state == "unsafe_path"
+    assert retry_source.read_bytes() == content
+    assert completed_destination.read_bytes() == content
+    assert copied_source.read_bytes() == content
+    assert copied_destination.read_bytes() == content
+
+
+def test_fresh_or_terminal_operations_do_not_need_recovery(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    now = datetime.now(UTC).isoformat()
+    old = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
+    with sqlite3.connect(service.database_path) as connection:
+        connection.executemany(
+            """
+            INSERT INTO action_events (
+                event_id, operation_id, file_id, kind, status, source_path,
+                destination_path, sha256, related_operation_id, detail,
+                created_at
+            )
+            VALUES (?, ?, 'file-id', 'move', ?, 'source.txt', 'target.txt',
+                    'abc', NULL, 'event', ?)
+            """,
+            [
+                ("fresh-event", "fresh-operation", "started", now),
+                ("old-start", "terminal-operation", "started", old),
+                ("old-failed", "terminal-operation", "failed", now),
+            ],
+        )
+
+    assert service.list_recovery_assessments() == []
+
+
 def test_review_rejects_missing_recommendations_and_unsafe_edits(
     tmp_path: Path,
 ) -> None:
@@ -600,6 +703,55 @@ def test_search_covers_filename_full_text_evidence_and_filters(tmp_path: Path) -
     ] == ["project.md"]
 
 
+def test_search_ranks_stronger_matches_and_supports_terms_and_phrases(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    (service.intake_path / "budget.txt").write_text(
+        "Annual forecast for the Brisbane workshop",
+        encoding="utf-8",
+    )
+    (service.intake_path / "notes.txt").write_text(
+        "The old budget.txt archive is retained for reference",
+        encoding="utf-8",
+    )
+    (service.intake_path / "supplier.txt").write_text(
+        "Approved supplier Alpha Office for equipment",
+        encoding="utf-8",
+    )
+    (service.intake_path / "separate.txt").write_text(
+        "Alpha project notes for another office",
+        encoding="utf-8",
+    )
+    (service.intake_path / "literal.txt").write_text(
+        "Migration status: 100%_complete",
+        encoding="utf-8",
+    )
+    (service.intake_path / "wildcard.txt").write_text(
+        "Migration status: 100Xcomplete",
+        encoding="utf-8",
+    )
+    service.scan()
+
+    ranked = service.list_files(query="budget.txt")
+    assert [item.original_name for item in ranked] == [
+        "budget.txt",
+        "notes.txt",
+    ]
+    assert [
+        item.original_name
+        for item in service.list_files(query="budget forecast")
+    ] == ["budget.txt"]
+    assert [
+        item.original_name
+        for item in service.list_files(query='"Alpha Office"')
+    ] == ["supplier.txt"]
+    assert [
+        item.original_name
+        for item in service.list_files(query="100%_complete")
+    ] == ["literal.txt"]
+
+
 def test_failed_extraction_has_actionable_diagnostics(tmp_path: Path) -> None:
     service = make_service(tmp_path)
     (service.intake_path / "invalid.txt").write_bytes(b"\xff\xfe\xfa")
@@ -741,7 +893,7 @@ def test_intake_api_scans_and_lists_files(tmp_path: Path) -> None:
     )
     application = create_app(settings)
 
-    with TestClient(application) as client:
+    with TestClient(application, headers=LOCAL_ACTION_HEADERS) as client:
         (intake_path / "note.md").write_text(
             "# Nova project\n\nMilestone 3 roadmap",
             encoding="utf-8",
@@ -768,6 +920,52 @@ def test_intake_api_scans_and_lists_files(tmp_path: Path) -> None:
     }
 
 
+def test_intake_api_exposes_read_only_recovery_assessments(tmp_path: Path) -> None:
+    intake_path = tmp_path / "intake"
+    library_path = tmp_path / "library"
+    database_path = tmp_path / "nova.db"
+    application = create_app(
+        Settings(
+            intake_path=intake_path,
+            library_path=library_path,
+            database_path=database_path,
+            intake_scan_seconds=60,
+            action_stale_seconds=1,
+        )
+    )
+
+    with TestClient(application, headers=LOCAL_ACTION_HEADERS) as client:
+        source = intake_path / "retry.txt"
+        source.write_text("safe source", encoding="utf-8")
+        expected_hash = hash_file(source)
+        with sqlite3.connect(database_path) as connection:
+            connection.execute(
+                """
+                INSERT INTO action_events (
+                    event_id, operation_id, file_id, kind, status, source_path,
+                    destination_path, sha256, related_operation_id, detail,
+                    created_at
+                )
+                VALUES (
+                    'event-id', 'operation-id', 'file-id', 'move', 'started',
+                    'retry.txt', 'Filed/retry.txt', ?, NULL, 'started', ?
+                )
+                """,
+                (
+                    expected_hash,
+                    (datetime.now(UTC) - timedelta(minutes=10)).isoformat(),
+                ),
+            )
+
+        response = client.get("/api/v1/intake/actions/recovery")
+
+    assert response.status_code == 200
+    assert response.json()[0]["operation_id"] == "operation-id"
+    assert response.json()[0]["state"] == "ready_to_retry"
+    assert response.json()[0]["source_sha256"] == expected_hash
+    assert source.read_text(encoding="utf-8") == "safe source"
+
+
 def test_intake_api_searches_extracted_text_and_status(tmp_path: Path) -> None:
     intake_path = tmp_path / "intake"
     application = create_app(
@@ -778,7 +976,7 @@ def test_intake_api_searches_extracted_text_and_status(tmp_path: Path) -> None:
         )
     )
 
-    with TestClient(application) as client:
+    with TestClient(application, headers=LOCAL_ACTION_HEADERS) as client:
         (intake_path / "notes.txt").write_text(
             "Internal reference ZX-418",
             encoding="utf-8",
@@ -803,7 +1001,7 @@ def test_intake_api_records_approval_without_executing_it(tmp_path: Path) -> Non
         )
     )
 
-    with TestClient(application) as client:
+    with TestClient(application, headers=LOCAL_ACTION_HEADERS) as client:
         source = intake_path / "invoice.txt"
         content = write_invoice(source)
         client.post("/api/v1/intake/scan")
@@ -834,7 +1032,7 @@ def test_intake_api_executes_and_undoes_an_approved_move(tmp_path: Path) -> None
         )
     )
 
-    with TestClient(application) as client:
+    with TestClient(application, headers=LOCAL_ACTION_HEADERS) as client:
         source = intake_path / "invoice.txt"
         content = write_invoice(source)
         client.post("/api/v1/intake/scan")

@@ -1,4 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const LOCAL_ACTION_HEADER = "X-Nova-Intent";
+const LOCAL_ACTION_VALUE = "local-user-action";
 
 export interface HealthResponse {
   status: "ok";
@@ -6,6 +8,19 @@ export interface HealthResponse {
   version: string;
   environment: string;
   timestamp: string;
+}
+
+export interface OperationalStatus {
+  status: "healthy" | "attention";
+  uptime_seconds: number;
+  database_size_bytes: number | null;
+  storage_free_bytes: number | null;
+  storage_total_bytes: number | null;
+  storage_free_percent: number | null;
+  last_scan_status: "ok" | "failed" | "never";
+  last_scan_completed_at: string | null;
+  last_scan_duration_ms: number | null;
+  warnings: string[];
 }
 
 export interface IntakeFile {
@@ -81,6 +96,65 @@ export interface ActionRecord {
   can_undo: boolean;
 }
 
+export type RecoveryState =
+  | "ready_to_retry"
+  | "completed_without_audit"
+  | "copy_incomplete"
+  | "conflict"
+  | "missing"
+  | "unsafe_path"
+  | "unreadable";
+
+export interface RecoveryAssessment {
+  operation_id: string;
+  kind: "move" | "undo";
+  state: RecoveryState;
+  source_path: string;
+  destination_path: string;
+  expected_sha256: string;
+  source_sha256: string | null;
+  destination_sha256: string | null;
+  detail: string;
+  started_at: string;
+  assessed_at: string;
+}
+
+export interface BackupRecord {
+  filename: string;
+  size_bytes: number;
+  sha256: string | null;
+  created_at: string;
+  verified: boolean;
+}
+
+export interface RestoreResult {
+  restored_from: string;
+  restored_from_sha256: string;
+  safety_backup: BackupRecord;
+  restored_at: string;
+  detail: string;
+}
+
+export interface LearningPreferenceRecord {
+  document_type: string;
+  base_category: string;
+  candidate_destination: string | null;
+  supporting_examples: number;
+  active_examples: number;
+  stored_examples: number;
+  preference_share: number;
+  eligible: boolean;
+  revision: number;
+}
+
+export interface LearningResetResult {
+  document_type: string;
+  base_category: string;
+  removed_examples: number;
+  reset_at: string;
+  detail: string;
+}
+
 export interface IntakeFilters {
   query?: string;
   status?: IntakeFile["status"] | "";
@@ -107,6 +181,64 @@ export interface IntakeSummary {
 
 export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
   return request<HealthResponse>("/api/v1/health", { signal });
+}
+
+export async function getOperationalStatus(
+  signal?: AbortSignal,
+): Promise<OperationalStatus> {
+  return request<OperationalStatus>("/api/v1/system/status", { signal });
+}
+
+export async function getBackups(
+  signal?: AbortSignal,
+): Promise<BackupRecord[]> {
+  return request<BackupRecord[]>("/api/v1/backups", { signal });
+}
+
+export async function createDatabaseBackup(): Promise<BackupRecord> {
+  return request<BackupRecord>("/api/v1/backups", { method: "POST" });
+}
+
+export async function restoreDatabaseBackup(
+  filename: string,
+  confirmation: string,
+): Promise<RestoreResult> {
+  return request<RestoreResult>(
+    `/api/v1/backups/${encodeURIComponent(filename)}/restore`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmation }),
+    },
+  );
+}
+
+export async function getLearningPreferences(
+  signal?: AbortSignal,
+): Promise<LearningPreferenceRecord[]> {
+  return request<LearningPreferenceRecord[]>("/api/v1/intake/preferences", {
+    signal,
+  });
+}
+
+export async function resetLearningPreference(
+  documentType: string,
+  baseCategory: string,
+  confirmation: string,
+): Promise<LearningResetResult> {
+  return request<LearningResetResult>("/api/v1/intake/preferences/reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      document_type: documentType,
+      base_category: baseCategory,
+      confirmation,
+    }),
+  });
+}
+
+export function backupDownloadUrl(filename: string): string {
+  return `${API_URL}/api/v1/backups/${encodeURIComponent(filename)}`;
 }
 
 export async function getIntakeFiles(
@@ -155,6 +287,14 @@ export async function getActionHistory(
   return request<ActionRecord[]>("/api/v1/intake/actions", { signal });
 }
 
+export async function getRecoveryAssessments(
+  signal?: AbortSignal,
+): Promise<RecoveryAssessment[]> {
+  return request<RecoveryAssessment[]>("/api/v1/intake/actions/recovery", {
+    signal,
+  });
+}
+
 export async function executeApproved(fileId: string): Promise<ActionRecord> {
   return request<ActionRecord>(`/api/v1/intake/files/${fileId}/execute`, {
     method: "POST",
@@ -168,7 +308,12 @@ export async function undoAction(operationId: string): Promise<ActionRecord> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, init);
+  const method = init?.method?.toUpperCase() ?? "GET";
+  const headers = new Headers(init?.headers);
+  if (method !== "GET" && method !== "HEAD") {
+    headers.set(LOCAL_ACTION_HEADER, LOCAL_ACTION_VALUE);
+  }
+  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
   if (!response.ok) {
     let detail = "";
     try {

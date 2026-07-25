@@ -6,18 +6,26 @@ services:
       NOVA_ENV: ${NOVA_ENV:-development}
       NOVA_API_HOST: 0.0.0.0
       NOVA_API_PORT: 8000
-      NOVA_CORS_ORIGINS: ${NOVA_CORS_ORIGINS:-http://localhost:5173}
+      NOVA_CORS_ORIGINS: ${NOVA_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      NOVA_ALLOWED_HOSTS: ${NOVA_ALLOWED_HOSTS:-localhost,127.0.0.1}
       NOVA_INTAKE_PATH: /files/intake
       NOVA_LIBRARY_PATH: /files/library
       NOVA_DATABASE_PATH: /data/nova.db
+      NOVA_BACKUP_PATH: /files/backups
       NOVA_INTAKE_SCAN_SECONDS: ${NOVA_INTAKE_SCAN_SECONDS:-3}
+      NOVA_ACTION_STALE_SECONDS: ${NOVA_ACTION_STALE_SECONDS:-300}
       NOVA_MAX_TEXT_BYTES: ${NOVA_MAX_TEXT_BYTES:-1000000}
       NOVA_MAX_EXTRACTED_TEXT_BYTES: ${NOVA_MAX_EXTRACTED_TEXT_BYTES:-1000000}
+      NOVA_OCR_ENABLED: ${NOVA_OCR_ENABLED:-true}
+      NOVA_OCR_MAX_PAGES: ${NOVA_OCR_MAX_PAGES:-10}
+      NOVA_OCR_TIMEOUT_SECONDS: ${NOVA_OCR_TIMEOUT_SECONDS:-60}
+      NOVA_OCR_MAX_RENDER_DIMENSION: ${NOVA_OCR_MAX_RENDER_DIMENSION:-2400}
+      NOVA_OCR_MAX_RENDERED_BYTES: ${NOVA_OCR_MAX_RENDERED_BYTES:-50000000}
     volumes:
       - ./data:/files
       - nova_data:/data
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     healthcheck:
       test:
         - CMD
@@ -35,7 +43,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     ports:
-      - "5173:80"
+      - "127.0.0.1:5173:80"
     depends_on:
       backend:
         condition: service_healthy

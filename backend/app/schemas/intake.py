@@ -47,6 +47,16 @@ class ActionStatus(StrEnum):
     failed = "failed"
 
 
+class RecoveryState(StrEnum):
+    ready_to_retry = "ready_to_retry"
+    completed_without_audit = "completed_without_audit"
+    copy_incomplete = "copy_incomplete"
+    conflict = "conflict"
+    missing = "missing"
+    unsafe_path = "unsafe_path"
+    unreadable = "unreadable"
+
+
 class RecommendationRecord(BaseModel):
     outcome: RecommendationOutcome
     category: str | None
@@ -85,6 +95,20 @@ class ActionRecord(BaseModel):
     detail: str
     created_at: datetime
     can_undo: bool
+
+
+class RecoveryAssessment(BaseModel):
+    operation_id: str
+    kind: ActionKind
+    state: RecoveryState
+    source_path: str
+    destination_path: str
+    expected_sha256: str
+    source_sha256: str | None
+    destination_sha256: str | None
+    detail: str
+    started_at: datetime
+    assessed_at: datetime
 
 
 class UnderstandingRecord(BaseModel):
