@@ -171,6 +171,18 @@ def test_database_from_newer_nova_version_is_refused(tmp_path: Path) -> None:
         service.initialize()
 
 
+def test_unreadable_database_is_refused_before_migration(tmp_path: Path) -> None:
+    database_path = tmp_path / "nova.db"
+    original_bytes = b"this is not a SQLite database"
+    database_path.write_bytes(original_bytes)
+    service = IntakeService(tmp_path / "intake", database_path)
+
+    with pytest.raises(DatabaseMigrationError, match="restore a verified backup"):
+        service.initialize()
+
+    assert database_path.read_bytes() == original_bytes
+
+
 def test_failed_migration_rolls_back_only_its_partial_schema() -> None:
     connection = sqlite3.connect(":memory:")
 

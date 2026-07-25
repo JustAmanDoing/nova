@@ -38,7 +38,7 @@ from app.schemas.learning import (
     LearningResetRequest,
     LearningResetResult,
 )
-from app.services.database import migrate_database
+from app.services.database import DatabaseMigrationError, migrate_database
 from app.services.learning import (
     current_learning_revision,
     learned_destination,
@@ -1559,8 +1559,14 @@ class IntakeService:
         connection = sqlite3.connect(self.database_path)
         try:
             connection.row_factory = sqlite3.Row
-            connection.execute("PRAGMA foreign_keys = ON")
-            connection.execute("PRAGMA journal_mode = WAL")
+            try:
+                connection.execute("PRAGMA foreign_keys = ON")
+                connection.execute("PRAGMA journal_mode = WAL")
+            except sqlite3.DatabaseError as error:
+                raise DatabaseMigrationError(
+                    "Nova's database could not be read safely. Stop Nova and "
+                    "restore a verified backup before continuing."
+                ) from error
             yield connection
             connection.commit()
         finally:

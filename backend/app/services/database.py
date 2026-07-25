@@ -250,6 +250,7 @@ def migrate_database(
     migrations: Sequence[Migration] = MIGRATIONS,
 ) -> None:
     _validate_migrations(migrations)
+    _verify_database_integrity(connection)
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -348,6 +349,23 @@ def _validate_migrations(migrations: Sequence[Migration]) -> None:
     if versions != list(range(1, len(migrations) + 1)):
         raise DatabaseMigrationError(
             "Nova's database migrations are not a contiguous ordered sequence."
+        )
+
+
+def _verify_database_integrity(connection: sqlite3.Connection) -> None:
+    try:
+        results = [
+            str(row[0]) for row in connection.execute("PRAGMA quick_check")
+        ]
+    except sqlite3.DatabaseError as error:
+        raise DatabaseMigrationError(
+            "Nova's database could not be read safely. Stop Nova and restore "
+            "a verified backup before continuing."
+        ) from error
+    if results != ["ok"]:
+        raise DatabaseMigrationError(
+            "Nova's database failed its integrity check. Stop Nova and restore "
+            "a verified backup before continuing."
         )
 
 

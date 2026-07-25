@@ -26,6 +26,7 @@
 - Current supported Starlette `httpx2` test transport without deprecation warnings
 - Cross-platform Python dependency constraints used by CI and production builds
 - Automatic bounded container diagnostics after a failed Windows startup
+- Read-only active-database integrity verification before migrations
 
 ## Milestone 1 — Observe — complete
 

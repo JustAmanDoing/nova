@@ -40,6 +40,7 @@ The current MVP can:
   automatically preserving the current database as a safety snapshot
 - Apply ordered, recorded SQLite schema migrations without discarding existing
   intake, recommendation, review, or audit data
+- Refuse an unreadable or corrupt active database before applying migrations
 - Learn a preferred destination only after at least three consistent,
   successful approved moves, while preserving explicit approval and execution
 - Show every stored preference group and forget its derived examples only
@@ -325,5 +326,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 23 current ASGI test transport](docs/milestone-23-current-test-transport.md)
 - [Milestone 24 reproducible Python dependencies](docs/milestone-24-python-dependency-constraints.md)
 - [Milestone 25 automatic startup diagnostics](docs/milestone-25-startup-diagnostics.md)
+- [Milestone 26 active database integrity guard](docs/milestone-26-database-integrity-guard.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
