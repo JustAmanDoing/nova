@@ -309,7 +309,10 @@ nova/
 ## Safety
 
 Never commit secrets, API keys, private documents, personal data, or a populated
-`.env` file. Everything under `data/` is ignored by Git.
+`.env` file. Everything under `data/` is ignored by Git. Common credential,
+private-key, and local-database filename patterns are also ignored and checked
+against the tracked file list during verification. See [Security policy](SECURITY.md)
+for private vulnerability reporting and the local security boundary.
 
 ## Documentation
 
@@ -348,5 +351,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 33 runtime version guard](docs/milestone-33-runtime-version-guard.md)
 - [Milestone 34 pre-update backup](docs/milestone-34-pre-update-backup.md)
 - [Milestone 35 resilient Windows readiness](docs/milestone-35-windows-readiness.md)
+- [Milestone 36 public repository hygiene](docs/milestone-36-repository-hygiene.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

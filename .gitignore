@@ -2,6 +2,13 @@
 .env
 .env.*
 !.env.example
+.secrets/
+secrets/
+credentials*.json
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Python
 __pycache__/
@@ -33,5 +40,15 @@ Thumbs.db
 # Runtime data
 data/
 *.db
+*.sqlite
 *.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
 logs/

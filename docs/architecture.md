@@ -239,6 +239,8 @@ filesystem so interrupted work remains visible rather than being guessed away.
 - Non-root backend container
 - Explicit CORS origins
 - No secrets or runtime files in source control
+- Tracked-file policy checks for common credential, private-key, database, and
+  runtime-data filename patterns
 - No automatic move, overwrite, permanent deletion, upload, or sharing
 - Approval records intent only; execution requires a separate confirmed request
 - Source and destination containment checks
