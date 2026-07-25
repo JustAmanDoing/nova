@@ -51,6 +51,7 @@
   full download or restore verification
 - Prompt retry after a failed automatic backup-history refresh
 - Core dashboard updates remain available when optional backup history fails
+- Independent dashboard resource refresh with scoped partial-failure diagnostics
 
 ## Milestone 1 — Observe — complete
 

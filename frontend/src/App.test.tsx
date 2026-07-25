@@ -112,7 +112,7 @@ describe("App", () => {
         return response({
           status: "ok",
           service: "Nova API",
-          version: "0.47.0",
+          version: "0.48.0",
           environment: "test",
           timestamp: "2026-07-25T09:00:00Z",
         });
@@ -301,6 +301,85 @@ describe("App", () => {
         name: "",
       }),
     ).toHaveTextContent("Backup history: Backup inventory unavailable");
+  });
+
+  it("updates intake files when operational status fails", async () => {
+    const file = recommendedInvoice();
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/health")) {
+        return response({
+          status: "ok",
+          service: "Nova API",
+          version: "0.48.0",
+          environment: "test",
+          timestamp: "2026-07-25T09:00:00Z",
+        });
+      }
+      if (url.endsWith("/system/status")) {
+        return Promise.reject(new Error("Operations unavailable"));
+      }
+      if (url.endsWith("/preferences")) return response([]);
+      if (url.endsWith("/backups")) return response([]);
+      if (url.endsWith("/actions/recovery")) return response([]);
+      if (url.endsWith("/actions")) return response([]);
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 1,
+          understood: 1,
+          ready_for_review: 1,
+          exact_duplicates: 0,
+        });
+      }
+      return response([file]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByText(file.original_name)).toBeInTheDocument();
+    expect(screen.getByText("1 result")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Operational status: Operations unavailable",
+    );
+  });
+
+  it("shows the truthful empty state during an optional panel failure", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/health")) {
+        return response({
+          status: "ok",
+          service: "Nova API",
+          version: "0.48.0",
+          environment: "test",
+          timestamp: "2026-07-25T09:00:00Z",
+        });
+      }
+      if (url.endsWith("/preferences")) {
+        return Promise.reject(new Error("Learning history unavailable"));
+      }
+      if (url.endsWith("/backups")) return response([]);
+      if (url.endsWith("/actions/recovery")) return response([]);
+      if (url.endsWith("/actions")) return response([]);
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 0,
+          understood: 0,
+          ready_for_review: 0,
+          exact_duplicates: 0,
+        });
+      }
+      return response([]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByText("Your intake is empty")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Learning preferences: Learning history unavailable",
+    );
   });
 
   it("shows observed files and duplicate totals", async () => {

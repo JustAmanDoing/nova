@@ -47,6 +47,24 @@ type ServiceState =
 
 const BACKUP_REFRESH_INTERVAL_MS = 60_000;
 
+function isAbortedResult(result: PromiseSettledResult<unknown>): boolean {
+  return (
+    result.status === "rejected" &&
+    result.reason instanceof DOMException &&
+    result.reason.name === "AbortError"
+  );
+}
+
+function resultError(
+  label: string,
+  result: PromiseSettledResult<unknown>,
+): string | null {
+  if (result.status === "fulfilled") return null;
+  const message =
+    result.reason instanceof Error ? result.reason.message : "Request failed";
+  return `${label}: ${message}`;
+}
+
 function App() {
   const [service, setService] = useState<ServiceState>({ kind: "loading" });
   const [files, setFiles] = useState<IntakeFile[]>([]);
@@ -57,6 +75,7 @@ function App() {
     exact_duplicates: 0,
   });
   const [intakeError, setIntakeError] = useState<string | null>(null);
+  const [filesUnavailable, setFilesUnavailable] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [reviewingFileId, setReviewingFileId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
@@ -85,50 +104,48 @@ function App() {
       const backupRequest: Promise<BackupRecord[] | null> = includeBackups
         ? getBackups(signal)
         : Promise.resolve(null);
-      const coreRequest = Promise.all([
+      const [
+        filesResult,
+        summaryResult,
+        actionsResult,
+        recoveriesResult,
+        backupResult,
+        preferencesResult,
+        operationsResult,
+      ] = await Promise.allSettled([
         getIntakeFiles(filters, signal),
         getIntakeSummary(signal),
         getActionHistory(signal),
         getRecoveryAssessments(signal),
+        backupRequest,
         getLearningPreferences(signal),
         getOperationalStatus(signal),
       ]);
-      const [coreResult, backupResult] = await Promise.allSettled([
-        coreRequest,
-        backupRequest,
-      ]);
       if (requestId !== latestLoadRequest.current) return false;
 
-      const failedReason =
-        coreResult.status === "rejected"
-          ? coreResult.reason
-          : backupResult.status === "rejected"
-            ? backupResult.reason
-            : null;
-      if (
-        failedReason instanceof DOMException &&
-        failedReason.name === "AbortError"
-      ) {
+      const results = [
+        filesResult,
+        summaryResult,
+        actionsResult,
+        recoveriesResult,
+        backupResult,
+        preferencesResult,
+        operationsResult,
+      ];
+      if (results.some(isAbortedResult)) {
         return false;
       }
 
-      if (coreResult.status === "fulfilled") {
-        const [
-          nextFiles,
-          nextSummary,
-          nextActions,
-          nextRecoveries,
-          nextPreferences,
-          nextOperations,
-        ] = coreResult.value;
-        setFiles(nextFiles);
-        setSummary(nextSummary);
-        setActions(nextActions);
-        setRecoveries(nextRecoveries);
-        setPreferences(nextPreferences);
-        setOperations(
-          isOperationalStatus(nextOperations) ? nextOperations : null,
-        );
+      if (filesResult.status === "fulfilled") {
+        setFiles(filesResult.value);
+        setFilesUnavailable(false);
+      } else {
+        setFilesUnavailable(true);
+      }
+      if (summaryResult.status === "fulfilled") setSummary(summaryResult.value);
+      if (actionsResult.status === "fulfilled") setActions(actionsResult.value);
+      if (recoveriesResult.status === "fulfilled") {
+        setRecoveries(recoveriesResult.value);
       }
       if (
         backupResult.status === "fulfilled" &&
@@ -136,26 +153,29 @@ function App() {
       ) {
         setBackups(backupResult.value);
       }
-
-      if (coreResult.status === "rejected") {
-        setIntakeError(
-          coreResult.reason instanceof Error
-            ? coreResult.reason.message
-            : "Unable to load intake",
+      if (preferencesResult.status === "fulfilled") {
+        setPreferences(preferencesResult.value);
+      }
+      if (operationsResult.status === "fulfilled") {
+        setOperations(
+          isOperationalStatus(operationsResult.value)
+            ? operationsResult.value
+            : null,
         );
-      } else if (backupResult.status === "rejected") {
-        const message =
-          backupResult.reason instanceof Error
-            ? backupResult.reason.message
-            : "Unable to load backup history";
-        setIntakeError(`Backup history: ${message}`);
-      } else {
-        setIntakeError(null);
       }
 
-      return includeBackups
-        ? backupResult.status === "fulfilled"
-        : coreResult.status === "fulfilled";
+      const errors = [
+        resultError("Intake files", filesResult),
+        resultError("Intake summary", summaryResult),
+        resultError("Action history", actionsResult),
+        resultError("Recovery assessments", recoveriesResult),
+        resultError("Backup history", backupResult),
+        resultError("Learning preferences", preferencesResult),
+        resultError("Operational status", operationsResult),
+      ].filter((message): message is string => message !== null);
+      setIntakeError(errors.length > 0 ? errors.join(" ") : null);
+
+      return backupResult.status === "fulfilled";
     } catch (error: unknown) {
       if (requestId !== latestLoadRequest.current) return false;
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -445,7 +465,7 @@ function App() {
         ) : null}
 
         <div className="file-panel">
-          {files.length === 0 && !intakeError ? (
+          {files.length === 0 && !filesUnavailable ? (
             <div className="empty-state">
               <span aria-hidden="true">↓</span>
               <h3>Your intake is empty</h3>
