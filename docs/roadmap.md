@@ -19,6 +19,7 @@
 - Read-only storage, database-size, and intake-scan health measurements
 - Isolated production startup, dashboard, API, and intake smoke verification
 - Local Host validation and restrictive dashboard browser security headers
+- Portable bind-mount initialization with an immediate application privilege drop
 
 ## Milestone 1 — Observe — complete
 

@@ -202,6 +202,10 @@ changed.
   weights, multi-term AND matching, and quoted phrases within this boundary.
 - **Single deployable backend:** easier to test, run, and recover locally than a
   collection of services.
+- **Narrow container initialization:** a startup wrapper creates and assigns
+  only Nova's mounted storage directories, then immediately runs the API as the
+  unprivileged `nova` account. This avoids both host-specific bind-mount
+  failures and a root application process.
 - **Synchronous scan transaction:** preserves a simple consistent inventory at
   current scale.
 - **Full extracted text in local SQLite:** enables offline search while API
