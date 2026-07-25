@@ -155,11 +155,13 @@ SQLite's integrity check and receives a SHA-256 checksum sidecar. Nova never
 overwrites or automatically deletes an earlier backup. The dashboard shows the
 five newest snapshots first and provides a **Show all** control when additional
 recovery points exist. It also summarizes the total retained backup count,
-storage use, and verification state without deleting anything. A download link
-appears only when a checksum is available. Every download rechecks both the
-SHA-256 checksum and SQLite integrity before returning the database or checksum
-sidecar. Keep both downloaded files together on a different trusted drive;
-backups can contain sensitive extracted text.
+storage use, and whether each backup has a recorded checksum without deleting
+anything. The history does not claim that an unchanged backup has been fully
+reverified during listing. A download link appears only when a checksum is
+available. Every download rechecks both the SHA-256 checksum and SQLite
+integrity before returning the database or checksum sidecar. Keep both
+downloaded files together on a different trusted drive; backups can contain
+sensitive extracted text.
 
 The foreground intake dashboard remains current on its bounded five-second
 cycle. Backup history changes less frequently, so Nova refreshes that directory
@@ -377,5 +379,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 42 backup capacity visibility](docs/milestone-42-backup-capacity-visibility.md)
 - [Milestone 43 bounded backup refresh](docs/milestone-43-bounded-backup-refresh.md)
 - [Milestone 44 latest dashboard state](docs/milestone-44-latest-dashboard-state.md)
+- [Milestone 45 precise backup integrity status](docs/milestone-45-precise-backup-integrity-status.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

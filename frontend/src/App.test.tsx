@@ -112,7 +112,7 @@ describe("App", () => {
         return response({
           status: "ok",
           service: "Nova API",
-          version: "0.44.0",
+          version: "0.45.0",
           environment: "test",
           timestamp: "2026-07-25T09:00:00Z",
         });
@@ -1025,10 +1025,10 @@ describe("App", () => {
     expect(
       await screen.findByText("nova-20260725T090000.000000Z.db"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/SHA-256 verified/)).toBeInTheDocument();
+    expect(screen.getByText(/Checksum recorded/)).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
-        name: `Download verified copy of ${backup.filename}`,
+        name: `Download integrity-checked copy of ${backup.filename}`,
       }),
     ).toHaveAttribute(
       "href",
@@ -1093,7 +1093,7 @@ describe("App", () => {
     });
     expect(screen.getByText("8 backups retained")).toBeInTheDocument();
     expect(screen.getByText("64.0 KB total")).toBeInTheDocument();
-    expect(screen.getByText("8 verified")).toBeInTheDocument();
+    expect(screen.getByText("8 checksums recorded")).toBeInTheDocument();
     expect(showAll).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByText(backups[4].filename)).toBeInTheDocument();
     expect(screen.queryByText(backups[5].filename)).toBeNull();

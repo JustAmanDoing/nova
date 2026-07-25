@@ -914,8 +914,8 @@ function BackupPanel({
     (total, backup) => total + backup.size_bytes,
     0,
   );
-  const verifiedBackupCount = backups.filter((backup) => backup.verified).length;
-  const unverifiedBackupCount = backups.length - verifiedBackupCount;
+  const checksumRecordedCount = backups.filter((backup) => backup.verified).length;
+  const missingChecksumCount = backups.length - checksumRecordedCount;
 
   return (
     <section className="backup-panel" aria-labelledby="backup-title">
@@ -951,9 +951,9 @@ function BackupPanel({
             {backups.length} backup{backups.length === 1 ? "" : "s"} retained
           </strong>
           <span>{formatBytes(backupTotalBytes)} total</span>
-          <span>{verifiedBackupCount} verified</span>
-          {unverifiedBackupCount > 0 ? (
-            <span>{unverifiedBackupCount} need attention</span>
+          <span>{checksumRecordedCount} checksums recorded</span>
+          {missingChecksumCount > 0 ? (
+            <span>{missingChecksumCount} need attention</span>
           ) : null}
         </p>
       ) : null}
@@ -968,7 +968,10 @@ function BackupPanel({
                   <strong>{backup.filename}</strong>
                   <span>
                     {formatBytes(backup.size_bytes)} ·{" "}
-                    {backup.verified ? "SHA-256 verified" : "Checksum unavailable"} ·{" "}
+                    {backup.verified
+                      ? "Checksum recorded"
+                      : "Checksum unavailable"}{" "}
+                    ·{" "}
                     {formatObserved(backup.created_at)}
                   </span>
                 </div>
@@ -978,7 +981,7 @@ function BackupPanel({
                       <a
                         href={backupDownloadUrl(backup.filename)}
                         download
-                        aria-label={`Download verified copy of ${backup.filename}`}
+                        aria-label={`Download integrity-checked copy of ${backup.filename}`}
                       >
                         Download
                       </a>

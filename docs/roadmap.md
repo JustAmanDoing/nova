@@ -44,9 +44,11 @@
 - Early storage capacity guidance in the dashboard and Windows status controls
 - Checksum- and integrity-verified backup downloads for independent recovery copies
 - Accessible full backup history with the newest five shown by default
-- Read-only retained-backup count, storage use, and verification summary
+- Read-only retained-backup count, storage use, and checksum-record summary
 - Minute-bounded automatic backup inventory refresh with immediate manual refresh
 - Latest-request-wins dashboard state during overlapping manual and background loads
+- Precise backup-history wording that distinguishes a recorded checksum from
+  full download or restore verification
 
 ## Milestone 1 — Observe — complete
 
