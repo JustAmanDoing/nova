@@ -12,8 +12,9 @@ Set-StrictMode -Version Latest
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $NovaUrl = "http://localhost:5173"
-$HealthUrl = "http://localhost:8000/api/v1/health"
-$BackupUrl = "http://localhost:8000/api/v1/backups"
+$DashboardProbeUrl = "http://127.0.0.1:5173"
+$HealthUrl = "http://127.0.0.1:8000/api/v1/health"
+$BackupUrl = "http://127.0.0.1:8000/api/v1/backups"
 $BackendProjectFile = Join-Path $ProjectRoot "backend\pyproject.toml"
 
 function Write-Step {
@@ -128,23 +129,26 @@ function Show-ContainerDiagnostics {
 }
 
 function Wait-ForNova {
-    param([int]$TimeoutSeconds = 90)
+    param([int]$TimeoutSeconds = 180)
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastFailure = "No readiness response was received."
     do {
         try {
             $health = Invoke-RestMethod -Uri $HealthUrl -TimeoutSec 2
-            $page = Invoke-WebRequest -Uri $NovaUrl -UseBasicParsing -TimeoutSec 2
+            $page = Invoke-WebRequest -Uri $DashboardProbeUrl -UseBasicParsing -TimeoutSec 2
             if ($health.status -eq "ok" -and $page.StatusCode -eq 200) {
                 return $health
             }
+            $lastFailure = "API status was '$($health.status)' and dashboard status was '$($page.StatusCode)'."
         }
         catch {
-            Start-Sleep -Seconds 2
+            $lastFailure = $_.Exception.Message
         }
+        Start-Sleep -Seconds 2
     } while ((Get-Date) -lt $deadline)
 
     Show-ContainerDiagnostics
-    throw "Nova did not become ready within $TimeoutSeconds seconds. The recent container diagnostics are shown above."
+    throw "Nova did not become ready within $TimeoutSeconds seconds. Last readiness check: $lastFailure The recent container diagnostics are shown above."
 }
 
 function Start-Nova {

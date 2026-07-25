@@ -88,8 +88,10 @@ healthy, and opens the local dashboard.
 Each launcher uses the shared, reviewable `scripts/Nova.ps1` controller. It
 does not install software, delete Docker volumes, or expose Nova beyond this
 PC. If a build fails or Nova does not become ready, the controller prints the
-container state and the most recent 80 log lines so the cause is visible
-without searching through Docker Desktop.
+container state, the most recent 80 log lines, and the last readiness error so
+the cause is visible without searching through Docker Desktop. Readiness probes
+use the exact IPv4 loopback addresses exposed by Compose and allow slower
+first-time Windows container starts up to three minutes.
 
 ### Command line
 
@@ -345,5 +347,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 32 Windows-safe container checkout](docs/milestone-32-container-line-endings.md)
 - [Milestone 33 runtime version guard](docs/milestone-33-runtime-version-guard.md)
 - [Milestone 34 pre-update backup](docs/milestone-34-pre-update-backup.md)
+- [Milestone 35 resilient Windows readiness](docs/milestone-35-windows-readiness.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

@@ -133,7 +133,9 @@ Local data/intake folder
 
 - Friendly root-level launchers delegate to one PowerShell controller.
 - Start builds in detached mode, waits for the API and dashboard, and opens the
-  loopback-only URL.
+  loopback-only URL. Readiness uses explicit IPv4 loopback probes, allows up to
+  three minutes for a slower first container start, and preserves the last
+  probe failure for diagnostics.
 - Stop uses ordinary Compose shutdown and never removes the named database
   volume.
 - Status reports Compose state and the versioned health endpoint, compares the

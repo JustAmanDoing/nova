@@ -35,7 +35,12 @@ foreach ($requiredDiagnostic in @(
     "Show-ContainerDiagnostics",
     "docker compose logs",
     "--no-color",
-    "--tail"
+    "--tail",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
+    "TimeoutSeconds = 180",
+    "lastFailure",
+    "Last readiness check"
 )) {
     if ($controllerContent -notmatch [regex]::Escape($requiredDiagnostic)) {
         throw "Nova.ps1 does not include bounded startup diagnostics: $requiredDiagnostic"
