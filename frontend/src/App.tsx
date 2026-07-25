@@ -980,7 +980,9 @@ function BackupPanel({
     (total, backup) => total + backup.size_bytes,
     0,
   );
-  const checksumRecordedCount = backups.filter((backup) => backup.verified).length;
+  const checksumRecordedCount = backups.filter(
+    (backup) => backup.checksum_recorded,
+  ).length;
   const missingChecksumCount = backups.length - checksumRecordedCount;
 
   return (
@@ -1034,7 +1036,7 @@ function BackupPanel({
                   <strong>{backup.filename}</strong>
                   <span>
                     {formatBytes(backup.size_bytes)} ·{" "}
-                    {backup.verified
+                    {backup.checksum_recorded
                       ? "Checksum recorded"
                       : "Checksum unavailable"}{" "}
                     ·{" "}
@@ -1042,7 +1044,7 @@ function BackupPanel({
                   </span>
                 </div>
                 <div className="backup-actions">
-                  {backup.verified ? (
+                  {backup.checksum_recorded ? (
                     <>
                       <a
                         href={backupDownloadUrl(backup.filename)}

@@ -112,7 +112,7 @@ describe("App", () => {
         return response({
           status: "ok",
           service: "Nova API",
-          version: "0.49.0",
+          version: "0.50.0",
           environment: "test",
           timestamp: "2026-07-25T09:00:00Z",
         });
@@ -1150,6 +1150,7 @@ describe("App", () => {
       size_bytes: 8192,
       sha256: "a".repeat(64),
       created_at: "2026-07-25T09:00:00Z",
+      checksum_recorded: true,
       verified: true,
     };
     const fetchMock = vi.fn(
@@ -1223,7 +1224,8 @@ describe("App", () => {
       size_bytes: 8192,
       sha256: `${index}`.repeat(64),
       created_at: `2026-07-25T0${9 - index}:00:00Z`,
-      verified: true,
+      checksum_recorded: true,
+      verified: false,
     }));
     vi.stubGlobal(
       "fetch",
@@ -1283,12 +1285,14 @@ describe("App", () => {
       size_bytes: 8192,
       sha256: "a".repeat(64),
       created_at: "2026-07-25T10:00:00Z",
-      verified: true,
+      checksum_recorded: true,
+      verified: false,
     };
     const safetyBackup = {
       ...backup,
       filename: "nova-20260725T100500.000000Z.db",
       created_at: "2026-07-25T10:05:00Z",
+      verified: true,
     };
     const fetchMock = vi.fn(
       (input: string | URL | Request, init?: RequestInit) => {

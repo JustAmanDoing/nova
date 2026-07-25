@@ -157,10 +157,12 @@ five newest snapshots first and provides a **Show all** control when additional
 recovery points exist. It also summarizes the total retained backup count,
 storage use, and whether each backup has a recorded checksum without deleting
 anything. The history does not claim that an unchanged backup has been fully
-reverified during listing. A checksum sidecar is accepted only when it contains
-one valid SHA-256 entry bound to that backup's exact filename. A download link
-appears only when that complete record is available. Every download rechecks
-both the SHA-256 checksum and SQLite
+reverified during listing. The API therefore reports checksum availability
+separately from current verification: a newly created backup is verified before
+publication, while a history entry reports only whether its filename-bound
+checksum is recorded. A download link appears only when that complete checksum
+record is available. Every download then rechecks both the SHA-256 checksum and
+SQLite
 integrity before returning the database or checksum sidecar. Keep both
 downloaded files together on a different trusted drive; backups can contain
 sensitive extracted text.
@@ -394,5 +396,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 47 isolated backup refresh failure](docs/milestone-47-backup-refresh-isolation.md)
 - [Milestone 48 independent dashboard resources](docs/milestone-48-independent-dashboard-resources.md)
 - [Milestone 49 filename-bound backup checksums](docs/milestone-49-filename-bound-checksums.md)
+- [Milestone 50 precise backup API states](docs/milestone-50-precise-backup-api-states.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

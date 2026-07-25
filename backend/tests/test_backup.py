@@ -34,10 +34,14 @@ def test_backup_service_creates_and_lists_verified_snapshot(tmp_path: Path) -> N
     backup_path = backups.get_backup_path(created.filename)
 
     assert created.verified is True
+    assert created.checksum_recorded is True
     assert created.sha256 is not None
     assert len(created.sha256) == 64
     assert created.size_bytes > 0
-    assert listed == [created]
+    assert listed[0].filename == created.filename
+    assert listed[0].sha256 == created.sha256
+    assert listed[0].checksum_recorded is True
+    assert listed[0].verified is False
     assert backup_path.is_file()
     assert backup_path.with_suffix(".db.sha256").is_file()
     with sqlite3.connect(backup_path) as connection:
@@ -72,6 +76,7 @@ def test_backup_list_marks_missing_checksum_as_unverified(tmp_path: Path) -> Non
 
     assert listed[0].filename == created.filename
     assert listed[0].sha256 is None
+    assert listed[0].checksum_recorded is False
     assert listed[0].verified is False
 
 
@@ -102,6 +107,7 @@ def test_backup_list_rejects_malformed_or_mismatched_checksum_sidecars(
 
         assert listed[0].filename == created.filename
         assert listed[0].sha256 is None
+        assert listed[0].checksum_recorded is False
         assert listed[0].verified is False
         with pytest.raises(RestoreError, match="no valid SHA-256 checksum"):
             backups.get_verified_backup_path(created.filename)
@@ -283,8 +289,11 @@ def test_backup_api_creates_lists_and_downloads_snapshot(tmp_path: Path) -> None
 
     assert create_response.status_code == 201
     assert create_response.json()["verified"] is True
+    assert create_response.json()["checksum_recorded"] is True
     assert list_response.status_code == 200
     assert list_response.json()[0]["filename"] == filename
+    assert list_response.json()[0]["checksum_recorded"] is True
+    assert list_response.json()[0]["verified"] is False
     assert download_response.status_code == 200
     assert download_response.content.startswith(b"SQLite format 3")
     assert download_response.headers["content-type"] == "application/vnd.sqlite3"

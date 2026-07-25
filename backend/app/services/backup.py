@@ -179,7 +179,7 @@ class BackupService:
                 "Nova could not create a verified local database backup."
             ) from error
 
-        return self._record(final_path, checksum)
+        return self._record(final_path, checksum, verified=True)
 
     def list_backups(self) -> list[BackupRecord]:
         with self._lock:
@@ -317,14 +317,20 @@ class BackupService:
                 path.unlink()
 
     @staticmethod
-    def _record(path: Path, checksum: str | None) -> BackupRecord:
+    def _record(
+        path: Path,
+        checksum: str | None,
+        *,
+        verified: bool = False,
+    ) -> BackupRecord:
         stat = path.stat()
         return BackupRecord(
             filename=path.name,
             size_bytes=stat.st_size,
             sha256=checksum,
             created_at=datetime.fromtimestamp(stat.st_mtime, UTC),
-            verified=checksum is not None,
+            checksum_recorded=checksum is not None,
+            verified=verified,
         )
 
     @staticmethod

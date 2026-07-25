@@ -145,6 +145,10 @@ Local data/intake folder
   rebuilding, so it cannot silently replace local edits. When the current
   service is running, it creates and verifies an online database snapshot
   before downloading source changes; a backup failure stops the update.
+- Backup creation reports full verification only after SQLite integrity and
+  SHA-256 checks pass. Backup history reports filename-bound checksum
+  availability separately and never presents an un-rechecked historical item
+  as currently verified.
 - Missing Docker, inactive Docker Desktop, missing Git, build failures, and
   startup timeouts produce direct recovery guidance.
 

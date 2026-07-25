@@ -124,6 +124,7 @@ export interface BackupRecord {
   size_bytes: number;
   sha256: string | null;
   created_at: string;
+  checksum_recorded: boolean;
   verified: boolean;
 }
 

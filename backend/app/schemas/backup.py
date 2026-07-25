@@ -8,6 +8,7 @@ class BackupRecord(BaseModel):
     size_bytes: int
     sha256: str | None
     created_at: datetime
+    checksum_recorded: bool
     verified: bool
 
 
