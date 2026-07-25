@@ -54,6 +54,7 @@ The current MVP can:
 - Reject unexpected local HTTP Host values and serve restrictive browser
   security headers
 - Prevent browsers and intermediaries from caching Nova API responses
+- Revalidate the dashboard entry page after updates to avoid stale asset links
 - Report database size, local storage headroom, and latest scan health without
   exposing paths or document content
 
@@ -329,5 +330,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 25 automatic startup diagnostics](docs/milestone-25-startup-diagnostics.md)
 - [Milestone 26 active database integrity guard](docs/milestone-26-database-integrity-guard.md)
 - [Milestone 27 private API cache policy](docs/milestone-27-private-api-cache-policy.md)
+- [Milestone 28 fresh dashboard entry page](docs/milestone-28-dashboard-cache-policy.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

@@ -28,6 +28,7 @@
 - Automatic bounded container diagnostics after a failed Windows startup
 - Read-only active-database integrity verification before migrations
 - Explicit `no-store` policy for every API response
+- Dashboard entry-page revalidation after application updates
 
 ## Milestone 1 — Observe — complete
 

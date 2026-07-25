@@ -139,6 +139,8 @@ jobs:
             | grep --ignore-case --quiet '^x-content-type-options: nosniff'
           printf '%s\n' "$response_headers" \
             | grep --ignore-case --quiet '^x-frame-options: deny'
+          printf '%s\n' "$response_headers" \
+            | grep --ignore-case --quiet '^cache-control: no-cache'
           if curl --fail --silent --output /dev/null \
             --header 'Host: unexpected.example' \
             http://127.0.0.1:5173/

@@ -23,3 +23,10 @@ def test_compose_uses_the_directories_initialized_by_the_container() -> None:
     assert "NOVA_LIBRARY_PATH: /files/library" in compose
     assert "NOVA_BACKUP_PATH: /files/backups" in compose
     assert "NOVA_DATABASE_PATH: /data/nova.db" in compose
+
+
+def test_dashboard_entry_page_revalidates_after_updates() -> None:
+    nginx = (REPOSITORY_ROOT / "frontend" / "nginx.conf").read_text()
+
+    assert "location = /index.html" in nginx
+    assert "expires -1;" in nginx
