@@ -46,6 +46,7 @@
 - Accessible full backup history with the newest five shown by default
 - Read-only retained-backup count, storage use, and verification summary
 - Minute-bounded automatic backup inventory refresh with immediate manual refresh
+- Latest-request-wins dashboard state during overlapping manual and background loads
 
 ## Milestone 1 — Observe — complete
 

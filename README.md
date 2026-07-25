@@ -165,7 +165,9 @@ The foreground intake dashboard remains current on its bounded five-second
 cycle. Backup history changes less frequently, so Nova refreshes that directory
 inventory once per minute automatically and immediately after manual actions.
 This avoids repeatedly reading every retained checksum sidecar as the recovery
-history grows.
+history grows. If a slow earlier request finishes after a newer manual or
+automatic refresh, Nova discards the older result instead of rolling the
+dashboard back to stale state.
 
 The **Restore** action is available only for a backup with a valid checksum
 sidecar. The API verifies the SHA-256 value and SQLite integrity, creates a new
@@ -374,5 +376,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 41 backup history visibility](docs/milestone-41-backup-history-visibility.md)
 - [Milestone 42 backup capacity visibility](docs/milestone-42-backup-capacity-visibility.md)
 - [Milestone 43 bounded backup refresh](docs/milestone-43-bounded-backup-refresh.md)
+- [Milestone 44 latest dashboard state](docs/milestone-44-latest-dashboard-state.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

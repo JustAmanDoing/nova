@@ -91,6 +91,76 @@ function healthyOperations() {
 }
 
 describe("App", () => {
+  it("does not let an older refresh overwrite newer dashboard state", async () => {
+    let summaryRequests = 0;
+    let releaseInitialSummary = () => {};
+    const initialSummaryResponse = new Promise((resolve) => {
+      releaseInitialSummary = () =>
+        resolve({
+          ok: true,
+          json: async () => ({
+            files_observed: 1,
+            understood: 1,
+            ready_for_review: 0,
+            exact_duplicates: 0,
+          }),
+        });
+    });
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/health")) {
+        return response({
+          status: "ok",
+          service: "Nova API",
+          version: "0.44.0",
+          environment: "test",
+          timestamp: "2026-07-25T09:00:00Z",
+        });
+      }
+      if (url.endsWith("/scan")) {
+        return response({
+          scanned: 2,
+          added: 0,
+          updated: 0,
+          removed: 0,
+          duplicates: 0,
+        });
+      }
+      if (url.endsWith("/backups")) return response([]);
+      if (url.endsWith("/actions/recovery")) return response([]);
+      if (url.endsWith("/actions")) return response([]);
+      if (url.endsWith("/summary")) {
+        summaryRequests += 1;
+        if (summaryRequests === 1) return initialSummaryResponse;
+        return response({
+          files_observed: 2,
+          understood: 2,
+          ready_for_review: 0,
+          exact_duplicates: 0,
+        });
+      }
+      return response([]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    await vi.waitFor(() => expect(summaryRequests).toBe(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Scan now" }));
+    await vi.waitFor(() => expect(summaryRequests).toBe(2));
+
+    const observedMetric = screen.getByText("Files observed").closest("article");
+    await vi.waitFor(() => expect(observedMetric).toHaveTextContent("2"));
+
+    await act(async () => {
+      releaseInitialSummary();
+      await initialSummaryResponse;
+      await Promise.resolve();
+    });
+
+    expect(observedMetric).toHaveTextContent("2");
+  });
+
   it("refreshes backup history less often than live intake state", async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn((input: string | URL | Request) => {

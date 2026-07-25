@@ -1,4 +1,10 @@
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   backupChecksumDownloadUrl,
@@ -67,11 +73,14 @@ function App() {
   const [backupNotice, setBackupNotice] = useState<string | null>(null);
   const [learningNotice, setLearningNotice] = useState<string | null>(null);
   const [filters, setFilters] = useState<IntakeFilters>({});
+  const latestLoadRequest = useRef(0);
 
   const loadIntake = useCallback(async (
     signal?: AbortSignal,
     includeBackups = true,
   ) => {
+    const requestId = latestLoadRequest.current + 1;
+    latestLoadRequest.current = requestId;
     try {
       const backupRequest: Promise<BackupRecord[] | null> = includeBackups
         ? getBackups(signal)
@@ -93,6 +102,7 @@ function App() {
         getLearningPreferences(signal),
         getOperationalStatus(signal),
       ]);
+      if (requestId !== latestLoadRequest.current) return;
       setFiles(nextFiles);
       setSummary(nextSummary);
       setActions(nextActions);
@@ -104,6 +114,7 @@ function App() {
       );
       setIntakeError(null);
     } catch (error: unknown) {
+      if (requestId !== latestLoadRequest.current) return;
       if (error instanceof DOMException && error.name === "AbortError") return;
       setIntakeError(error instanceof Error ? error.message : "Unable to load intake");
     }
