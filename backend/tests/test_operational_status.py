@@ -85,6 +85,30 @@ def test_operational_status_warns_after_failure_and_on_low_storage(
     assert any("scan failed" in warning.lower() for warning in status.warnings)
 
 
+def test_operational_status_advises_capacity_planning_before_space_is_critical(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = make_service(tmp_path)
+    monkeypatch.setattr(
+        intake_module.shutil,
+        "disk_usage",
+        lambda _: SimpleNamespace(
+            total=120 * 1024**3,
+            used=100 * 1024**3,
+            free=20 * 1024**3,
+        ),
+    )
+
+    service.scan()
+    status = service.operational_status()
+
+    assert status.status == "attention"
+    assert len(status.warnings) == 1
+    assert "limited" in status.warnings[0]
+    assert "larger drive" in status.warnings[0]
+
+
 def test_operational_status_api_is_read_only(tmp_path: Path) -> None:
     application = create_app(
         Settings(

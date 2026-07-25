@@ -14,6 +14,7 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $NovaUrl = "http://localhost:5173"
 $DashboardProbeUrl = "http://127.0.0.1:5173"
 $HealthUrl = "http://127.0.0.1:8000/api/v1/health"
+$SystemStatusUrl = "http://127.0.0.1:8000/api/v1/system/status"
 $BackupUrl = "http://127.0.0.1:8000/api/v1/backups"
 $BackendProjectFile = Join-Path $ProjectRoot "backend\pyproject.toml"
 
@@ -112,6 +113,37 @@ function New-NovaPreUpdateBackup {
     Write-Host "SHA-256: $($backup.sha256)"
 }
 
+function Show-NovaOperationalStatus {
+    try {
+        $status = Invoke-RestMethod -Uri $SystemStatusUrl -TimeoutSec 3
+    }
+    catch {
+        Write-Host "Nova could not read operational measurements." -ForegroundColor Yellow
+        return
+    }
+
+    if ($null -ne $status.storage_free_bytes -and $null -ne $status.storage_free_percent) {
+        $freeGigabytes = [math]::Round(
+            [double]$status.storage_free_bytes / 1GB,
+            1
+        )
+        $freePercent = [math]::Round(
+            [double]$status.storage_free_percent,
+            1
+        )
+        Write-Host "Local storage: $freeGigabytes GB free ($freePercent%)."
+    }
+
+    if ($status.warnings.Count -eq 0) {
+        Write-Host "Nova reports no operational warnings." -ForegroundColor Green
+        return
+    }
+
+    foreach ($warning in $status.warnings) {
+        Write-Host "Needs attention: $warning" -ForegroundColor Yellow
+    }
+}
+
 function Invoke-Compose {
     param([string[]]$Arguments)
     & docker compose @Arguments
@@ -170,6 +202,7 @@ function Start-Nova {
     Write-Host ""
     Write-Host "Nova $($health.version) is ready at $NovaUrl" -ForegroundColor Green
     Write-Host "Your database and document folders remain local on this PC."
+    Show-NovaOperationalStatus
     if (-not $NoBrowser) {
         Start-Process $NovaUrl
     }
@@ -206,6 +239,7 @@ function Show-NovaStatus {
         Write-Host "Version mismatch: this folder contains $($versionState.Expected), but the running application is $($versionState.Running)." -ForegroundColor Yellow
         Write-Host "Double-click Start Nova.cmd to rebuild Nova from the current folder." -ForegroundColor Yellow
     }
+    Show-NovaOperationalStatus
 }
 
 function Update-Nova {

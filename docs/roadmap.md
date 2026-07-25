@@ -41,6 +41,7 @@
 - Immutable verified digests for all production container base images
 - Representative production acceptance across TXT, Markdown, DOCX, PDF, image
   OCR, search, learning refresh, move, undo, backup, and restore
+- Early storage capacity guidance in the dashboard and Windows status controls
 
 ## Milestone 1 — Observe — complete
 

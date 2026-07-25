@@ -76,9 +76,9 @@ With Docker Desktop running, double-click **Start Nova.cmd** in the project
 folder. Nova builds in the background, waits for both services to become
 healthy, and opens the local dashboard.
 
-- **Check Nova.cmd** shows container and health status, and warns when the
-  running application does not match the version in the current project
-  folder.
+- **Check Nova.cmd** shows container, application, and local-storage status.
+  It reports Nova's safe operational warnings and warns when the running
+  application does not match the version in the current project folder.
 - **Stop Nova.cmd** stops the containers without deleting the database or
   document folders.
 - **Update Nova.cmd** refuses local changes, downloads only a fast-forward Git
@@ -219,10 +219,11 @@ guessing, referrer leakage, and unused camera, microphone, and location access.
 changing Docker's loopback-only port binding.
 
 The **System health** panel reports the database size, free space on the drive
-containing `data/intake`, and latest scan duration and outcome. It warns below
-5 GB or 10% free space, after a failed scan, or when a scan exceeds 30 seconds.
-These warnings are advisory: Nova never deletes, archives, uploads, or moves
-data in response.
+containing `data/intake`, and latest scan duration and outcome. It advises
+capacity planning below both 25 GB and 20% free space, and reports more urgent
+low-storage attention below 5 GB or 10%. It also reports a failed scan or one
+that exceeds 30 seconds. These warnings are advisory: Nova never deletes,
+archives, uploads, or moves data in response.
 
 ## Local development
 
@@ -356,5 +357,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 36 public repository hygiene](docs/milestone-36-repository-hygiene.md)
 - [Milestone 37 immutable container bases](docs/milestone-37-immutable-container-bases.md)
 - [Milestone 38 representative runtime acceptance](docs/milestone-38-representative-runtime-acceptance.md)
+- [Milestone 39 storage capacity planning](docs/milestone-39-capacity-planning.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

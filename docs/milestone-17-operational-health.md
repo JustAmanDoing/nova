@@ -25,6 +25,8 @@ is added to the database.
 
 Nova reports **Needs attention** when:
 
+- the intake drive has less than both 25 GB and 20% free, allowing capacity
+  planning before local models or a larger document corpus become unsafe
 - the intake drive has less than 5 GB free
 - the intake drive has less than 10% free
 - the latest scan failed

@@ -245,6 +245,15 @@ class IntakeService:
                         "Local storage headroom is low; plan additional space "
                         "before importing many files or models."
                     )
+                elif (
+                    storage_free < 25 * 1024**3
+                    and storage_free_percent < 20
+                ):
+                    warnings.append(
+                        "Local storage headroom is limited; plan a larger drive "
+                        "or reclaim unused space before adding large models or "
+                        "many files."
+                    )
             except OSError:
                 storage_total = None
                 storage_free = None

@@ -59,6 +59,18 @@ foreach ($requiredVersionGuard in @(
     }
 }
 
+foreach ($requiredOperationalStatus in @(
+    "Show-NovaOperationalStatus",
+    "/api/v1/system/status",
+    "storage_free_bytes",
+    "storage_free_percent",
+    "Needs attention:"
+)) {
+    if ($controllerContent -notmatch [regex]::Escape($requiredOperationalStatus)) {
+        throw "Nova.ps1 does not surface operational status: $requiredOperationalStatus"
+    }
+}
+
 foreach ($requiredUpdateBackupGuard in @(
     "New-NovaPreUpdateBackup",
     "/api/v1/backups",
