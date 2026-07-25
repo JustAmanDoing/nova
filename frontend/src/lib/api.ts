@@ -241,6 +241,10 @@ export function backupDownloadUrl(filename: string): string {
   return `${API_URL}/api/v1/backups/${encodeURIComponent(filename)}`;
 }
 
+export function backupChecksumDownloadUrl(filename: string): string {
+  return `${backupDownloadUrl(filename)}/checksum`;
+}
+
 export async function getIntakeFiles(
   filters: IntakeFilters = {},
   signal?: AbortSignal,

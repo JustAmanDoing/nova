@@ -39,12 +39,30 @@ async def create_backup(request: Request) -> BackupRecord:
 async def download_backup(filename: str, request: Request) -> FileResponse:
     service = get_backup_service(request)
     try:
-        path = await asyncio.to_thread(service.get_backup_path, filename)
+        path = await asyncio.to_thread(service.get_verified_backup_path, filename)
     except LookupError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+    except (BackupError, RestoreError) as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     return FileResponse(
         path,
         media_type="application/vnd.sqlite3",
+        filename=path.name,
+    )
+
+
+@router.get("/{filename}/checksum", response_class=FileResponse)
+async def download_backup_checksum(filename: str, request: Request) -> FileResponse:
+    service = get_backup_service(request)
+    try:
+        path = await asyncio.to_thread(service.get_verified_checksum_path, filename)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except (BackupError, RestoreError) as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return FileResponse(
+        path,
+        media_type="text/plain; charset=us-ascii",
         filename=path.name,
     )
 

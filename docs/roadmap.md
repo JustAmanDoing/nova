@@ -42,6 +42,7 @@
 - Representative production acceptance across TXT, Markdown, DOCX, PDF, image
   OCR, search, learning refresh, move, undo, backup, and restore
 - Early storage capacity guidance in the dashboard and Windows status controls
+- Checksum- and integrity-verified backup downloads for independent recovery copies
 
 ## Milestone 1 — Observe — complete
 

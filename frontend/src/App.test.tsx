@@ -901,9 +901,21 @@ describe("App", () => {
       await screen.findByText("nova-20260725T090000.000000Z.db"),
     ).toBeInTheDocument();
     expect(screen.getByText(/SHA-256 verified/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Download" })).toHaveAttribute(
+    expect(
+      screen.getByRole("link", {
+        name: `Download verified copy of ${backup.filename}`,
+      }),
+    ).toHaveAttribute(
       "href",
       "http://localhost:8000/api/v1/backups/nova-20260725T090000.000000Z.db",
+    );
+    expect(
+      screen.getByRole("link", {
+        name: `Download checksum for ${backup.filename}`,
+      }),
+    ).toHaveAttribute(
+      "href",
+      "http://localhost:8000/api/v1/backups/nova-20260725T090000.000000Z.db/checksum",
     );
     expect(
       fetchMock.mock.calls.some(

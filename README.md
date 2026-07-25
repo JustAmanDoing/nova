@@ -153,7 +153,11 @@ The **Create backup** action uses SQLite's online backup API to produce a
 consistent snapshot under `data/backups`. Every successful backup passes
 SQLite's integrity check and receives a SHA-256 checksum sidecar. Nova never
 overwrites or automatically deletes an earlier backup. The dashboard lists the
-five newest snapshots and provides a download link.
+five newest snapshots and provides a download link only when a checksum is
+available. Every download rechecks both the SHA-256 checksum and SQLite
+integrity before returning the database or checksum sidecar. Keep both
+downloaded files together on a different trusted drive; backups can contain
+sensitive extracted text.
 
 The **Restore** action is available only for a backup with a valid checksum
 sidecar. The API verifies the SHA-256 value and SQLite integrity, creates a new
@@ -358,5 +362,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 37 immutable container bases](docs/milestone-37-immutable-container-bases.md)
 - [Milestone 38 representative runtime acceptance](docs/milestone-38-representative-runtime-acceptance.md)
 - [Milestone 39 storage capacity planning](docs/milestone-39-capacity-planning.md)
+- [Milestone 40 verified backup export](docs/milestone-40-verified-backup-export.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

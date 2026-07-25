@@ -194,6 +194,23 @@ class BackupService:
             )
             return [self._record(path, self._read_checksum(path)) for path in paths]
 
+    def get_verified_backup_path(self, filename: str) -> Path:
+        """Return a backup only after rechecking its checksum and SQLite integrity."""
+        with self._lock:
+            path = self.get_backup_path(filename)
+            self._verify_restore_source(path)
+            return path
+
+    def get_verified_checksum_path(self, filename: str) -> Path:
+        """Return the checksum sidecar only after rechecking the backup."""
+        backup_path = self.get_verified_backup_path(filename)
+        checksum_path = backup_path.with_suffix(".db.sha256")
+        if not checksum_path.is_file():
+            raise RestoreError(
+                "The backup has no valid SHA-256 checksum and cannot be used."
+            )
+        return checksum_path
+
     def get_backup_path(self, filename: str) -> Path:
         if not BACKUP_NAME.fullmatch(filename):
             raise LookupError("That backup does not exist.")
@@ -210,7 +227,7 @@ class BackupService:
         expected = self._read_checksum(path)
         if expected is None:
             raise RestoreError(
-                "The backup has no valid SHA-256 checksum and cannot be restored."
+                "The backup has no valid SHA-256 checksum and cannot be used."
             )
         try:
             current = self._hash_file(path)

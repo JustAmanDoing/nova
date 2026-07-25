@@ -246,6 +246,7 @@ def test_backup_api_creates_lists_and_downloads_snapshot(tmp_path: Path) -> None
         list_response = client.get("/api/v1/backups")
         filename = create_response.json()["filename"]
         download_response = client.get(f"/api/v1/backups/{filename}")
+        checksum_response = client.get(f"/api/v1/backups/{filename}/checksum")
         missing_response = client.get("/api/v1/backups/not-a-backup.db")
 
     assert create_response.status_code == 201
@@ -254,7 +255,58 @@ def test_backup_api_creates_lists_and_downloads_snapshot(tmp_path: Path) -> None
     assert list_response.json()[0]["filename"] == filename
     assert download_response.status_code == 200
     assert download_response.content.startswith(b"SQLite format 3")
+    assert download_response.headers["content-type"] == "application/vnd.sqlite3"
+    assert (
+        download_response.headers["content-disposition"]
+        == f'attachment; filename="{filename}"'
+    )
+    assert checksum_response.status_code == 200
+    assert checksum_response.text.splitlines() == [
+        f"{create_response.json()['sha256']}  {filename}"
+    ]
+    assert checksum_response.headers["content-type"].startswith("text/plain")
+    assert (
+        checksum_response.headers["content-disposition"]
+        == f'attachment; filename="{filename}.sha256"'
+    )
     assert missing_response.status_code == 404
+
+
+@pytest.mark.parametrize("damage", ["checksum", "database"])
+def test_backup_api_refuses_unverified_download(
+    tmp_path: Path,
+    damage: str,
+) -> None:
+    application = create_app(
+        Settings(
+            intake_path=tmp_path / "intake",
+            library_path=tmp_path / "library",
+            database_path=tmp_path / "nova.db",
+            backup_path=tmp_path / "backups",
+            intake_scan_seconds=60,
+        )
+    )
+
+    with TestClient(application, headers=LOCAL_ACTION_HEADERS) as client:
+        created = client.post("/api/v1/backups").json()
+        filename = created["filename"]
+        backup_path = application.state.backups.get_backup_path(filename)
+        if damage == "checksum":
+            backup_path.with_suffix(".db.sha256").unlink()
+        else:
+            with backup_path.open("ab") as backup:
+                backup.write(b"tampered")
+
+        response = client.get(f"/api/v1/backups/{filename}")
+        checksum_response = client.get(f"/api/v1/backups/{filename}/checksum")
+
+    assert response.status_code == 409
+    assert checksum_response.status_code == 409
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json()["detail"] in {
+        "The backup has no valid SHA-256 checksum and cannot be used.",
+        "The backup no longer matches its recorded SHA-256 checksum.",
+    }
 
 
 def test_backup_api_restores_only_after_exact_confirmation(tmp_path: Path) -> None:

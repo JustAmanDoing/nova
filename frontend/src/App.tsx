@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import {
+  backupChecksumDownloadUrl,
   backupDownloadUrl,
   createDatabaseBackup,
   executeApproved,
@@ -900,10 +901,11 @@ function BackupPanel({
       </div>
       <p className="backup-guidance">
         Creates a verified SQLite snapshot in <code>data/backups</code>. Backups
-        can contain extracted document text, so keep them private. Restore changes
-        Nova&apos;s database history and index only; it never restores, removes, or
-        overwrites document files. Nova creates a safety snapshot before every
-        restore.
+        can contain extracted document text, so keep them private. Download and
+        Checksum both recheck the backup before saving a copy. Keep both files
+        together on a different drive for recovery. Restore changes Nova&apos;s
+        database history and index only; it never restores, removes, or overwrites
+        document files. Nova creates a safety snapshot before every restore.
       </p>
       {notice ? (
         <p className="backup-notice" role="status">
@@ -925,21 +927,34 @@ function BackupPanel({
                 </span>
               </div>
               <div className="backup-actions">
-                <a href={backupDownloadUrl(backup.filename)} download>
-                  Download
-                </a>
                 {backup.verified ? (
-                  <button
-                    type="button"
-                    className="restore-button"
-                    aria-label={`Restore ${backup.filename}`}
-                    disabled={restoringFilename !== null || isBackingUp}
-                    onClick={() => void onRestore(backup)}
-                  >
-                    {restoringFilename === backup.filename
-                      ? "Restoring…"
-                      : "Restore"}
-                  </button>
+                  <>
+                    <a
+                      href={backupDownloadUrl(backup.filename)}
+                      download
+                      aria-label={`Download verified copy of ${backup.filename}`}
+                    >
+                      Download
+                    </a>
+                    <a
+                      href={backupChecksumDownloadUrl(backup.filename)}
+                      download
+                      aria-label={`Download checksum for ${backup.filename}`}
+                    >
+                      Checksum
+                    </a>
+                    <button
+                      type="button"
+                      className="restore-button"
+                      aria-label={`Restore ${backup.filename}`}
+                      disabled={restoringFilename !== null || isBackingUp}
+                      onClick={() => void onRestore(backup)}
+                    >
+                      {restoringFilename === backup.filename
+                        ? "Restoring…"
+                        : "Restore"}
+                    </button>
+                  </>
                 ) : null}
               </div>
             </li>
