@@ -58,6 +58,7 @@ The current MVP can:
 - Use patched test-tool versions with a vulnerability-reviewed dependency lock
 - Pin external CI actions to verified immutable commits
 - Verify guarded move, undo, backup, and restore against the production stack
+- Preserve Linux container entrypoints across Windows Git checkouts
 - Report database size, local storage headroom, and latest scan health without
   exposing paths or document content
 
@@ -337,5 +338,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 29 dependency advisory remediation](docs/milestone-29-dependency-advisories.md)
 - [Milestone 30 immutable CI actions](docs/milestone-30-immutable-ci-actions.md)
 - [Milestone 31 full runtime workflow](docs/milestone-31-full-runtime-workflow.md)
+- [Milestone 32 Windows-safe container checkout](docs/milestone-32-container-line-endings.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

@@ -20,6 +20,16 @@ if ($parseErrors.Count -gt 0) {
     throw "Nova.ps1 has syntax errors: $($messages -join '; ')"
 }
 
+$ContainerEntrypoint = Join-Path $ProjectRoot "backend\docker-entrypoint.sh"
+$entrypointBytes = [System.IO.File]::ReadAllBytes($ContainerEntrypoint)
+$entrypointText = [System.Text.Encoding]::UTF8.GetString($entrypointBytes)
+if (-not $entrypointText.StartsWith("#!/bin/sh`n")) {
+    throw "backend/docker-entrypoint.sh must use an LF-terminated Linux shebang."
+}
+if ($entrypointText.Contains("`r`n")) {
+    throw "backend/docker-entrypoint.sh contains CRLF line endings."
+}
+
 $controllerContent = Get-Content -Raw -LiteralPath $Controller
 foreach ($requiredDiagnostic in @(
     "Show-ContainerDiagnostics",

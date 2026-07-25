@@ -33,6 +33,7 @@
 - Immutable commit pinning for every external GitHub Actions dependency
 - Isolated production verification of approval, move, audit, undo, backup, and
   restore boundaries
+- Git-enforced Linux entrypoint line endings with Windows-runner verification
 
 ## Milestone 1 — Observe — complete
 

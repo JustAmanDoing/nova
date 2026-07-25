@@ -5,15 +5,24 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 def test_container_initializes_only_nova_directories_then_drops_privileges() -> None:
     dockerfile = (REPOSITORY_ROOT / "backend" / "Dockerfile").read_text()
-    entrypoint = (
-        REPOSITORY_ROOT / "backend" / "docker-entrypoint.sh"
-    ).read_text()
+    entrypoint_path = REPOSITORY_ROOT / "backend" / "docker-entrypoint.sh"
+    entrypoint_bytes = entrypoint_path.read_bytes()
+    entrypoint = entrypoint_bytes.decode("utf-8")
 
     assert "gosu" in dockerfile
     assert 'ENTRYPOINT ["nova-entrypoint"]' in dockerfile
     assert "USER nova" not in dockerfile
+    assert entrypoint_bytes.startswith(b"#!/bin/sh\n")
+    assert b"\r\n" not in entrypoint_bytes
     assert "/files/intake /files/library /files/backups" in entrypoint
     assert 'exec gosu nova "$@"' in entrypoint
+
+
+def test_repository_preserves_container_line_endings_on_windows() -> None:
+    attributes = (REPOSITORY_ROOT / ".gitattributes").read_text(encoding="utf-8")
+
+    assert "*.sh text eol=lf" in attributes
+    assert "Dockerfile text eol=lf" in attributes
 
 
 def test_compose_uses_the_directories_initialized_by_the_container() -> None:

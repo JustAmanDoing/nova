@@ -1,0 +1,12 @@
+* text=auto
+
+# Linux container and automation files must remain executable/readable after a
+# Windows checkout with core.autocrlf enabled.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Native Windows launchers keep their conventional line endings.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
