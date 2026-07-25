@@ -250,7 +250,7 @@ def migrate_database(
     migrations: Sequence[Migration] = MIGRATIONS,
 ) -> None:
     _validate_migrations(migrations)
-    _verify_database_integrity(connection)
+    verify_database_integrity(connection)
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -352,7 +352,7 @@ def _validate_migrations(migrations: Sequence[Migration]) -> None:
         )
 
 
-def _verify_database_integrity(connection: sqlite3.Connection) -> None:
+def verify_database_integrity(connection: sqlite3.Connection) -> None:
     try:
         results = [
             str(row[0]) for row in connection.execute("PRAGMA quick_check")

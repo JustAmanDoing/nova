@@ -13,7 +13,7 @@ def test_health_endpoint() -> None:
     body = response.json()
     assert body["status"] == "ok"
     assert body["service"] == "Nova API"
-    assert body["version"] == "0.51.0"
+    assert body["version"] == "0.52.0"
     assert body["environment"] == "development"
     assert body["timestamp"]
     assert response.headers["cache-control"] == "no-store"
@@ -67,3 +67,48 @@ def test_health_uses_the_application_configuration(tmp_path) -> None:
     assert response.json()["service"] == "Nova Review API"
     assert response.json()["version"] == "9.9.9"
     assert response.json()["environment"] == "review"
+
+
+def test_database_integrity_endpoint_is_read_only(tmp_path) -> None:
+    database_path = tmp_path / "nova.db"
+    application = create_app(
+        Settings(
+            intake_path=tmp_path / "intake",
+            database_path=database_path,
+            intake_scan_seconds=60,
+        )
+    )
+
+    with TestClient(application) as configured_client:
+        before = database_path.read_bytes()
+        response = configured_client.get("/api/v1/system/integrity")
+        after = database_path.read_bytes()
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+    assert "read-only quick check" in response.json()["detail"]
+    assert response.json()["checked_at"]
+    assert after == before
+
+
+def test_database_integrity_endpoint_reports_safe_failure(tmp_path) -> None:
+    database_path = tmp_path / "nova.db"
+    application = create_app(
+        Settings(
+            intake_path=tmp_path / "intake",
+            database_path=database_path,
+            intake_scan_seconds=60,
+        )
+    )
+
+    with TestClient(application) as configured_client:
+        database_path.write_bytes(b"not a SQLite database")
+        response = configured_client.get("/api/v1/system/integrity")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "failed"
+    assert response.json()["detail"] == (
+        "The active database failed its read-only integrity check. Stop Nova "
+        "and restore a verified backup before continuing."
+    )
+    assert str(database_path) not in response.text

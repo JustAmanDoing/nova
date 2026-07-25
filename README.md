@@ -62,6 +62,8 @@ The current MVP can:
 - Preserve Linux container entrypoints across Windows Git checkouts
 - Report database size, local storage headroom, and latest scan health without
   exposing paths or document content
+- Recheck the active database with SQLite's read-only quick check from the
+  one-click Windows status control
 
 Nova never moves a file automatically and never overwrites an existing file.
 It does not upload, share, or permanently delete documents.
@@ -77,8 +79,9 @@ folder. Nova builds in the background, waits for both services to become
 healthy, and opens the local dashboard.
 
 - **Check Nova.cmd** shows container, application, and local-storage status.
-  It reports Nova's safe operational warnings and warns when the running
-  application does not match the version in the current project folder.
+  It reports Nova's safe operational warnings, runs an on-demand read-only
+  database integrity check, and warns when the running application does not
+  match the version in the current project folder.
 - **Stop Nova.cmd** stops the containers without deleting the database or
   document folders.
 - **Update Nova.cmd** refuses local changes, downloads only a fast-forward Git
@@ -401,5 +404,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 49 filename-bound backup checksums](docs/milestone-49-filename-bound-checksums.md)
 - [Milestone 50 precise backup API states](docs/milestone-50-precise-backup-api-states.md)
 - [Milestone 51 resilient backup inventory](docs/milestone-51-resilient-backup-inventory.md)
+- [Milestone 52 on-demand database integrity](docs/milestone-52-on-demand-database-integrity.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

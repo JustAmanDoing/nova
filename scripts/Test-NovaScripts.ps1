@@ -71,6 +71,17 @@ foreach ($requiredOperationalStatus in @(
     }
 }
 
+foreach ($requiredIntegrityCheck in @(
+    "Assert-NovaDatabaseIntegrity",
+    "/api/v1/system/integrity",
+    "TimeoutSec 35",
+    "Active database: read-only integrity check passed."
+)) {
+    if ($controllerContent -notmatch [regex]::Escape($requiredIntegrityCheck)) {
+        throw "Nova.ps1 does not verify the active database on demand: $requiredIntegrityCheck"
+    }
+}
+
 foreach ($requiredUpdateBackupGuard in @(
     "New-NovaPreUpdateBackup",
     "/api/v1/backups",

@@ -7,14 +7,14 @@ import sqlite3
 import time
 from _thread import RLock
 from collections.abc import Iterator
-from contextlib import contextmanager, suppress
+from contextlib import closing, contextmanager, suppress
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Literal
 from uuid import uuid4
 
-from app.schemas.health import OperationalStatus
+from app.schemas.health import DatabaseIntegrityStatus, OperationalStatus
 from app.schemas.intake import (
     ActionKind,
     ActionRecord,
@@ -38,7 +38,11 @@ from app.schemas.learning import (
     LearningResetRequest,
     LearningResetResult,
 )
-from app.services.database import DatabaseMigrationError, migrate_database
+from app.services.database import (
+    DatabaseMigrationError,
+    migrate_database,
+    verify_database_integrity,
+)
 from app.services.learning import (
     current_learning_revision,
     learned_destination,
@@ -287,6 +291,38 @@ class IntakeService:
                 last_scan_duration_ms=self._last_scan_duration_ms,
                 warnings=warnings,
             )
+
+    def database_integrity(self) -> DatabaseIntegrityStatus:
+        checked_at = datetime.now(UTC)
+        with self._lock:
+            try:
+                database_uri = (
+                    f"{self.database_path.resolve().as_uri()}?mode=ro"
+                )
+                with closing(
+                    sqlite3.connect(
+                        database_uri,
+                        uri=True,
+                        timeout=30,
+                    )
+                ) as connection:
+                    connection.execute("PRAGMA query_only = ON")
+                    verify_database_integrity(connection)
+            except (DatabaseMigrationError, OSError, sqlite3.Error):
+                return DatabaseIntegrityStatus(
+                    status="failed",
+                    checked_at=checked_at,
+                    detail=(
+                        "The active database failed its read-only integrity "
+                        "check. Stop Nova and restore a verified backup before "
+                        "continuing."
+                    ),
+                )
+        return DatabaseIntegrityStatus(
+            status="ok",
+            checked_at=checked_at,
+            detail="The active database passed SQLite's read-only quick check.",
+        )
 
     def _record_scan(
         self,

@@ -15,6 +15,7 @@ $NovaUrl = "http://localhost:5173"
 $DashboardProbeUrl = "http://127.0.0.1:5173"
 $HealthUrl = "http://127.0.0.1:8000/api/v1/health"
 $SystemStatusUrl = "http://127.0.0.1:8000/api/v1/system/status"
+$DatabaseIntegrityUrl = "http://127.0.0.1:8000/api/v1/system/integrity"
 $BackupUrl = "http://127.0.0.1:8000/api/v1/backups"
 $BackendProjectFile = Join-Path $ProjectRoot "backend\pyproject.toml"
 
@@ -144,6 +145,28 @@ function Show-NovaOperationalStatus {
     }
 }
 
+function Assert-NovaDatabaseIntegrity {
+    Write-Step "Checking the active database"
+    try {
+        $integrity = Invoke-RestMethod `
+            -Uri $DatabaseIntegrityUrl `
+            -TimeoutSec 35
+    }
+    catch {
+        throw "Nova could not complete the active database integrity check. $($_.Exception.Message)"
+    }
+
+    if ($integrity.status -ne "ok") {
+        $detail = [string]$integrity.detail
+        if ([string]::IsNullOrWhiteSpace($detail)) {
+            $detail = "The active database did not pass its integrity check."
+        }
+        throw $detail
+    }
+
+    Write-Host "Active database: read-only integrity check passed." -ForegroundColor Green
+}
+
 function Invoke-Compose {
     param([string[]]$Arguments)
     & docker compose @Arguments
@@ -240,6 +263,7 @@ function Show-NovaStatus {
         Write-Host "Double-click Start Nova.cmd to rebuild Nova from the current folder." -ForegroundColor Yellow
     }
     Show-NovaOperationalStatus
+    Assert-NovaDatabaseIntegrity
 }
 
 function Update-Nova {

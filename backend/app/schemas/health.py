@@ -23,3 +23,9 @@ class OperationalStatus(BaseModel):
     last_scan_completed_at: datetime | None
     last_scan_duration_ms: int | None = Field(default=None, ge=0)
     warnings: list[str]
+
+
+class DatabaseIntegrityStatus(BaseModel):
+    status: Literal["ok", "failed"]
+    checked_at: datetime
+    detail: str

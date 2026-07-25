@@ -130,6 +130,9 @@ jobs:
             http://127.0.0.1:8000/api/v1/system/status \
             | grep --fixed-strings --quiet '"last_scan_status":"ok"'
           curl --fail --silent --show-error \
+            http://127.0.0.1:8000/api/v1/system/integrity \
+            | grep --fixed-strings --quiet '"status":"ok"'
+          curl --fail --silent --show-error \
             http://127.0.0.1:5173/ \
             | grep --fixed-strings --quiet '<title>Nova</title>'
           response_headers="$(

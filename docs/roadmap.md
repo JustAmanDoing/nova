@@ -55,6 +55,7 @@
 - Filename-bound checksum sidecars for portable backup integrity
 - Distinct current-verification and checksum-recorded backup API states
 - Backup inventory remains available when one discovered snapshot disappears
+- One-click, read-only active-database integrity verification
 
 ## Milestone 1 — Observe — complete
 

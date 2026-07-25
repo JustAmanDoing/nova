@@ -140,7 +140,9 @@ Local data/intake folder
   volume.
 - Status reports Compose state and the versioned health endpoint, compares the
   running version with the current checkout, and gives a direct rebuild action
-  when they differ.
+  when they differ. The one-click status path also invokes a separate,
+  on-demand SQLite quick check through a read-only database connection. A
+  failed check returns safe recovery guidance without exposing local paths.
 - Update refuses a dirty worktree and uses Git fast-forward-only before
   rebuilding, so it cannot silently replace local edits. When the current
   service is running, it creates and verifies an online database snapshot
