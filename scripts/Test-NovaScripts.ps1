@@ -54,6 +54,37 @@ foreach ($requiredVersionGuard in @(
     }
 }
 
+foreach ($requiredUpdateBackupGuard in @(
+    "New-NovaPreUpdateBackup",
+    "/api/v1/backups",
+    "X-Nova-Intent",
+    "local-user-action",
+    "pre-update backup failed",
+    "backup.verified",
+    "backup.sha256"
+)) {
+    if ($controllerContent -notmatch [regex]::Escape($requiredUpdateBackupGuard)) {
+        throw "Nova.ps1 does not include the pre-update backup guard: $requiredUpdateBackupGuard"
+    }
+}
+
+$updateFunctionIndex = $controllerContent.IndexOf("function Update-Nova")
+$backupCallIndex = $controllerContent.IndexOf(
+    "    New-NovaPreUpdateBackup",
+    $updateFunctionIndex
+)
+$pullIndex = $controllerContent.IndexOf(
+    "    & git pull --ff-only",
+    $updateFunctionIndex
+)
+if (
+    $updateFunctionIndex -lt 0 `
+    -or $backupCallIndex -lt $updateFunctionIndex `
+    -or $pullIndex -lt $backupCallIndex
+) {
+    throw "Update must create the safety backup before downloading source changes."
+}
+
 $backendProject = Get-Content -Raw -LiteralPath (
     Join-Path $ProjectRoot "backend\pyproject.toml"
 )

@@ -140,7 +140,9 @@ Local data/intake folder
   running version with the current checkout, and gives a direct rebuild action
   when they differ.
 - Update refuses a dirty worktree and uses Git fast-forward-only before
-  rebuilding, so it cannot silently replace local edits.
+  rebuilding, so it cannot silently replace local edits. When the current
+  service is running, it creates and verifies an online database snapshot
+  before downloading source changes; a backup failure stops the update.
 - Missing Docker, inactive Docker Desktop, missing Git, build failures, and
   startup timeouts produce direct recovery guidance.
 

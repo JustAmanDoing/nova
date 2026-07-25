@@ -13,6 +13,7 @@ Set-StrictMode -Version Latest
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $NovaUrl = "http://localhost:5173"
 $HealthUrl = "http://localhost:8000/api/v1/health"
+$BackupUrl = "http://localhost:8000/api/v1/backups"
 $BackendProjectFile = Join-Path $ProjectRoot "backend\pyproject.toml"
 
 function Write-Step {
@@ -71,6 +72,43 @@ function Get-NovaVersionState {
         Running = $runningVersion
         Matches = $runningVersion -eq $expectedVersion
     }
+}
+
+function New-NovaPreUpdateBackup {
+    try {
+        $health = Invoke-RestMethod -Uri $HealthUrl -TimeoutSec 3
+        if ($health.status -ne "ok") {
+            throw "The health endpoint did not report an okay status."
+        }
+    }
+    catch {
+        Write-Step "Nova is not running, so no live pre-update backup was created"
+        Write-Host "The update will continue. Start Nova before a future update if you want an automatic safety snapshot." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Step "Creating a verified pre-update database backup"
+    try {
+        $backup = Invoke-RestMethod `
+            -Uri $BackupUrl `
+            -Method Post `
+            -Headers @{ "X-Nova-Intent" = "local-user-action" } `
+            -TimeoutSec 30
+    }
+    catch {
+        throw "Nova is running, but its pre-update backup failed. The update stopped before downloading source changes. $($_.Exception.Message)"
+    }
+
+    if (
+        -not $backup.verified `
+        -or [string]::IsNullOrWhiteSpace([string]$backup.sha256) `
+        -or [string]::IsNullOrWhiteSpace([string]$backup.filename)
+    ) {
+        throw "Nova did not confirm a verified pre-update backup. The update stopped before downloading source changes."
+    }
+
+    Write-Host "Verified backup: $($backup.filename)" -ForegroundColor Green
+    Write-Host "SHA-256: $($backup.sha256)"
 }
 
 function Invoke-Compose {
@@ -179,6 +217,7 @@ function Update-Nova {
     if ($changes) {
         throw "Nova has local changes. Update stopped so none of your work is overwritten."
     }
+    New-NovaPreUpdateBackup
     Write-Step "Downloading the latest approved source"
     & git pull --ff-only
     if ($LASTEXITCODE -ne 0) {

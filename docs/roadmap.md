@@ -35,6 +35,7 @@
   restore boundaries
 - Git-enforced Linux entrypoint line endings with Windows-runner verification
 - Runtime detection of source and container version drift on Windows
+- Verified online database snapshot before a running Windows deployment updates
 
 ## Milestone 1 — Observe — complete
 

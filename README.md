@@ -81,7 +81,9 @@ healthy, and opens the local dashboard.
 - **Stop Nova.cmd** stops the containers without deleting the database or
   document folders.
 - **Update Nova.cmd** refuses local changes, downloads only a fast-forward Git
-  update, rebuilds Nova, and opens it.
+  update, rebuilds Nova, and opens it. When Nova is already running, it first
+  creates and verifies a local database backup; a failed backup stops the update
+  before source changes are downloaded.
 
 Each launcher uses the shared, reviewable `scripts/Nova.ps1` controller. It
 does not install software, delete Docker volumes, or expose Nova beyond this
@@ -342,5 +344,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 31 full runtime workflow](docs/milestone-31-full-runtime-workflow.md)
 - [Milestone 32 Windows-safe container checkout](docs/milestone-32-container-line-endings.md)
 - [Milestone 33 runtime version guard](docs/milestone-33-runtime-version-guard.md)
+- [Milestone 34 pre-update backup](docs/milestone-34-pre-update-backup.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
