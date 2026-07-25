@@ -75,6 +75,38 @@ def test_backup_list_marks_missing_checksum_as_unverified(tmp_path: Path) -> Non
     assert listed[0].verified is False
 
 
+def test_backup_list_rejects_malformed_or_mismatched_checksum_sidecars(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "nova.db"
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("CREATE TABLE sample (value TEXT)")
+    backups = BackupService(database_path, tmp_path / "backups")
+    backups.initialize()
+    created = backups.create_backup()
+    assert created.sha256 is not None
+    backup_path = backups.get_backup_path(created.filename)
+    checksum_path = backup_path.with_suffix(".db.sha256")
+    valid_line = f"{created.sha256}  {created.filename}\n".encode("ascii")
+    invalid_sidecars = [
+        f"{created.sha256}\n".encode("ascii"),
+        f"{created.sha256}  nova-20000101T000000.000000Z.db\n".encode("ascii"),
+        valid_line + valid_line,
+        b"\xff\n",
+    ]
+
+    for sidecar in invalid_sidecars:
+        checksum_path.write_bytes(sidecar)
+
+        listed = backups.list_backups()
+
+        assert listed[0].filename == created.filename
+        assert listed[0].sha256 is None
+        assert listed[0].verified is False
+        with pytest.raises(RestoreError, match="no valid SHA-256 checksum"):
+            backups.get_verified_backup_path(created.filename)
+
+
 def test_backup_failure_removes_unpublished_temporary_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

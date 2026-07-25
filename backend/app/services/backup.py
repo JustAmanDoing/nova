@@ -331,9 +331,15 @@ class BackupService:
     def _read_checksum(path: Path) -> str | None:
         checksum_path = path.with_suffix(".db.sha256")
         try:
-            value = checksum_path.read_text(encoding="ascii").split(maxsplit=1)[0]
-        except (OSError, IndexError):
+            lines = checksum_path.read_text(encoding="ascii").splitlines()
+        except (OSError, UnicodeError):
             return None
-        if re.fullmatch(r"[0-9a-f]{64}", value):
-            return value
+        if len(lines) != 1:
+            return None
+        match = re.fullmatch(r"(?P<sha256>[0-9a-f]{64})  (?P<filename>.+)", lines[0])
+        if match is not None and hmac.compare_digest(
+            match.group("filename"),
+            path.name,
+        ):
+            return match.group("sha256")
         return None
