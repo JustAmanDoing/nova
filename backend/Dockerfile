@@ -15,10 +15,10 @@ RUN apt-get update \
 
 RUN addgroup --system nova && adduser --system --ingroup nova nova
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml constraints.txt README.md ./
 COPY app ./app
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/nova-entrypoint
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir --constraint constraints.txt .
 
 EXPOSE 8000
 

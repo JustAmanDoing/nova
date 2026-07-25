@@ -11,7 +11,8 @@ full production-container build.
 The workflow runs four independent jobs:
 
 1. **Backend quality**
-   - installs Python 3.12 dependencies from `backend/pyproject.toml`
+   - installs Python 3.12 dependencies from `backend/pyproject.toml` under
+     `backend/constraints.txt`
    - runs Ruff
    - runs strict mypy
    - runs the complete pytest suite with the existing coverage threshold

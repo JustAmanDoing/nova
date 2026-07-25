@@ -221,7 +221,7 @@ The Docker image installs both automatically.
 cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install --constraint constraints.txt -e ".[dev]"
 uvicorn app.main:app --reload
 ```
 
@@ -321,5 +321,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 21 validated storage boundaries](docs/milestone-21-storage-boundaries.md)
 - [Milestone 22 bounded dashboard refresh](docs/milestone-22-bounded-dashboard-refresh.md)
 - [Milestone 23 current ASGI test transport](docs/milestone-23-current-test-transport.md)
+- [Milestone 24 reproducible Python dependencies](docs/milestone-24-python-dependency-constraints.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
