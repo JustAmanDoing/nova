@@ -28,6 +28,23 @@ button {
   font: inherit;
 }
 
+:where(a, button, input, select):focus-visible {
+  outline: 3px solid #8bf6b8;
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .shell {
   width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
@@ -1082,5 +1099,16 @@ tbody tr:last-child td {
 
   .search-summary {
     grid-column: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

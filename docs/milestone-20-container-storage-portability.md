@@ -25,4 +25,5 @@ need to be readable by the application.
 The repository includes structural tests for the privilege-drop and path
 contract. GitHub Actions performs the decisive runtime check by building the
 production images, starting the real Compose stack against a fresh bind mount,
-and confirming that the API, dashboard, and intake scanner become healthy.
+confirming that the API process has a non-root user ID, and verifying that the
+API, dashboard, and intake scanner become healthy.

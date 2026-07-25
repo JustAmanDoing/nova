@@ -20,6 +20,7 @@
 - Isolated production startup, dashboard, API, and intake smoke verification
 - Local Host validation and restrictive dashboard browser security headers
 - Portable bind-mount initialization with an immediate application privilege drop
+- Keyboard-visible focus, live status announcements, and accessible intake table context
 
 ## Milestone 1 — Observe — complete
 

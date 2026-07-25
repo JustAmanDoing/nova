@@ -270,6 +270,7 @@ The backend container initializes only Nova's mounted intake, library, backup,
 and database directories before immediately dropping to its unprivileged
 `nova` account. This keeps the same Compose setup portable across Windows,
 Linux, and hosted verification runners without running the application as root.
+Continuous verification checks this property against the live container.
 
 The frontend container also pins Node 20 and pnpm 9.15.5. Update both
 `frontend/package.json` and `frontend/Dockerfile` together when changing pnpm.

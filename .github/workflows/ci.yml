@@ -109,6 +109,8 @@ jobs:
         run: docker compose up --detach --wait --wait-timeout 120
       - name: Verify API, dashboard, and intake
         run: |
+          docker compose exec -T backend python -c \
+            "from pathlib import Path; fields = next(line for line in Path('/proc/1/status').read_text().splitlines() if line.startswith('Uid:')).split(); assert fields[1] != '0', fields"
           curl --fail --silent --show-error \
             http://127.0.0.1:8000/api/v1/health \
             | grep --fixed-strings --quiet '"status":"ok"'

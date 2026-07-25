@@ -161,7 +161,13 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("Nova online")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Nova online");
     expect(await screen.findByText("invoice.txt")).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", {
+        name: "Nova intake files and processing status",
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Intake MVP · 0.1.0")).toBeInTheDocument();
     expect(screen.getByText("Healthy")).toBeInTheDocument();
     expect(screen.getByText("20.0 GB free (20.0%)")).toBeInTheDocument();
@@ -328,6 +334,10 @@ describe("App", () => {
     expect(
       screen.getByText(/Filename and title matches rank above content/i),
     ).toBeInTheDocument();
+    expect(screen.getByText("0 results").closest(".search-summary")).toHaveAttribute(
+      "aria-live",
+      "polite",
+    );
     await act(async () => {
       await new Promise((resolve) => window.setTimeout(resolve, 250));
     });

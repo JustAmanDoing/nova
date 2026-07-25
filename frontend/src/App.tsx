@@ -329,7 +329,11 @@ function App() {
         </div>
       </section>
 
-      <section className="workspace" aria-labelledby="intake-title">
+      <section
+        className="workspace"
+        aria-labelledby="intake-title"
+        aria-busy={isScanning}
+      >
         <div className="workspace-heading">
           <div>
             <p className="section-number">02–04 · Understand + review</p>
@@ -355,7 +359,11 @@ function App() {
 
         <SearchControls filters={filters} onChange={setFilters} resultCount={files.length} />
 
-        {intakeError ? <p className="error-banner">{intakeError}</p> : null}
+        {intakeError ? (
+          <p className="error-banner" role="alert">
+            {intakeError}
+          </p>
+        ) : null}
 
         <div className="file-panel">
           {files.length === 0 && !intakeError ? (
@@ -367,6 +375,9 @@ function App() {
           ) : (
             <div className="table-wrap">
               <table>
+                <caption className="sr-only">
+                  Nova intake files and processing status
+                </caption>
                 <thead>
                   <tr>
                     <th>File</th>
@@ -1104,7 +1115,7 @@ function SearchControls({
             <option value="ignored">Ignored</option>
           </select>
         </label>
-        <div className="search-summary">
+        <div className="search-summary" aria-live="polite">
           <span>{resultCount} result{resultCount === 1 ? "" : "s"}</span>
           <button
             type="button"
@@ -1139,12 +1150,12 @@ function Metric({
 
 function Status({ state }: { state: ServiceState }) {
   if (state.kind === "loading") {
-    return <p className="status pending"><span />Checking API</p>;
+    return <p className="status pending" role="status"><span />Checking API</p>;
   }
   if (state.kind === "offline") {
-    return <p className="status offline" title={state.message}><span />API unavailable</p>;
+    return <p className="status offline" role="status" title={state.message}><span />API unavailable</p>;
   }
-  return <p className="status online"><span />Nova online</p>;
+  return <p className="status online" role="status"><span />Nova online</p>;
 }
 
 function OperationalHealth({
