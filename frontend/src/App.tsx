@@ -115,15 +115,23 @@ function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const initialLoad = window.setTimeout(
-      () => void loadIntake(controller.signal),
-      200,
-    );
-    const refresh = window.setInterval(() => void loadIntake(), 5_000);
+    let stopped = false;
+    let refreshTimer: number | undefined;
+
+    async function refreshIntake() {
+      if (document.visibilityState !== "hidden") {
+        await loadIntake(controller.signal);
+      }
+      if (!stopped) {
+        refreshTimer = window.setTimeout(() => void refreshIntake(), 5_000);
+      }
+    }
+
+    refreshTimer = window.setTimeout(() => void refreshIntake(), 200);
     return () => {
+      stopped = true;
       controller.abort();
-      window.clearTimeout(initialLoad);
-      window.clearInterval(refresh);
+      if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
     };
   }, [loadIntake]);
 

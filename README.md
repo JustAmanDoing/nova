@@ -319,5 +319,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 19 local HTTP hardening](docs/milestone-19-local-http-hardening.md)
 - [Milestone 20 container storage portability](docs/milestone-20-container-storage-portability.md)
 - [Milestone 21 validated storage boundaries](docs/milestone-21-storage-boundaries.md)
+- [Milestone 22 bounded dashboard refresh](docs/milestone-22-bounded-dashboard-refresh.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
