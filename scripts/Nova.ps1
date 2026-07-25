@@ -50,6 +50,14 @@ function Invoke-Compose {
     }
 }
 
+function Show-ContainerDiagnostics {
+    param([int]$TailLines = 80)
+
+    Write-Step "Showing recent container diagnostics"
+    & docker compose ps
+    & docker compose logs --no-color --tail $TailLines
+}
+
 function Wait-ForNova {
     param([int]$TimeoutSeconds = 90)
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
@@ -66,14 +74,20 @@ function Wait-ForNova {
         }
     } while ((Get-Date) -lt $deadline)
 
-    Invoke-Compose @("ps")
-    throw "Nova did not become ready within $TimeoutSeconds seconds. Review the Docker Desktop logs."
+    Show-ContainerDiagnostics
+    throw "Nova did not become ready within $TimeoutSeconds seconds. The recent container diagnostics are shown above."
 }
 
 function Start-Nova {
     Assert-Docker
     Write-Step "Building and starting the local application"
-    Invoke-Compose @("up", "--build", "-d")
+    try {
+        Invoke-Compose @("up", "--build", "-d")
+    }
+    catch {
+        Show-ContainerDiagnostics
+        throw
+    }
     Write-Step "Waiting for the dashboard and API"
     $health = Wait-ForNova
     Write-Host ""

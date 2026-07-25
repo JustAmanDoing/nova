@@ -20,6 +20,18 @@ if ($parseErrors.Count -gt 0) {
     throw "Nova.ps1 has syntax errors: $($messages -join '; ')"
 }
 
+$controllerContent = Get-Content -Raw -LiteralPath $Controller
+foreach ($requiredDiagnostic in @(
+    "Show-ContainerDiagnostics",
+    "docker compose logs",
+    "--no-color",
+    "--tail"
+)) {
+    if ($controllerContent -notmatch [regex]::Escape($requiredDiagnostic)) {
+        throw "Nova.ps1 does not include bounded startup diagnostics: $requiredDiagnostic"
+    }
+}
+
 $launchers = @{
     "Start Nova.cmd" = "start"
     "Stop Nova.cmd" = "stop"

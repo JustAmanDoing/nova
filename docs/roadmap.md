@@ -25,6 +25,7 @@
 - Non-overlapping dashboard refresh that pauses while the page is hidden
 - Current supported Starlette `httpx2` test transport without deprecation warnings
 - Cross-platform Python dependency constraints used by CI and production builds
+- Automatic bounded container diagnostics after a failed Windows startup
 
 ## Milestone 1 — Observe — complete
 

@@ -76,7 +76,9 @@ healthy, and opens the local dashboard.
 
 Each launcher uses the shared, reviewable `scripts/Nova.ps1` controller. It
 does not install software, delete Docker volumes, or expose Nova beyond this
-PC.
+PC. If a build fails or Nova does not become ready, the controller prints the
+container state and the most recent 80 log lines so the cause is visible
+without searching through Docker Desktop.
 
 ### Command line
 
@@ -322,5 +324,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 22 bounded dashboard refresh](docs/milestone-22-bounded-dashboard-refresh.md)
 - [Milestone 23 current ASGI test transport](docs/milestone-23-current-test-transport.md)
 - [Milestone 24 reproducible Python dependencies](docs/milestone-24-python-dependency-constraints.md)
+- [Milestone 25 automatic startup diagnostics](docs/milestone-25-startup-diagnostics.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
