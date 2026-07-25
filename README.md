@@ -319,6 +319,7 @@ for private vulnerability reporting and the local security boundary.
 
 - [Architecture](docs/architecture.md)
 - [Architecture review — 25 July 2026](docs/architecture-review-2026-07-25.md)
+- [Intake MVP completion review — 25 July 2026](docs/intake-mvp-completion-review-2026-07-25.md)
 - [Milestone 3 recommendations](docs/milestone-3-recommendations.md)
 - [Milestone 4 approval boundary](docs/milestone-4-approval.md)
 - [Milestone 5 execution and undo](docs/milestone-5-execution.md)
@@ -354,5 +355,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 35 resilient Windows readiness](docs/milestone-35-windows-readiness.md)
 - [Milestone 36 public repository hygiene](docs/milestone-36-repository-hygiene.md)
 - [Milestone 37 immutable container bases](docs/milestone-37-immutable-container-bases.md)
+- [Milestone 38 representative runtime acceptance](docs/milestone-38-representative-runtime-acceptance.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

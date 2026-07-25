@@ -100,19 +100,18 @@ jobs:
         run: docker compose config --quiet
       - name: Build production containers
         run: docker compose build
-      - name: Create isolated intake fixture
-        run: |
-          mkdir -p data/intake
-          printf '%s\n' \
-            'NOVA TEST DOCUMENT' \
-            'Document type: Invoice' \
-            'Invoice number: CI-2026-001' \
-            'Invoice date: 25-07-2026' \
-            'Supplier: Nova Runtime Verification' \
-            'Total: $35.15 AUD' \
-            > data/intake/ci-smoke-invoice.txt
+      - name: Create isolated representative fixtures
+        run: python scripts/generate_runtime_fixtures.py
       - name: Start production stack
         run: docker compose up --detach --wait --wait-timeout 120
+      - name: Render isolated OCR fixture
+        run: |
+          docker compose exec -T backend tesseract --version
+          docker compose exec -T backend pdftoppm -v
+          docker compose exec -T backend \
+            pdftoppm -png -singlefile -r 200 \
+            /files/runtime-fixtures/ci-image-source.pdf \
+            /files/intake/ci-image-ocr
       - name: Verify API, dashboard, and intake
         run: |
           docker compose exec -T backend python -c \
@@ -172,6 +171,99 @@ jobs:
             sleep 2
           done
           test "$indexed" = true
+      - name: Verify representative understanding and search
+        run: |
+          api='http://127.0.0.1:8000/api/v1'
+          accepted=false
+          for attempt in $(seq 1 30); do
+            files="$(curl --fail --silent --show-error "$api/intake/files")"
+            ready="$(
+              printf '%s' "$files" \
+                | jq '[.[] | select(.understanding.status == "ready")] | length'
+            )"
+            if test "$ready" = '9'; then
+              accepted=true
+              break
+            fi
+            sleep 2
+          done
+          test "$accepted" = true
+
+          files="$(curl --fail --silent --show-error "$api/intake/files")"
+          printf '%s' "$files" \
+            | jq --exit-status \
+                '.[] | select(
+                  .original_name == "ci-project.md"
+                  and .understanding.document_type == "markdown"
+                  and .understanding.extraction_method == "utf-8"
+                )' \
+            > /dev/null
+          printf '%s' "$files" \
+            | jq --exit-status \
+                '.[] | select(
+                  .original_name == "ci-brief.docx"
+                  and .understanding.document_type == "word_document"
+                  and .understanding.extraction_method == "docx_xml"
+                )' \
+            > /dev/null
+          printf '%s' "$files" \
+            | jq --exit-status \
+                '.[] | select(
+                  .original_name == "ci-report.pdf"
+                  and .understanding.document_type == "pdf"
+                  and .understanding.extraction_method == "pypdf"
+                )' \
+            > /dev/null
+          printf '%s' "$files" \
+            | jq --exit-status \
+                '.[] | select(
+                  .original_name == "ci-image-ocr.png"
+                  and .understanding.document_type == "image"
+                  and .understanding.extraction_method == "tesseract"
+                )' \
+            > /dev/null
+
+          test "$(
+            curl --fail --silent --show-error \
+              "$api/intake/files?q=ci-project.md" \
+              | jq --raw-output '.[0].original_name'
+          )" = 'ci-project.md'
+          test "$(
+            curl --fail --silent --show-error \
+              "$api/intake/files?q=TXT-ACCEPT-001" \
+              | jq --raw-output '.[0].original_name'
+          )" = 'ci-smoke-invoice.txt'
+          test "$(
+            curl --fail --silent --show-error \
+              "$api/intake/files?q=DOCX-ACCEPT-482" \
+              | jq --raw-output '.[0].original_name'
+          )" = 'ci-brief.docx'
+          test "$(
+            curl --fail --silent --show-error \
+              "$api/intake/files?q=PDF-ACCEPT-731" \
+              | jq --raw-output '.[0].original_name'
+          )" = 'ci-report.pdf'
+          test "$(
+            curl --fail --silent --show-error \
+              "$api/intake/files?q=OCR-ACCEPT-417" \
+              | jq --raw-output '.[0].original_name'
+          )" = 'ci-image-ocr.png'
+          test "$(
+            curl --fail --silent --show-error \
+              "$api/intake/files?q=word%20document%20content" \
+              | jq --raw-output '.[0].original_name'
+          )" = 'ci-brief.docx'
+          test "$(
+            curl --fail --silent --show-error \
+              "$api/intake/files?extension=docx&status=observed&understanding_status=ready" \
+              | jq --raw-output '.[0].original_name'
+          )" = 'ci-brief.docx'
+
+          summary="$(
+            curl --fail --silent --show-error "$api/intake/summary"
+          )"
+          test "$(printf '%s' "$summary" | jq '.files_observed')" = '9'
+          test "$(printf '%s' "$summary" | jq '.understood')" = '9'
       - name: Exercise approval, recovery, and backup boundaries
         run: |
           api='http://127.0.0.1:8000/api/v1'
@@ -238,6 +330,80 @@ jobs:
           test "$(printf '%s' "$undo" | jq --raw-output '.status')" = 'succeeded'
           test -f data/intake/ci-smoke-invoice.txt
           test ! -e "data/library/$destination"
+
+          learning_operations=()
+          for label in 1 2 3; do
+            files="$(
+              curl --fail --silent --show-error "$api/intake/files"
+            )"
+            learning_id="$(
+              printf '%s' "$files" \
+                | jq --exit-status --raw-output \
+                    '.[] | select(
+                      .original_name == "ci-learning-'"$label"'.txt"
+                    ) | .id'
+            )"
+            curl --fail --silent --show-error \
+              --request PUT \
+              --header "$intent" \
+              --header 'Content-Type: application/json' \
+              --data \
+                '{"action":"approve","destination":"Acceptance/Learned-Invoices"}' \
+              "$api/intake/files/$learning_id/approval" \
+              > /dev/null
+            learning_move="$(
+              curl --fail --silent --show-error \
+                --request POST \
+                --header "$intent" \
+                "$api/intake/files/$learning_id/execute"
+            )"
+            test "$(
+              printf '%s' "$learning_move" | jq --raw-output '.status'
+            )" = 'succeeded'
+            learning_operations+=("$(
+              printf '%s' "$learning_move" \
+                | jq --raw-output '.operation_id'
+            )")
+          done
+
+          probe="$(
+            curl --fail --silent --show-error "$api/intake/files" \
+              | jq --exit-status \
+                  '.[] | select(
+                    .original_name == "ci-learning-probe.txt"
+                  )'
+          )"
+          test "$(
+            printf '%s' "$probe" \
+              | jq --raw-output '.recommendation.destination'
+          )" = 'Acceptance/Learned-Invoices'
+          printf '%s' "$probe" \
+            | jq --exit-status \
+                '.recommendation.reasons
+                 | any(.[]; contains("3 of 3 active, confirmed moves"))' \
+            > /dev/null
+
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "$intent" \
+            "$api/intake/actions/${learning_operations[0]}/undo" \
+            > /dev/null
+          refreshed_probe="$(
+            curl --fail --silent --show-error "$api/intake/files" \
+              | jq --exit-status \
+                  '.[] | select(
+                    .original_name == "ci-learning-probe.txt"
+                  )'
+          )"
+          test "$(
+            printf '%s' "$refreshed_probe" \
+              | jq --raw-output '.recommendation.destination'
+          )" = 'Financial/Invoices'
+          printf '%s' "$refreshed_probe" \
+            | jq --exit-status \
+                '.recommendation.reasons
+                 | all(.[]; contains("Learned the destination") | not)' \
+            > /dev/null
 
           backup="$(
             curl --fail --silent --show-error \
