@@ -13,6 +13,7 @@ Set-StrictMode -Version Latest
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $NovaUrl = "http://localhost:5173"
 $HealthUrl = "http://localhost:8000/api/v1/health"
+$BackendProjectFile = Join-Path $ProjectRoot "backend\pyproject.toml"
 
 function Write-Step {
     param([string]$Message)
@@ -39,6 +40,36 @@ function Assert-Docker {
     & docker info --format "{{.ServerVersion}}" *> $null
     if ($LASTEXITCODE -ne 0) {
         throw "Docker Desktop is installed but not running. Start it, then try again."
+    }
+}
+
+function Get-ExpectedNovaVersion {
+    if (-not (Test-Path -LiteralPath $BackendProjectFile -PathType Leaf)) {
+        throw "Nova cannot find backend\pyproject.toml, so it cannot verify the application version."
+    }
+    $projectContent = Get-Content -Raw -LiteralPath $BackendProjectFile
+    $versionMatch = [regex]::Match(
+        $projectContent,
+        '(?m)^version\s*=\s*"(?<version>[^"]+)"\s*$'
+    )
+    if (-not $versionMatch.Success) {
+        throw "Nova cannot read the expected application version from backend\pyproject.toml."
+    }
+    return $versionMatch.Groups["version"].Value
+}
+
+function Get-NovaVersionState {
+    param([object]$Health)
+
+    $runningVersion = [string]$Health.version
+    if ([string]::IsNullOrWhiteSpace($runningVersion)) {
+        throw "Nova's health response did not include an application version."
+    }
+    $expectedVersion = Get-ExpectedNovaVersion
+    return [PSCustomObject]@{
+        Expected = $expectedVersion
+        Running = $runningVersion
+        Matches = $runningVersion -eq $expectedVersion
     }
 }
 
@@ -90,6 +121,10 @@ function Start-Nova {
     }
     Write-Step "Waiting for the dashboard and API"
     $health = Wait-ForNova
+    $versionState = Get-NovaVersionState -Health $health
+    if (-not $versionState.Matches) {
+        throw "Nova version mismatch: this folder contains $($versionState.Expected), but the running application is $($versionState.Running). Run Start Nova.cmd again to rebuild from this folder."
+    }
     Write-Host ""
     Write-Host "Nova $($health.version) is ready at $NovaUrl" -ForegroundColor Green
     Write-Host "Your database and document folders remain local on this PC."
@@ -112,12 +147,22 @@ function Show-NovaStatus {
     Invoke-Compose @("ps")
     try {
         $health = Invoke-RestMethod -Uri $HealthUrl -TimeoutSec 3
-        Write-Host ""
-        Write-Host "Nova $($health.version) is healthy at $NovaUrl" -ForegroundColor Green
     }
     catch {
         Write-Host ""
         Write-Host "Nova is not responding at $NovaUrl." -ForegroundColor Yellow
+        return
+    }
+
+    $versionState = Get-NovaVersionState -Health $health
+    Write-Host ""
+    if ($versionState.Matches) {
+        Write-Host "Nova $($health.version) is healthy at $NovaUrl" -ForegroundColor Green
+    }
+    else {
+        Write-Host "Nova is healthy at $NovaUrl, but its version is out of date." -ForegroundColor Yellow
+        Write-Host "Version mismatch: this folder contains $($versionState.Expected), but the running application is $($versionState.Running)." -ForegroundColor Yellow
+        Write-Host "Double-click Start Nova.cmd to rebuild Nova from the current folder." -ForegroundColor Yellow
     }
 }
 

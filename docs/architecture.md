@@ -136,7 +136,9 @@ Local data/intake folder
   loopback-only URL.
 - Stop uses ordinary Compose shutdown and never removes the named database
   volume.
-- Status reports Compose state and the versioned health endpoint.
+- Status reports Compose state and the versioned health endpoint, compares the
+  running version with the current checkout, and gives a direct rebuild action
+  when they differ.
 - Update refuses a dirty worktree and uses Git fast-forward-only before
   rebuilding, so it cannot silently replace local edits.
 - Missing Docker, inactive Docker Desktop, missing Git, build failures, and

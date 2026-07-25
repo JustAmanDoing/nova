@@ -75,7 +75,9 @@ With Docker Desktop running, double-click **Start Nova.cmd** in the project
 folder. Nova builds in the background, waits for both services to become
 healthy, and opens the local dashboard.
 
-- **Check Nova.cmd** shows container and health status.
+- **Check Nova.cmd** shows container and health status, and warns when the
+  running application does not match the version in the current project
+  folder.
 - **Stop Nova.cmd** stops the containers without deleting the database or
   document folders.
 - **Update Nova.cmd** refuses local changes, downloads only a fast-forward Git
@@ -339,5 +341,6 @@ Never commit secrets, API keys, private documents, personal data, or a populated
 - [Milestone 30 immutable CI actions](docs/milestone-30-immutable-ci-actions.md)
 - [Milestone 31 full runtime workflow](docs/milestone-31-full-runtime-workflow.md)
 - [Milestone 32 Windows-safe container checkout](docs/milestone-32-container-line-endings.md)
+- [Milestone 33 runtime version guard](docs/milestone-33-runtime-version-guard.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

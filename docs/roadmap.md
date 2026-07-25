@@ -34,6 +34,7 @@
 - Isolated production verification of approval, move, audit, undo, backup, and
   restore boundaries
 - Git-enforced Linux entrypoint line endings with Windows-runner verification
+- Runtime detection of source and container version drift on Windows
 
 ## Milestone 1 — Observe — complete
 

@@ -42,6 +42,44 @@ foreach ($requiredDiagnostic in @(
     }
 }
 
+foreach ($requiredVersionGuard in @(
+    "Get-ExpectedNovaVersion",
+    "Get-NovaVersionState",
+    "backend\pyproject.toml",
+    "Nova version mismatch",
+    "Start Nova.cmd"
+)) {
+    if ($controllerContent -notmatch [regex]::Escape($requiredVersionGuard)) {
+        throw "Nova.ps1 does not include the runtime version guard: $requiredVersionGuard"
+    }
+}
+
+$backendProject = Get-Content -Raw -LiteralPath (
+    Join-Path $ProjectRoot "backend\pyproject.toml"
+)
+$backendVersionMatch = [regex]::Match(
+    $backendProject,
+    '(?m)^version\s*=\s*"(?<version>[^"]+)"\s*$'
+)
+if (-not $backendVersionMatch.Success) {
+    throw "backend/pyproject.toml does not declare the Nova version."
+}
+$expectedVersion = $backendVersionMatch.Groups["version"].Value
+
+$backendConfig = Get-Content -Raw -LiteralPath (
+    Join-Path $ProjectRoot "backend\app\core\config.py"
+)
+if ($backendConfig -notmatch [regex]::Escape("app_version: str = `"$expectedVersion`"")) {
+    throw "The backend package and API versions do not match."
+}
+
+$frontendPackage = Get-Content -Raw -LiteralPath (
+    Join-Path $ProjectRoot "frontend\package.json"
+) | ConvertFrom-Json
+if ($frontendPackage.version -ne $expectedVersion) {
+    throw "The frontend and backend package versions do not match."
+}
+
 $launchers = @{
     "Start Nova.cmd" = "start"
     "Stop Nova.cmd" = "stop"
