@@ -138,13 +138,25 @@ The detailed evidence and open blockers are recorded in
 
 ## Milestone 54 — Local Chat Core
 
-**Status (28 July 2026): approved; implementation beginning.**
+**Status (28 July 2026): complete; working local prototype accepted.**
 
-- Local Ollama model discovery and streaming chat
-- Local conversation history
-- Stop generation
-- Clear provider-failure handling
-- No tools, web access, RAG, or permanent personal-memory promotion
+- Local Ollama model discovery and streaming chat — complete
+- Local conversation history — complete
+- Stop generation — complete
+- Clear provider-failure handling — complete
+- No tools, web access, RAG, or permanent personal-memory promotion — preserved
+
+The evidence and current limitations are recorded in
+`docs/milestone-54-local-chat-core.md`.
+
+## Milestone 55 — Conversation-to-Knowledge Capture
+
+**Status (28 July 2026): proposed; runtime work not started.**
+
+- Natural explicit "remember this" requests
+- Limited suggestions for high-value candidate knowledge
+- Owner review before any permanent personal record is created
+- No silent memory promotion
 
 ## Later capabilities
 

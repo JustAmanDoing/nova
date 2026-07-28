@@ -51,6 +51,8 @@ def test_new_database_records_ordered_migration_history(tmp_path: Path) -> None:
         "learning_examples",
         "learning_events",
         "learning_state",
+        "chat_conversations",
+        "chat_messages",
         "schema_migrations",
     }.issubset(tables)
     assert "learning_revision" in recommendation_columns

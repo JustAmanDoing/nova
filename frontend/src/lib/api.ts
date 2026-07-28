@@ -10,6 +10,41 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+export interface ChatModel {
+  name: string;
+  size_bytes: number;
+  parameter_size: string | null;
+  quantization_level: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant";
+  content: string;
+  model: string | null;
+  created_at: string;
+}
+
+export interface ChatConversationSummary {
+  id: string;
+  title: string;
+  model: string | null;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
+export interface ChatConversation extends ChatConversationSummary {
+  messages: ChatMessage[];
+}
+
+export type ChatStreamEvent =
+  | { type: "user"; message: ChatMessage }
+  | { type: "delta"; content: string }
+  | { type: "done"; message: ChatMessage }
+  | { type: "error"; message: string };
+
 export interface OperationalStatus {
   status: "healthy" | "attention";
   uptime_seconds: number;
@@ -190,6 +225,82 @@ export async function getOperationalStatus(
   return request<OperationalStatus>("/api/v1/system/status", { signal });
 }
 
+export async function getChatModels(
+  signal?: AbortSignal,
+): Promise<ChatModel[]> {
+  return request<ChatModel[]>("/api/v1/chat/models", { signal });
+}
+
+export async function getChatConversations(
+  signal?: AbortSignal,
+): Promise<ChatConversationSummary[]> {
+  return request<ChatConversationSummary[]>("/api/v1/chat/conversations", {
+    signal,
+  });
+}
+
+export async function createChatConversation(
+  title = "New conversation",
+): Promise<ChatConversationSummary> {
+  return request<ChatConversationSummary>("/api/v1/chat/conversations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function getChatConversation(
+  conversationId: string,
+  signal?: AbortSignal,
+): Promise<ChatConversation> {
+  return request<ChatConversation>(
+    `/api/v1/chat/conversations/${encodeURIComponent(conversationId)}`,
+    { signal },
+  );
+}
+
+export async function streamChatMessage(
+  conversationId: string,
+  model: string,
+  content: string,
+  onEvent: (event: ChatStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        [LOCAL_ACTION_HEADER]: LOCAL_ACTION_VALUE,
+      },
+      body: JSON.stringify({ model, content }),
+      signal,
+    },
+  );
+  if (!response.ok) {
+    throw await responseError(response);
+  }
+  if (!response.body) {
+    throw new Error("Nova API returned an empty chat stream.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (line.trim()) onEvent(JSON.parse(line) as ChatStreamEvent);
+    }
+    if (done) break;
+  }
+  if (buffer.trim()) onEvent(JSON.parse(buffer) as ChatStreamEvent);
+}
+
 export async function getBackups(
   signal?: AbortSignal,
 ): Promise<BackupRecord[]> {
@@ -320,14 +431,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   const response = await fetch(`${API_URL}${path}`, { ...init, headers });
   if (!response.ok) {
-    let detail = "";
-    try {
-      const body = (await response.json()) as { detail?: unknown };
-      if (typeof body.detail === "string") detail = `: ${body.detail}`;
-    } catch {
-      // The status is still useful when the response is not JSON.
-    }
-    throw new Error(`Nova API returned ${response.status}${detail}`);
+    throw await responseError(response);
   }
   return response.json() as Promise<T>;
+}
+
+async function responseError(response: Response): Promise<Error> {
+  let detail = "";
+  try {
+    const body = (await response.json()) as { detail?: unknown };
+    if (typeof body.detail === "string") detail = `: ${body.detail}`;
+  } catch {
+    // The status is still useful when the response is not JSON.
+  }
+  return new Error(`Nova API returned ${response.status}${detail}`);
 }

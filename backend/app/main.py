@@ -11,6 +11,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api.router import api_router
 from app.core.config import Settings, get_settings
 from app.services.backup import BackupService
+from app.services.chat import ChatService, OllamaProvider
 from app.services.intake import IntakeService
 from app.services.ocr import LocalOcrService
 
@@ -57,8 +58,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             post_restore=reconcile_restored_database,
         )
         await asyncio.to_thread(backups.initialize)
+        chat = ChatService(
+            database_path=resolved_settings.database_path,
+            provider=OllamaProvider(
+                base_url=resolved_settings.ollama_base_url,
+                timeout_seconds=resolved_settings.ollama_timeout_seconds,
+            ),
+        )
         application.state.intake = intake
         application.state.backups = backups
+        application.state.chat = chat
         watcher = asyncio.create_task(
             watch_intake(intake, resolved_settings.intake_scan_seconds)
         )

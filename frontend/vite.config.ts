@@ -3,6 +3,14 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      input: {
+        intake: "index.html",
+        chat: "chat.html",
+      },
+    },
+  },
   server: {
     host: "0.0.0.0",
     port: 5173,

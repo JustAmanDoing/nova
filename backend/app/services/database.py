@@ -230,6 +230,40 @@ def _no_schema_change(_: sqlite3.Connection) -> None:
     return
 
 
+def _local_chat_core(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS chat_conversations (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            model TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_chat_conversations_updated
+        ON chat_conversations (updated_at DESC)
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id TEXT PRIMARY KEY,
+            conversation_id TEXT NOT NULL
+                REFERENCES chat_conversations(id) ON DELETE CASCADE,
+            role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+            content TEXT NOT NULL,
+            model TEXT,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_chat_messages_conversation
+        ON chat_messages (conversation_id, created_at, id)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -241,6 +275,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(8, "guarded-database-restore", _no_schema_change),
     Migration(9, "confirmed-move-learning", _confirmed_move_learning),
     Migration(10, "learning-preference-controls", _learning_preference_controls),
+    Migration(11, "local-chat-core", _local_chat_core),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version
 

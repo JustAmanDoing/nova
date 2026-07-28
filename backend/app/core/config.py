@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "Nova API"
-    app_version: str = "0.52.0"
+    app_version: str = "0.54.0"
     environment: str = "development"
     api_prefix: str = "/api/v1"
     api_host: str = "0.0.0.0"
@@ -45,6 +45,8 @@ class Settings(BaseSettings):
         ge=1_000_000,
         le=500_000_000,
     )
+    ollama_base_url: str = "http://host.docker.internal:11434"
+    ollama_timeout_seconds: float = Field(default=120.0, ge=5.0, le=600.0)
 
     @field_validator("cors_origins", "allowed_hosts", mode="before")
     @classmethod

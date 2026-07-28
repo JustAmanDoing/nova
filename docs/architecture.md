@@ -15,6 +15,18 @@ guarded **Execute**, append-only **Audit**, and conservative destination
 confirmed action that passes current-approval, path, conflict, and fingerprint
 checks.
 
+Local chat is an optional parallel interface:
+
+```text
+React chat page
+  └── versioned FastAPI chat endpoints
+        ├── local SQLite conversation history
+        └── Nova-owned provider adapter
+              └── Ollama on the Windows host
+```
+
+It does not bypass or extend the guarded file workflow.
+
 ## Current vertical slice
 
 ```text
@@ -55,6 +67,10 @@ Local data/intake folder
 
 ### Frontend
 
+- Provides a separate local chat page with model selection, streamed replies,
+  local conversation history, and stop generation.
+- States that tools, web access, RAG, and permanent-memory promotion are
+  unavailable in the current chat milestone.
 - Displays service health, intake totals, file metadata, duplicate status, and
   normalized understanding results.
 - Reads authoritative, unfiltered totals from a dedicated summary endpoint so
@@ -79,6 +95,13 @@ Local data/intake folder
 
 ### Backend
 
+- Discovers models and streams replies through a small Nova-owned Ollama
+  adapter rather than coupling the application to a provider-specific UI.
+- Stores conversations and complete user/assistant messages locally in SQLite.
+- Stores no partial or invented assistant message when generation is stopped
+  or the provider fails.
+- Requires the local browser-intent guard for conversation creation and message
+  submission.
 - Scans the configured intake directory.
 - Reads every file locally to calculate its fingerprint.
 - Extracts UTF-8 text, PDF text layers, and DOCX document text up to the
@@ -118,12 +141,15 @@ Local data/intake folder
 - Removes a learning group's derived examples transactionally only after exact
   confirmation, advances its revision, and records a reset event.
 - Exposes versioned endpoints under `/api/v1`.
-- Runs without an AI model or cloud service.
+- Keeps the complete intake workflow available without an AI model or cloud
+  service. The optional chat page requires the configured local Ollama service.
 
 ### Local storage
 
 - Pending files remain in `data/intake`.
 - Explicitly filed documents are stored under `data/library`.
+- Chat conversations and messages live in the local SQLite database and are
+  included in Nova's verified database backups.
 - Docker mounts the local `data` root so the guarded action boundary can move
   approved files; scanning and recommendation paths do not write to files.
 - SQLite lives in the `nova_data` Docker volume.

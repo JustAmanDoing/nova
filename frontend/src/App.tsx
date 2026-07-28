@@ -393,6 +393,12 @@ function App() {
           <span className="brand-mark" aria-hidden="true">N</span>
           Nova
         </a>
+        <div className="chat-nav-links">
+          <a className="chat-nav-link" href="/chat.html">Chat</a>
+          <a className="chat-nav-link active" href="/" aria-current="page">
+            Intake
+          </a>
+        </div>
         <div className="nav-status">
           <Status state={service} />
           <span className="phase">
