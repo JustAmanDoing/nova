@@ -151,8 +151,7 @@ The evidence and current limitations are recorded in
 
 ## Milestone 55 — Conversation-to-Knowledge Capture
 
-**Status (28 July 2026): working prototype; engineering acceptance passed,
-owner acceptance pending.**
+**Status (28 July 2026): complete; engineering and owner acceptance passed.**
 
 - Natural explicit "remember this" requests — complete
 - Limited deterministic suggestions for high-value candidate knowledge —

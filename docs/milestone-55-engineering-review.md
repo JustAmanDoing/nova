@@ -2,7 +2,7 @@
 
 **Review date:** 28 July 2026
 
-**Decision:** Pass for working prototype; owner acceptance pending
+**Decision:** Pass; owner acceptance completed
 
 ## Evidence reviewed
 
@@ -45,6 +45,6 @@
 
 ## Conclusion
 
-The implementation is safe and sufficiently verified for owner prototype
-acceptance. It must not be described as retrieval-enabled memory until
-Milestone 56 passes its own review and acceptance.
+The implementation passed owner-directed browser acceptance on 28 July 2026.
+It must not be described as retrieval-enabled memory until Milestone 56 passes
+its own review and acceptance.

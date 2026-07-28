@@ -8,7 +8,7 @@
 
 **Prototype release:** 0.55.0
 
-**Decision:** Engineering acceptance passed; owner acceptance is pending
+**Decision:** Accepted
 
 ## Scope delivered
 
@@ -129,12 +129,26 @@ natural conversation-to-review workflow while preserving explicit owner
 approval, local storage, no-overwrite behavior, truthful pending state, and the
 existing guarded intake system.
 
-Owner acceptance should verify:
+## Owner acceptance
+
+Owner-directed acceptance passed on 28 July 2026. The installed browser workflow
+verified:
 
 1. a `Remember that...` statement creates the expected editable review card;
 2. **Don't save** removes a proposal and creates no record;
 3. **Approve & save** creates a file under `N:\Nova\Memory`; and
 4. ordinary chat remains usable.
+
+The accepted synthetic record was edited before approval and written to:
+
+`Facts/2026-07-28 - milestone-55-automated-acceptance-record - fb7daf53.md`
+
+Its API checksum and host-file SHA-256 both equal:
+
+`65f098020b53107ac91bc3ee41c2963cdcaf3688e85ee13e4098d25f6abae58f`
+
+There were zero pending proposals after the test. SQLite integrity returned
+`ok`, and the rejected proposal created no record.
 
 The independent review records are:
 
@@ -143,6 +157,6 @@ The independent review records are:
 
 ## Exact next milestone
 
-After owner acceptance, Milestone 56 — Approved Knowledge Retrieval. It must use
-only owner-approved records, cite the exact local source, and state clearly when
-no approved knowledge matches.
+Milestone 56 — Approved Knowledge Retrieval. It must use only owner-approved
+records, cite the exact local source, and state clearly when no approved
+knowledge matches.
