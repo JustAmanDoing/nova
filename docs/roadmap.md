@@ -123,6 +123,22 @@
 - User-controlled automation rules
 - Measured thresholds before any automatic filing
 
+## Milestone 53 — Local v1 completion review
+
+**Status (28 July 2026): in progress; not release-ready.**
+
+- Static usability and accessibility defects corrected on the dedicated
+  Milestone 53 branch
+- Architecture and scope boundaries reconfirmed
+- Full automated verification matrix pending
+- Docker production workflow pending
+- Interactive Windows-host acceptance pending
+
+The detailed evidence and open blockers are recorded in
+`docs/milestone-53-local-v1-completion-review.md`. Milestone 54 runtime work
+must not begin before Milestone 53 receives an evidence-backed release-ready
+decision.
+
 ## Later capabilities
 
 - Optional local or cloud AI provider adapters

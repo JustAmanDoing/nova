@@ -105,6 +105,7 @@ function App() {
         ? getBackups(signal)
         : Promise.resolve(null);
       const [
+        healthResult,
         filesResult,
         summaryResult,
         actionsResult,
@@ -113,6 +114,7 @@ function App() {
         preferencesResult,
         operationsResult,
       ] = await Promise.allSettled([
+        getHealth(signal),
         getIntakeFiles(filters, signal),
         getIntakeSummary(signal),
         getActionHistory(signal),
@@ -124,6 +126,7 @@ function App() {
       if (requestId !== latestLoadRequest.current) return false;
 
       const results = [
+        healthResult,
         filesResult,
         summaryResult,
         actionsResult,
@@ -136,6 +139,15 @@ function App() {
         return false;
       }
 
+      if (healthResult.status === "fulfilled") {
+        setService({ kind: "online", health: healthResult.value });
+      } else {
+        const message =
+          healthResult.reason instanceof Error
+            ? healthResult.reason.message
+            : "Unknown error";
+        setService({ kind: "offline", message });
+      }
       if (filesResult.status === "fulfilled") {
         setFiles(filesResult.value);
         setFilesUnavailable(false);
@@ -185,19 +197,6 @@ function App() {
       return false;
     }
   }, [filters]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    getHealth(controller.signal)
-      .then((health) => setService({ kind: "online", health }))
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        const message = error instanceof Error ? error.message : "Unknown error";
-        setService({ kind: "offline", message });
-      });
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -469,7 +468,10 @@ function App() {
             <div className="empty-state">
               <span aria-hidden="true">↓</span>
               <h3>Your intake is empty</h3>
-              <p>Drop a TXT, Markdown, PDF, or DOCX file into <code>data/intake</code>.</p>
+              <p>
+                Drop a TXT, Markdown, PDF, DOCX, PNG, JPG, JPEG, TIFF, BMP, or
+                WEBP file into <code>data/intake</code>.
+              </p>
             </div>
           ) : (
             <div className="table-wrap">

@@ -332,7 +332,7 @@ h2 {
   min-width: 0;
   padding: 11px 12px;
   color: #edf1ed;
-  border: 1px solid #353e39;
+  border: 1px solid #68736d;
   border-radius: 9px;
   outline: none;
   background: #090c0b;
@@ -351,7 +351,7 @@ h2 {
 
 .search-help {
   margin: 6px 0 0;
-  color: #68736d;
+  color: #8d9892;
   font-size: 0.7rem;
   line-height: 1.4;
 }
@@ -376,7 +376,7 @@ h2 {
 .secondary-button {
   padding: 10px 12px;
   color: #c8d0cb;
-  border: 1px solid #3b4540;
+  border: 1px solid #68736d;
   border-radius: 9px;
   background: transparent;
   cursor: pointer;
@@ -907,7 +907,7 @@ td:first-child span {
   min-width: 0;
   padding: 8px 9px;
   color: #edf1ed;
-  border: 1px solid #353e39;
+  border: 1px solid #68736d;
   border-radius: 8px;
   outline: none;
   background: #090c0b;

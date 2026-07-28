@@ -91,6 +91,59 @@ function healthyOperations() {
 }
 
 describe("App", () => {
+  it("refreshes service health and recovers without clearing valid dashboard data", async () => {
+    vi.useFakeTimers();
+    let healthRequests = 0;
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/health")) {
+        healthRequests += 1;
+        if (healthRequests === 2) {
+          return Promise.reject(new Error("Health endpoint unavailable"));
+        }
+        return response({
+          status: "ok",
+          service: "Nova API",
+          version: "0.52.0",
+          environment: "test",
+          timestamp: "2026-07-28T09:00:00Z",
+        });
+      }
+      if (url.endsWith("/backups")) return response([]);
+      if (url.endsWith("/actions/recovery")) return response([]);
+      if (url.endsWith("/actions")) return response([]);
+      if (url.endsWith("/summary")) {
+        return response({
+          files_observed: 1,
+          understood: 1,
+          ready_for_review: 1,
+          exact_duplicates: 0,
+        });
+      }
+      return response([recommendedInvoice()]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("Nova online");
+    expect(screen.getByText("invoice.txt")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("API unavailable");
+    expect(screen.getByText("invoice.txt")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("Nova online");
+    expect(screen.getByText("invoice.txt")).toBeInTheDocument();
+  });
+
   it("does not let an older refresh overwrite newer dashboard state", async () => {
     let summaryRequests = 0;
     let releaseInitialSummary = () => {};
