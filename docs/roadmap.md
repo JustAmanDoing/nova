@@ -168,8 +168,7 @@ The evidence and limitations are recorded in
 
 ## Milestone 56 — Approved Knowledge Retrieval
 
-**Status (28 July 2026): complete; engineering acceptance passed and owner
-acceptance pending.**
+**Status (28 July 2026): complete; engineering and owner acceptance passed.**
 
 - Retrieve only owner-approved knowledge records — complete
 - Verify the current local record path and SHA-256 before retrieval — complete

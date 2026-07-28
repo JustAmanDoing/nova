@@ -8,7 +8,7 @@
 
 **Prototype release:** 0.56.0
 
-**Decision:** Engineering acceptance passed; owner acceptance pending
+**Decision:** Accepted
 
 ## Scope delivered
 
@@ -131,7 +131,11 @@ owner-controlled, no-silent-memory architecture remains intact.
 
 ## Owner acceptance
 
-Pending. The installed prototype is ready for the short owner acceptance test.
+Owner acceptance passed on 28 July 2026. The installed prototype returned the
+approved `amber lighthouse [K1]` answer with its exact local record and clearly
+reported that no approved knowledge matched the unknown favourite-fruit
+question.
+
 No merge to `main` or remote push is part of this milestone.
 
 ## Exact next milestone

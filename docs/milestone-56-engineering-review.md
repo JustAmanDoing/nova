@@ -2,7 +2,7 @@
 
 **Review date:** 28 July 2026
 
-**Decision:** Pass; owner acceptance pending
+**Decision:** Pass; owner acceptance completed
 
 ## Evidence reviewed
 
@@ -45,6 +45,5 @@
 
 ## Conclusion
 
-The installed Milestone 56 build passes engineering acceptance. It must not be
-described as general document RAG or autonomous memory. Owner acceptance
-remains the final prototype gate.
+The installed Milestone 56 build passes engineering and owner acceptance. It
+must not be described as general document RAG or autonomous memory.
