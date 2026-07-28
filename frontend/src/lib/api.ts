@@ -143,6 +143,50 @@ export interface KnowledgeSnapshot {
   created_at: string;
 }
 
+export type KnowledgeRequirementStatus = "covered" | "stale" | "missing";
+
+export interface KnowledgeRequirementQuality {
+  id: string;
+  domain: string;
+  title: string;
+  why: string;
+  suggestion: string;
+  priority: number;
+  core: boolean;
+  review_days: number;
+  status: KnowledgeRequirementStatus;
+  last_reviewed: string | null;
+  matched_record_ids: string[];
+  matched_record_titles: string[];
+}
+
+export interface RetrievalQualityFailure {
+  record_id: string;
+  title: string;
+  reason: string;
+}
+
+export interface KnowledgeQualityReport {
+  generated_at: string;
+  active_record_count: number;
+  retired_record_count: number;
+  core_covered: number;
+  core_total: number;
+  completion_percent: number;
+  fresh_covered: number;
+  covered_total: number;
+  freshness_percent: number;
+  retrieval_total_records: number;
+  retrieval_checked: number;
+  retrieval_passed: number;
+  retrieval_percent: number;
+  retrieval_check_limit: number;
+  requirements: KnowledgeRequirementQuality[];
+  retrieval_failures: RetrievalQualityFailure[];
+  methodology: string;
+  limitation: string;
+}
+
 export interface OperationalStatus {
   status: "healthy" | "attention";
   uptime_seconds: number;
@@ -427,6 +471,14 @@ export async function getKnowledgeRecords(
   signal?: AbortSignal,
 ): Promise<KnowledgeRecord[]> {
   return request<KnowledgeRecord[]>("/api/v1/knowledge/records", { signal });
+}
+
+export async function getKnowledgeQuality(
+  signal?: AbortSignal,
+): Promise<KnowledgeQualityReport> {
+  return request<KnowledgeQualityReport>("/api/v1/knowledge/quality", {
+    signal,
+  });
 }
 
 export async function updateKnowledgeRecord(

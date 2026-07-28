@@ -8,7 +8,7 @@ import zipfile
 from _thread import RLock
 from contextlib import closing
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -78,6 +78,190 @@ _PROFILE_PATTERNS = (
             re.I,
         ),
         "This looks like stable family profile information.",
+    ),
+)
+
+
+@dataclass(frozen=True)
+class KnowledgeRequirementDefinition:
+    id: str
+    domain: str
+    title: str
+    why: str
+    suggestion: str
+    priority: int
+    core: bool
+    review_days: int
+    match_kinds: tuple[str, ...] = ()
+    match_phrases: tuple[str, ...] = ()
+
+
+_KNOWLEDGE_REQUIREMENTS = (
+    KnowledgeRequirementDefinition(
+        id="preferred-name",
+        domain="personal",
+        title="Preferred name",
+        why="Lets Nova address you consistently without guessing.",
+        suggestion="Tell Nova the name you want it to use.",
+        priority=5,
+        core=True,
+        review_days=365,
+        match_phrases=("my name", "preferred name", "call me"),
+    ),
+    KnowledgeRequirementDefinition(
+        id="response-style",
+        domain="preferences",
+        title="Response style",
+        why="Helps Nova present answers in the amount and style you prefer.",
+        suggestion="Describe how concise, detailed, or structured you want replies.",
+        priority=4,
+        core=True,
+        review_days=180,
+        match_phrases=("response style", "answer style", "reply style"),
+    ),
+    KnowledgeRequirementDefinition(
+        id="current-goals",
+        domain="planning",
+        title="Current goals",
+        why="Lets Nova prioritise recommendations around outcomes you chose.",
+        suggestion="Add at least one current goal you want Nova to support.",
+        priority=5,
+        core=True,
+        review_days=90,
+        match_kinds=("goal",),
+        match_phrases=("current goal", "long term goal", "long-term goal"),
+    ),
+    KnowledgeRequirementDefinition(
+        id="active-projects",
+        domain="planning",
+        title="Active projects",
+        why="Gives Nova the context needed to suggest practical next actions.",
+        suggestion="Add the project you are actively working on now.",
+        priority=5,
+        core=True,
+        review_days=90,
+        match_kinds=("project",),
+        match_phrases=("active project", "current project"),
+    ),
+    KnowledgeRequirementDefinition(
+        id="timezone-location",
+        domain="personal",
+        title="Timezone or location context",
+        why="Prevents mistakes in dates, times, schedules, and local suggestions.",
+        suggestion="Add your timezone or general location; an exact address is not needed.",
+        priority=4,
+        core=True,
+        review_days=365,
+        match_phrases=("timezone", "time zone", "based in", "live in", "location"),
+    ),
+    KnowledgeRequirementDefinition(
+        id="work-context",
+        domain="work",
+        title="Work context or schedule",
+        why="Helps Nova make realistic plans that fit your working life.",
+        suggestion="Add the work context or schedule that affects your planning.",
+        priority=4,
+        core=True,
+        review_days=180,
+        match_phrases=(
+            "work schedule",
+            "working hours",
+            "occupation",
+            "job",
+            "truck driver",
+        ),
+    ),
+    KnowledgeRequirementDefinition(
+        id="technology-environment",
+        domain="technology",
+        title="Technology and device environment",
+        why="Helps Nova give compatible technical guidance.",
+        suggestion="Add the main devices or software environment Nova should support.",
+        priority=3,
+        core=True,
+        review_days=180,
+        match_phrases=(
+            "pc build",
+            "computer",
+            "windows",
+            "gpu",
+            "device",
+            "software",
+        ),
+    ),
+    KnowledgeRequirementDefinition(
+        id="household-context",
+        domain="personal",
+        title="Household or relationship context",
+        why="Can improve shared planning when you choose to provide it.",
+        suggestion="Optionally add household context that is useful for planning.",
+        priority=3,
+        core=False,
+        review_days=365,
+        match_phrases=(
+            "wife",
+            "husband",
+            "partner",
+            "son",
+            "daughter",
+            "household",
+            "family",
+        ),
+    ),
+    KnowledgeRequirementDefinition(
+        id="vehicle-context",
+        domain="vehicles",
+        title="Vehicle context",
+        why="Can support compatible maintenance and ownership guidance.",
+        suggestion="Optionally add a vehicle or maintenance record.",
+        priority=3,
+        core=False,
+        review_days=180,
+        match_phrases=("vehicle", "car", "truck", "maintenance"),
+    ),
+    KnowledgeRequirementDefinition(
+        id="home-responsibilities",
+        domain="home",
+        title="Home responsibilities",
+        why="Can help with maintenance, inventories, and household projects.",
+        suggestion="Optionally add a current home responsibility or project.",
+        priority=2,
+        core=False,
+        review_days=180,
+        match_phrases=("home project", "home maintenance", "appliance", "house"),
+    ),
+    KnowledgeRequirementDefinition(
+        id="financial-goals",
+        domain="finance",
+        title="Financial goals",
+        why="Can improve planning while keeping account credentials out of knowledge.",
+        suggestion="Optionally add a high-level financial goal without account secrets.",
+        priority=3,
+        core=False,
+        review_days=180,
+        match_phrases=("financial goal", "budget goal", "savings goal"),
+    ),
+    KnowledgeRequirementDefinition(
+        id="health-preferences",
+        domain="health",
+        title="Health or dietary preferences",
+        why="Can tailor general planning when you choose to provide it.",
+        suggestion="Optionally add a non-sensitive health or dietary preference.",
+        priority=2,
+        core=False,
+        review_days=180,
+        match_phrases=("diet", "dietary", "health preference", "nutrition"),
+    ),
+    KnowledgeRequirementDefinition(
+        id="emergency-plan",
+        domain="safety",
+        title="Emergency plan",
+        why="Can make personal contingency planning easier to retrieve.",
+        suggestion="Optionally add a safe, non-secret emergency plan or contact process.",
+        priority=4,
+        core=False,
+        review_days=180,
+        match_phrases=("emergency plan", "emergency contact", "contingency plan"),
     ),
 )
 
@@ -164,6 +348,51 @@ class KnowledgeSnapshotRecord:
     record_count: int
     file_count: int
     created_at: str
+
+
+@dataclass(frozen=True)
+class KnowledgeRequirementStatusRecord:
+    id: str
+    domain: str
+    title: str
+    why: str
+    suggestion: str
+    priority: int
+    core: bool
+    review_days: int
+    status: str
+    last_reviewed: str | None
+    matched_record_ids: tuple[str, ...]
+    matched_record_titles: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RetrievalQualityFailureRecord:
+    record_id: str
+    title: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class KnowledgeQualityReportRecord:
+    generated_at: str
+    active_record_count: int
+    retired_record_count: int
+    core_covered: int
+    core_total: int
+    completion_percent: float
+    fresh_covered: int
+    covered_total: int
+    freshness_percent: float
+    retrieval_total_records: int
+    retrieval_checked: int
+    retrieval_passed: int
+    retrieval_percent: float
+    retrieval_check_limit: int
+    requirements: tuple[KnowledgeRequirementStatusRecord, ...]
+    retrieval_failures: tuple[RetrievalQualityFailureRecord, ...]
+    methodology: str
+    limitation: str
 
 
 @dataclass(frozen=True)
@@ -298,6 +527,156 @@ class KnowledgeService:
                 """
             ).fetchall()
         return [_knowledge_record_from_row(row) for row in rows]
+
+    def quality_report(self) -> KnowledgeQualityReportRecord:
+        generated_at = datetime.now(UTC)
+        with closing(self._connection()) as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    record.id, record.candidate_id, record.kind, record.title,
+                    record.content, record.relative_path, record.sha256,
+                    record.created_at, record.status, record.revision,
+                    record.updated_at, record.retired_at
+                FROM knowledge_records AS record
+                JOIN knowledge_candidates AS candidate
+                  ON candidate.id = record.candidate_id
+                WHERE candidate.status = 'approved'
+                ORDER BY record.updated_at DESC, record.id
+                """
+            ).fetchall()
+        records = [_knowledge_record_from_row(row) for row in rows]
+        active_records = [record for record in records if record.status == "active"]
+        retired_record_count = sum(
+            record.status == "retired" for record in records
+        )
+
+        # A quality report must never count an unverified record as knowledge.
+        for record in active_records:
+            self._verify_record_file(record.relative_path, record.sha256)
+
+        requirement_statuses: list[KnowledgeRequirementStatusRecord] = []
+        for definition in _KNOWLEDGE_REQUIREMENTS:
+            matched = tuple(
+                record
+                for record in active_records
+                if _requirement_matches(definition, record)
+            )
+            last_reviewed = max(
+                (_parse_timestamp(record.updated_at) for record in matched),
+                default=None,
+            )
+            if last_reviewed is None:
+                status = "missing"
+            elif generated_at - last_reviewed > timedelta(
+                days=definition.review_days
+            ):
+                status = "stale"
+            else:
+                status = "covered"
+            requirement_statuses.append(
+                KnowledgeRequirementStatusRecord(
+                    id=definition.id,
+                    domain=definition.domain,
+                    title=definition.title,
+                    why=definition.why,
+                    suggestion=definition.suggestion,
+                    priority=definition.priority,
+                    core=definition.core,
+                    review_days=definition.review_days,
+                    status=status,
+                    last_reviewed=(
+                        last_reviewed.isoformat()
+                        if last_reviewed is not None
+                        else None
+                    ),
+                    matched_record_ids=tuple(record.id for record in matched),
+                    matched_record_titles=tuple(
+                        record.title for record in matched
+                    ),
+                )
+            )
+
+        core_requirements = tuple(
+            item for item in requirement_statuses if item.core
+        )
+        core_weight = sum(item.priority for item in core_requirements)
+        covered_core_weight = sum(
+            item.priority
+            for item in core_requirements
+            if item.status != "missing"
+        )
+        covered_requirements = tuple(
+            item for item in requirement_statuses if item.status != "missing"
+        )
+        covered_weight = sum(item.priority for item in covered_requirements)
+        fresh_weight = sum(
+            item.priority
+            for item in covered_requirements
+            if item.status == "covered"
+        )
+
+        retrieval_limit = 100
+        retrieval_sample = active_records[:retrieval_limit]
+        retrieval_failures: list[RetrievalQualityFailureRecord] = []
+        retrieval_passed = 0
+        for record in retrieval_sample:
+            sources = self.retrieve_approved(record.title, limit=3)
+            if any(source.record_id == record.id for source in sources):
+                retrieval_passed += 1
+            else:
+                retrieval_failures.append(
+                    RetrievalQualityFailureRecord(
+                        record_id=record.id,
+                        title=record.title,
+                        reason=(
+                            "The record was not returned in the first three "
+                            "deterministic title matches."
+                        ),
+                    )
+                )
+
+        return KnowledgeQualityReportRecord(
+            generated_at=generated_at.isoformat(),
+            active_record_count=len(active_records),
+            retired_record_count=retired_record_count,
+            core_covered=sum(
+                item.status != "missing" for item in core_requirements
+            ),
+            core_total=len(core_requirements),
+            completion_percent=_percentage(
+                covered_core_weight,
+                core_weight,
+            ),
+            fresh_covered=sum(
+                item.status == "covered" for item in covered_requirements
+            ),
+            covered_total=len(covered_requirements),
+            freshness_percent=_percentage(fresh_weight, covered_weight),
+            retrieval_total_records=len(active_records),
+            retrieval_checked=len(retrieval_sample),
+            retrieval_passed=retrieval_passed,
+            retrieval_percent=_percentage(
+                retrieval_passed,
+                len(retrieval_sample),
+            ),
+            retrieval_check_limit=retrieval_limit,
+            requirements=tuple(requirement_statuses),
+            retrieval_failures=tuple(retrieval_failures),
+            methodology=(
+                "Core coverage is priority-weighted against NOVA's published "
+                "seven-item capability checklist. Stale items remain covered "
+                "but reduce the priority-weighted freshness score. Optional "
+                "items never reduce core coverage. Retrieval quality checks "
+                "whether each verified active record appears in the first "
+                "three deterministic title matches, up to 100 records."
+            ),
+            limitation=(
+                "This report measures NOVA's approved local knowledge against "
+                "a transparent capability checklist. It does not measure or "
+                "score the owner, and it never changes knowledge."
+            ),
+        )
 
     def retrieve_approved(
         self,
@@ -1200,6 +1579,36 @@ _RETRIEVAL_ALIASES = {
     "spouse": "partner",
     "wife": "partner",
 }
+
+
+def _requirement_matches(
+    definition: KnowledgeRequirementDefinition,
+    record: KnowledgeRecord,
+) -> bool:
+    if record.kind in definition.match_kinds:
+        return True
+    searchable = f" {_normalized_phrase(f'{record.title} {record.content}')} "
+    return any(
+        f" {_normalized_phrase(phrase)} " in searchable
+        for phrase in definition.match_phrases
+    )
+
+
+def _normalized_phrase(value: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", value.casefold()))
+
+
+def _parse_timestamp(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _percentage(numerator: int, denominator: int) -> float:
+    if denominator < 1:
+        return 0.0
+    return round((numerator / denominator) * 100.0, 1)
 
 
 def _retrieval_tokens(value: str) -> set[str]:

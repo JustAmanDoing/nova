@@ -148,6 +148,13 @@ Retirement removes a record from future retrieval without deleting any
 revision. The owner can also create a checksum-verified ZIP snapshot containing
 the lifecycle manifest and every tracked Markdown revision.
 
+Milestone 58 adds a read-only **Knowledge health** report. It verifies every
+active record before measuring priority-weighted core coverage, review-age
+freshness, and deterministic retrieval quality. Its seven core areas and
+matching rules are published in source. Optional opportunities never lower
+core coverage. The report scores NOVA's knowledge capability, not the owner,
+and it never saves, edits, retires, or uploads knowledge.
+
 Chat still cannot browse the web, use tools, access intake documents, perform
 general document search, or take autonomous actions. Starting a conversation,
 sending a message, and reviewing a knowledge proposal require the same local
@@ -458,5 +465,8 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 57 knowledge lifecycle and duplicate controls](docs/milestone-57-knowledge-lifecycle.md)
 - [Milestone 57 architecture review](docs/milestone-57-architecture-review.md)
 - [Milestone 57 engineering review](docs/milestone-57-engineering-review.md)
+- [Milestone 58 knowledge quality and gap analysis](docs/milestone-58-knowledge-quality-gap-analysis.md)
+- [Milestone 58 architecture review](docs/milestone-58-architecture-review.md)
+- [Milestone 58 engineering review](docs/milestone-58-engineering-review.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

@@ -38,6 +38,71 @@ const knowledgeRecord = {
   retired_at: null,
 };
 
+const knowledgeQualityReport = {
+  generated_at: "2026-07-28T09:00:00Z",
+  active_record_count: 1,
+  retired_record_count: 0,
+  core_covered: 1,
+  core_total: 7,
+  completion_percent: 16.7,
+  fresh_covered: 1,
+  covered_total: 1,
+  freshness_percent: 100,
+  retrieval_total_records: 1,
+  retrieval_checked: 1,
+  retrieval_passed: 1,
+  retrieval_percent: 100,
+  retrieval_check_limit: 100,
+  requirements: [
+    {
+      id: "preferred-name",
+      domain: "personal",
+      title: "Preferred name",
+      why: "Lets Nova address you consistently without guessing.",
+      suggestion: "Tell Nova the name you want it to use.",
+      priority: 5,
+      core: true,
+      review_days: 365,
+      status: "covered",
+      last_reviewed: "2026-07-28T09:00:00Z",
+      matched_record_ids: ["record-1"],
+      matched_record_titles: ["Preferred name"],
+    },
+    {
+      id: "current-goals",
+      domain: "planning",
+      title: "Current goals",
+      why: "Lets Nova prioritise recommendations around outcomes you chose.",
+      suggestion: "Add at least one current goal you want Nova to support.",
+      priority: 5,
+      core: true,
+      review_days: 90,
+      status: "missing",
+      last_reviewed: null,
+      matched_record_ids: [],
+      matched_record_titles: [],
+    },
+    {
+      id: "emergency-plan",
+      domain: "safety",
+      title: "Emergency plan",
+      why: "Can make personal contingency planning easier to retrieve.",
+      suggestion: "Optionally add a safe, non-secret emergency plan.",
+      priority: 4,
+      core: false,
+      review_days: 180,
+      status: "missing",
+      last_reviewed: null,
+      matched_record_ids: [],
+      matched_record_titles: [],
+    },
+  ],
+  retrieval_failures: [],
+  methodology: "A transparent deterministic checklist.",
+  limitation:
+    "This report measures NOVA's approved local knowledge and does not measure or score the owner.",
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -75,6 +140,9 @@ describe("ChatApp", () => {
             ]),
           );
         }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
         return Promise.resolve(jsonResponse([]));
       }),
     );
@@ -109,6 +177,9 @@ describe("ChatApp", () => {
               },
             ]),
           );
+        }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
         if (url.includes("/knowledge/candidates")) {
           return Promise.resolve(jsonResponse([]));
@@ -261,6 +332,9 @@ describe("ChatApp", () => {
             ]),
           );
         }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
         if (url.includes("/knowledge/candidates")) {
           return Promise.resolve(jsonResponse([]));
         }
@@ -380,6 +454,9 @@ describe("ChatApp", () => {
             jsonResponse({ detail: "Ollama is unavailable." }, 503),
           );
         }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
         if (url.includes("/knowledge/candidates")) {
           return Promise.resolve(jsonResponse([]));
         }
@@ -457,6 +534,9 @@ describe("ChatApp", () => {
         }
         if (url.endsWith("/chat/conversations")) {
           return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
         if (url.endsWith("/knowledge/candidates?status=pending")) {
           return Promise.resolve(jsonResponse(reviewed ? [] : [candidate]));
@@ -547,6 +627,9 @@ describe("ChatApp", () => {
         if (url.endsWith("/chat/conversations")) {
           return Promise.resolve(jsonResponse([]));
         }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
         if (url.endsWith("/knowledge/candidates?status=pending")) {
           return Promise.resolve(jsonResponse(reviewed ? [] : [candidate]));
         }
@@ -607,6 +690,9 @@ describe("ChatApp", () => {
         if (url.endsWith("/chat/models")) return Promise.resolve(jsonResponse([]));
         if (url.endsWith("/chat/conversations")) {
           return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
         if (url.endsWith("/knowledge/candidates?status=pending")) {
           return Promise.resolve(jsonResponse([]));
@@ -702,6 +788,9 @@ describe("ChatApp", () => {
             ]),
           );
         }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
         if (url.includes("/knowledge/candidates")) {
           return Promise.resolve(jsonResponse([]));
         }
@@ -753,5 +842,91 @@ describe("ChatApp", () => {
     expect(
       await screen.findByText("No approved knowledge matched this message."),
     ).toBeInTheDocument();
+  });
+
+  it("shows transparent coverage, freshness, retrieval, and gap guidance", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) return Promise.resolve(jsonResponse([]));
+        if (url.endsWith("/chat/conversations")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/candidates?status=pending")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([knowledgeRecord]));
+        }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    render(<ChatApp />);
+
+    expect(await screen.findByText("Knowledge health")).toBeInTheDocument();
+    expect(screen.getByText("16.7%")).toBeInTheDocument();
+    expect(screen.getAllByText("100%")).toHaveLength(2);
+    expect(
+      screen.getByText(/NOVA scores its published capability checklist, not you/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Current goals")).toBeInTheDocument();
+    expect(screen.getByText("Core")).toBeInTheDocument();
+    expect(screen.getByText("Emergency plan")).toBeInTheDocument();
+    expect(screen.getByText("Optional")).toBeInTheDocument();
+    expect(screen.getAllByText("Missing")).toHaveLength(2);
+    expect(
+      screen.getByLabelText("Priority 5 of 5"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps chat usable when the quality report is unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) {
+          return Promise.resolve(
+            jsonResponse([
+              {
+                name: "qwen3:8b",
+                size_bytes: 5_200_000_000,
+                parameter_size: "8.2B",
+                quantization_level: "Q4_K_M",
+              },
+            ]),
+          );
+        }
+        if (url.endsWith("/chat/conversations")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/candidates?status=pending")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(
+            jsonResponse({ detail: "Quality integrity check failed." }, 422),
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    render(<ChatApp />);
+
+    expect(await screen.findByText("Local AI ready")).toBeInTheDocument();
+    expect(screen.getByText("Knowledge health")).toBeInTheDocument();
+    expect(screen.getByText("Unavailable")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Chat and approved knowledge remain usable/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message Nova" })).toBeEnabled();
   });
 });

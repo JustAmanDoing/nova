@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.api.dependencies import require_local_action
 from app.schemas.knowledge import (
     KnowledgeCandidate,
+    KnowledgeQualityReportResponse,
     KnowledgeRecordLifecycleRequest,
     KnowledgeRecordResponse,
     KnowledgeSnapshotResponse,
@@ -88,6 +89,15 @@ async def review_candidate(
 async def list_records(request: Request) -> list[KnowledgeRecordResponse]:
     records = await asyncio.to_thread(_knowledge(request).list_records)
     return [KnowledgeRecordResponse(**asdict(record)) for record in records]
+
+
+@router.get("/quality", response_model=KnowledgeQualityReportResponse)
+async def knowledge_quality(request: Request) -> KnowledgeQualityReportResponse:
+    try:
+        report = await asyncio.to_thread(_knowledge(request).quality_report)
+    except KnowledgeRetrievalError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return KnowledgeQualityReportResponse(**asdict(report))
 
 
 @router.put(

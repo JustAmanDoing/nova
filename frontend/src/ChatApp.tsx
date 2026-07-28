@@ -13,6 +13,7 @@ import {
   getChatConversations,
   getChatModels,
   getKnowledgeCandidates,
+  getKnowledgeQuality,
   getKnowledgeRecords,
   reviewKnowledgeCandidate,
   streamChatMessage,
@@ -24,6 +25,7 @@ import {
   type ChatStreamEvent,
   type KnowledgeCandidate,
   type KnowledgeKind,
+  type KnowledgeQualityReport,
   type KnowledgeRecord,
   type KnowledgeRecordLifecycleRequest,
 } from "./lib/api";
@@ -47,6 +49,10 @@ function ChatApp() {
     KnowledgeCandidate[]
   >([]);
   const [knowledgeRecords, setKnowledgeRecords] = useState<KnowledgeRecord[]>([]);
+  const [knowledgeQuality, setKnowledgeQuality] =
+    useState<KnowledgeQualityReport | null>(null);
+  const [knowledgeQualityError, setKnowledgeQualityError] =
+    useState<string | null>(null);
   const [snapshotting, setSnapshotting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const draftIdRef = useRef(0);
@@ -70,6 +76,18 @@ function ChatApp() {
     return records;
   }, []);
 
+  const refreshKnowledgeQuality = useCallback(async () => {
+    try {
+      const report = await getKnowledgeQuality();
+      setKnowledgeQuality(report);
+      setKnowledgeQualityError(null);
+      return report;
+    } catch (error: unknown) {
+      setKnowledgeQualityError(errorMessage(error));
+      return null;
+    }
+  }, []);
+
   const openConversation = useCallback(async (conversationId: string) => {
     const conversation = await getChatConversation(conversationId);
     setSelectedId(conversation.id);
@@ -85,6 +103,7 @@ function ChatApp() {
       getChatConversations(controller.signal),
       getKnowledgeCandidates("pending", controller.signal),
       getKnowledgeRecords(controller.signal),
+      getKnowledgeQuality(controller.signal),
     ])
       .then(
         async ([
@@ -92,6 +111,7 @@ function ChatApp() {
           conversationResult,
           knowledgeResult,
           recordResult,
+          qualityResult,
         ]) => {
         if (controller.signal.aborted) return;
         const failures: string[] = [];
@@ -123,6 +143,12 @@ function ChatApp() {
         } else {
           failures.push(errorMessage(recordResult.reason));
         }
+        if (qualityResult.status === "fulfilled") {
+          setKnowledgeQuality(qualityResult.value);
+          setKnowledgeQualityError(null);
+        } else {
+          setKnowledgeQualityError(errorMessage(qualityResult.reason));
+        }
         setNotice(failures[0] ?? null);
         },
       )
@@ -134,7 +160,7 @@ function ChatApp() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [openConversation, refreshKnowledgeCandidates]);
+  }, [openConversation]);
 
   useEffect(() => {
     transcriptRef.current?.scrollTo({
@@ -217,6 +243,7 @@ function ChatApp() {
         refreshConversations(),
         refreshKnowledgeCandidates(),
         refreshKnowledgeRecords(),
+        refreshKnowledgeQuality(),
       ]);
       if (knowledgeWarning) setNotice(knowledgeWarning);
     } catch (error: unknown) {
@@ -233,6 +260,7 @@ function ChatApp() {
             refreshConversations(),
             refreshKnowledgeCandidates(),
             refreshKnowledgeRecords(),
+            refreshKnowledgeQuality(),
           ]);
         } catch {
           // Keep the original stop or provider failure as the actionable notice.
@@ -296,6 +324,7 @@ function ChatApp() {
       await Promise.all([
         refreshKnowledgeCandidates(),
         refreshKnowledgeRecords(),
+        refreshKnowledgeQuality(),
       ]);
       setNotice(
         reviewed.status === "approved"
@@ -313,7 +342,10 @@ function ChatApp() {
   ) {
     try {
       const record = await updateKnowledgeRecord(recordId, lifecycle);
-      await refreshKnowledgeRecords();
+      await Promise.all([
+        refreshKnowledgeRecords(),
+        refreshKnowledgeQuality(),
+      ]);
       setNotice(
         record.status === "retired"
           ? `Retired ${record.title}. Its files and history were retained.`
@@ -406,7 +438,7 @@ function ChatApp() {
         <section className="chat-stage" aria-labelledby="chat-title">
           <header className="chat-heading">
             <div>
-              <p className="eyebrow">Milestone 57 · Knowledge Lifecycle</p>
+              <p className="eyebrow">Milestone 58 · Knowledge Quality</p>
               <h2 id="chat-title">Talk with Nova.</h2>
             </div>
             <label>
@@ -488,6 +520,11 @@ function ChatApp() {
               </div>
             </section>
           ) : null}
+
+          <KnowledgeHealth
+            report={knowledgeQuality}
+            error={knowledgeQualityError}
+          />
 
           <section className="knowledge-library" aria-labelledby="library-title">
             <div className="knowledge-review-heading">
@@ -574,6 +611,142 @@ function ChatApp() {
 }
 
 export default ChatApp;
+
+function KnowledgeHealth({
+  report,
+  error,
+}: {
+  report: KnowledgeQualityReport | null;
+  error: string | null;
+}) {
+  if (error) {
+    return (
+      <section className="knowledge-health" aria-labelledby="knowledge-health-title">
+        <div className="knowledge-review-heading">
+          <div>
+            <p className="section-number">Read-only local report</p>
+            <h3 id="knowledge-health-title">Knowledge health</h3>
+          </div>
+          <span>Unavailable</span>
+        </div>
+        <p className="knowledge-health-unavailable">
+          The quality report is unavailable. Chat and approved knowledge remain
+          usable. {error}
+        </p>
+      </section>
+    );
+  }
+
+  if (!report) {
+    return (
+      <section className="knowledge-health" aria-labelledby="knowledge-health-title">
+        <div className="knowledge-review-heading">
+          <div>
+            <p className="section-number">Read-only local report</p>
+            <h3 id="knowledge-health-title">Knowledge health</h3>
+          </div>
+          <span>Checking…</span>
+        </div>
+      </section>
+    );
+  }
+
+  const nextSuggestions = report.requirements
+    .filter((requirement) => requirement.status !== "covered")
+    .sort(
+      (left, right) =>
+        Number(right.core) - Number(left.core) ||
+        right.priority - left.priority ||
+        left.title.localeCompare(right.title),
+    )
+    .slice(0, 5);
+
+  return (
+    <section className="knowledge-health" aria-labelledby="knowledge-health-title">
+      <div className="knowledge-review-heading">
+        <div>
+          <p className="section-number">Read-only local report</p>
+          <h3 id="knowledge-health-title">Knowledge health</h3>
+        </div>
+        <span>{report.active_record_count} verified active</span>
+      </div>
+      <p className="knowledge-health-boundary">
+        NOVA scores its published capability checklist, not you. Optional
+        information never lowers core coverage.
+      </p>
+      <div className="knowledge-health-metrics">
+        <article>
+          <span>Core coverage</span>
+          <strong>{report.completion_percent}%</strong>
+          <small>
+            {report.core_covered} of {report.core_total} checklist areas
+          </small>
+        </article>
+        <article>
+          <span>Freshness</span>
+          <strong>{report.freshness_percent}%</strong>
+          <small>
+            {report.fresh_covered} of {report.covered_total} covered areas current
+          </small>
+        </article>
+        <article>
+          <span>Retrieval self-check</span>
+          <strong>{report.retrieval_percent}%</strong>
+          <small>
+            {report.retrieval_passed} of {report.retrieval_checked} records found
+          </small>
+        </article>
+      </div>
+      <details className="knowledge-health-details">
+        <summary>How this is measured</summary>
+        <p>{report.methodology}</p>
+        <p>{report.limitation}</p>
+      </details>
+      <div className="knowledge-gaps">
+        <div>
+          <h4>Suggested next additions</h4>
+          <span>Highest-value gaps first</span>
+        </div>
+        {nextSuggestions.length ? (
+          <ol>
+            {nextSuggestions.map((requirement) => (
+              <li key={requirement.id}>
+                <div>
+                  <strong>{requirement.title}</strong>
+                  <span
+                    className={`knowledge-gap-scope ${
+                      requirement.core ? "core" : "optional"
+                    }`}
+                  >
+                    {requirement.core ? "Core" : "Optional"}
+                  </span>
+                  <span className="knowledge-gap-status">
+                    {requirement.status === "stale" ? "Review due" : "Missing"}
+                  </span>
+                </div>
+                <p>{requirement.suggestion}</p>
+                <span
+                  className="knowledge-gap-priority"
+                  aria-label={`Priority ${requirement.priority} of 5`}
+                >
+                  <span aria-hidden="true">
+                    {"★".repeat(requirement.priority)}
+                    {"☆".repeat(5 - requirement.priority)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="knowledge-health-complete">
+            Every published checklist item is covered and current.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 
 function KnowledgeSources({ sources }: { sources: ChatKnowledgeSource[] }) {
   if (!sources.length) {

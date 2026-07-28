@@ -14,6 +14,7 @@ KnowledgeKind = Literal[
 ]
 KnowledgeCandidateStatus = Literal["pending", "approved", "rejected"]
 KnowledgeRecordStatus = Literal["active", "retired"]
+KnowledgeRequirementStatus = Literal["covered", "stale", "missing"]
 
 
 class KnowledgeCandidate(BaseModel):
@@ -98,3 +99,45 @@ class KnowledgeSnapshotResponse(BaseModel):
     record_count: int
     file_count: int
     created_at: datetime
+
+
+class KnowledgeRequirementStatusResponse(BaseModel):
+    id: str
+    domain: str
+    title: str
+    why: str
+    suggestion: str
+    priority: int = Field(ge=1, le=5)
+    core: bool
+    review_days: int = Field(ge=1)
+    status: KnowledgeRequirementStatus
+    last_reviewed: datetime | None
+    matched_record_ids: list[str]
+    matched_record_titles: list[str]
+
+
+class RetrievalQualityFailureResponse(BaseModel):
+    record_id: str
+    title: str
+    reason: str
+
+
+class KnowledgeQualityReportResponse(BaseModel):
+    generated_at: datetime
+    active_record_count: int
+    retired_record_count: int
+    core_covered: int
+    core_total: int
+    completion_percent: float = Field(ge=0, le=100)
+    fresh_covered: int
+    covered_total: int
+    freshness_percent: float = Field(ge=0, le=100)
+    retrieval_total_records: int
+    retrieval_checked: int
+    retrieval_passed: int
+    retrieval_percent: float = Field(ge=0, le=100)
+    retrieval_check_limit: int
+    requirements: list[KnowledgeRequirementStatusResponse]
+    retrieval_failures: list[RetrievalQualityFailureResponse]
+    methodology: str
+    limitation: str

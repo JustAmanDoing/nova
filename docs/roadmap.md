@@ -201,6 +201,30 @@ acceptance passed.**
 The evidence and current decision are recorded in
 `docs/milestone-57-knowledge-lifecycle.md`.
 
+## Milestone 58 — Knowledge Quality and Gap Analysis
+
+**Status (29 July 2026): implementation and engineering acceptance complete;
+owner acceptance pending.**
+
+- Verify every active record before including it in quality reporting —
+  implemented
+- Measure priority-weighted core capability coverage against a published
+  seven-item checklist — implemented
+- Track review-age freshness without treating stale information as missing —
+  implemented
+- Keep optional opportunities outside the core completion score — implemented
+- Rank missing and review-due suggestions without changing knowledge —
+  implemented
+- Run a bounded deterministic retrieval self-check over active records —
+  implemented
+- Isolate quality-report failures so chat and knowledge remain usable —
+  verified
+- Preserve local-only operation, explicit approval, and non-destructive
+  lifecycle controls — verified
+
+The method, evidence, and current decision are recorded in
+`docs/milestone-58-knowledge-quality-gap-analysis.md`.
+
 ## Later capabilities
 
 - Optional local or cloud AI provider adapters
