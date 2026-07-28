@@ -114,7 +114,7 @@ Open:
 - API docs: http://localhost:8000/docs
 - API health: http://localhost:8000/api/v1/health
 
-### Local chat and approved knowledge capture
+### Local chat, approved knowledge capture, and retrieval
 
 The **Chat** page uses the Ollama service already installed on the Windows host.
 Model discovery and replies remain local. Conversation history is stored in
@@ -129,8 +129,14 @@ knowledge file. Approved records are retained in SQLite and written as
 no-overwrite Markdown records under the configured local knowledge directory.
 The Windows deployment maps that directory to `N:\Nova\Memory`.
 
-Chat still cannot browse the web, use tools, access intake documents, retrieve
-saved knowledge, or perform autonomous actions. Starting a conversation,
+Milestone 56 retrieves only owner-approved records. Nova verifies that each
+local Markdown copy remains inside the configured knowledge directory and still
+matches its approved SHA-256 before supplying it to the model. Answers show
+exact `[K#]` source cards, and citation evidence is stored with the assistant
+message. If nothing approved matches, the chat says so clearly.
+
+Chat still cannot browse the web, use tools, access intake documents, perform
+general document search, or take autonomous actions. Starting a conversation,
 sending a message, and reviewing a knowledge proposal require the same local
 browser-intent guard as other state-changing Nova requests. Stopping generation
 preserves only records that the backend had already committed; it never
@@ -432,5 +438,9 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 50 precise backup API states](docs/milestone-50-precise-backup-api-states.md)
 - [Milestone 51 resilient backup inventory](docs/milestone-51-resilient-backup-inventory.md)
 - [Milestone 52 on-demand database integrity](docs/milestone-52-on-demand-database-integrity.md)
+- [Milestone 53 local v1 completion review](docs/milestone-53-local-v1-completion-review.md)
+- [Milestone 54 local chat core](docs/milestone-54-local-chat-core.md)
+- [Milestone 55 conversation-to-knowledge capture](docs/milestone-55-conversation-to-knowledge-capture.md)
+- [Milestone 56 approved knowledge retrieval](docs/milestone-56-approved-knowledge-retrieval.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

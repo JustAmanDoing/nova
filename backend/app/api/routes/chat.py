@@ -18,9 +18,13 @@ from app.schemas.chat import (
 from app.services.chat import (
     ChatNotFoundError,
     ChatService,
+    KnowledgeSourceRecord,
     LocalModelProviderError,
 )
-from app.services.knowledge import KnowledgeProposalError
+from app.services.knowledge import (
+    KnowledgeProposalError,
+    KnowledgeRetrievalError,
+)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 LocalAction = Annotated[None, Depends(require_local_action)]
@@ -96,15 +100,31 @@ def send_message(
         )
     except ChatNotFoundError as error:
         raise HTTPException(status_code=404, detail="Conversation not found.") from error
-    knowledge_warning: str | None = None
+    knowledge_warnings: list[str] = []
+    knowledge_checked = False
+    knowledge_sources: list[KnowledgeSourceRecord] = []
+    try:
+        knowledge_sources = request.app.state.knowledge.retrieve_approved(
+            user_message.content
+        )
+        history = chat.add_approved_knowledge_context(history, knowledge_sources)
+        knowledge_checked = True
+    except KnowledgeRetrievalError as error:
+        knowledge_warnings.append(str(error))
     try:
         request.app.state.knowledge.propose_from_message(user_message)
     except KnowledgeProposalError as error:
-        knowledge_warning = str(error)
+        knowledge_warnings.append(str(error))
 
     def events() -> Iterator[str]:
         yield _event("user", message=asdict(user_message))
-        if knowledge_warning is not None:
+        if knowledge_checked:
+            yield _event(
+                "knowledge",
+                checked=True,
+                sources=[asdict(source) for source in knowledge_sources],
+            )
+        for knowledge_warning in knowledge_warnings:
             yield _event("knowledge_warning", message=knowledge_warning)
         assistant_parts: list[str] = []
         try:
@@ -115,6 +135,8 @@ def send_message(
                 conversation_id,
                 "".join(assistant_parts),
                 payload.model,
+                knowledge_checked=knowledge_checked,
+                sources=knowledge_sources,
             )
             yield _event("done", message=asdict(assistant))
         except LocalModelProviderError as error:

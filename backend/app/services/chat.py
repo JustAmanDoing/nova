@@ -27,6 +27,18 @@ class ModelRecord:
 
 
 @dataclass(frozen=True)
+class KnowledgeSourceRecord:
+    record_id: str
+    citation_label: str
+    title: str
+    kind: str
+    content: str
+    relative_path: str
+    sha256: str
+    score: float
+
+
+@dataclass(frozen=True)
 class MessageRecord:
     id: str
     conversation_id: str
@@ -34,6 +46,8 @@ class MessageRecord:
     content: str
     model: str | None
     created_at: str
+    knowledge_checked: bool = False
+    sources: tuple[KnowledgeSourceRecord, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -53,8 +67,10 @@ NOVA_CHAT_SYSTEM_PROMPT = (
     "information has been saved as permanent knowledge. If the user asks you to "
     "remember something, explain that Nova will prepare a local review card and "
     "that nothing becomes permanent unless the owner chooses Approve & save. "
-    "Do not ask for a note ID. Tools, web access, and document retrieval are not "
-    "available in this chat milestone."
+    "Do not ask for a note ID. Owner-approved knowledge may be supplied in a "
+    "separate system message. Use only that supplied knowledge for personal "
+    "facts, cite its [K#] label when used, and never invent a source. Tools, web "
+    "access, and general document retrieval are not available in this milestone."
 )
 
 
@@ -220,18 +236,51 @@ class ChatService:
                 raise ChatNotFoundError(conversation_id)
             messages = connection.execute(
                 """
-                SELECT id, conversation_id, role, content, model, created_at
+                SELECT
+                    id, conversation_id, role, content, model, created_at,
+                    knowledge_checked
                 FROM chat_messages
                 WHERE conversation_id = ?
                 ORDER BY created_at, id
                 """,
                 (conversation_id,),
             ).fetchall()
+            sources_by_message: dict[str, list[KnowledgeSourceRecord]] = {}
+            source_rows = connection.execute(
+                """
+                SELECT
+                    source.message_id,
+                    source.record_id,
+                    source.citation_label,
+                    source.title,
+                    source.kind,
+                    source.content,
+                    source.relative_path,
+                    source.sha256,
+                    source.score
+                FROM chat_message_knowledge_sources AS source
+                JOIN chat_messages AS message ON message.id = source.message_id
+                WHERE message.conversation_id = ?
+                ORDER BY source.message_id, source.position
+                """,
+                (conversation_id,),
+            ).fetchall()
+            for source_row in source_rows:
+                message_id = str(source_row["message_id"])
+                sources_by_message.setdefault(message_id, []).append(
+                    _knowledge_source_from_row(source_row)
+                )
         conversation = _conversation_from_row(row)
         return ConversationRecord(
             **{
                 **conversation.__dict__,
-                "messages": tuple(_message_from_row(message) for message in messages),
+                "messages": tuple(
+                    _message_from_row(
+                        message,
+                        tuple(sources_by_message.get(str(message["id"]), [])),
+                    )
+                    for message in messages
+                ),
             }
         )
 
@@ -246,8 +295,8 @@ class ChatService:
         history = [{"role": "system", "content": NOVA_CHAT_SYSTEM_PROMPT}]
         history.extend(
             [
-            {"role": previous.role, "content": previous.content}
-            for previous in conversation.messages
+                {"role": previous.role, "content": previous.content}
+                for previous in conversation.messages
             ]
         )
         history.append({"role": "user", "content": message.content})
@@ -255,13 +304,58 @@ class ChatService:
             self._set_title(conversation_id, _suggest_title(message.content))
         return message, history
 
+    def add_approved_knowledge_context(
+        self,
+        history: Sequence[dict[str, str]],
+        sources: Sequence[KnowledgeSourceRecord],
+    ) -> list[dict[str, str]]:
+        contextual_history = list(history)
+        if sources:
+            lines = [
+                "The following records are owner-approved local knowledge for "
+                "this turn. Use only relevant records. When you use one, cite "
+                "its exact label such as [K1]. Do not cite records you did not use."
+            ]
+            for source in sources:
+                lines.extend(
+                    [
+                        "",
+                        f"[{source.citation_label}] {source.title}",
+                        f"Type: {source.kind}",
+                        f"Source: {source.relative_path}",
+                        f"Approved content: {source.content}",
+                    ]
+                )
+        else:
+            lines = [
+                "Approved local knowledge was checked for this turn, but no "
+                "approved record matched. If the user asks about their stored "
+                "personal information, say clearly that no approved knowledge "
+                "matched. Otherwise answer normally from general knowledge."
+            ]
+        contextual_history.insert(
+            max(len(contextual_history) - 1, 1),
+            {"role": "system", "content": "\n".join(lines)},
+        )
+        return contextual_history
+
     def complete_turn(
         self,
         conversation_id: str,
         content: str,
         model: str,
+        *,
+        knowledge_checked: bool = False,
+        sources: Sequence[KnowledgeSourceRecord] = (),
     ) -> MessageRecord:
-        return self._add_message(conversation_id, "assistant", content, model)
+        return self._add_message(
+            conversation_id,
+            "assistant",
+            content,
+            model,
+            knowledge_checked=knowledge_checked,
+            sources=sources,
+        )
 
     def _add_message(
         self,
@@ -269,6 +363,9 @@ class ChatService:
         role: str,
         content: str,
         model: str,
+        *,
+        knowledge_checked: bool = False,
+        sources: Sequence[KnowledgeSourceRecord] = (),
     ) -> MessageRecord:
         message_id = str(uuid4())
         now = _now()
@@ -282,11 +379,41 @@ class ChatService:
             connection.execute(
                 """
                 INSERT INTO chat_messages (
-                    id, conversation_id, role, content, model, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    id, conversation_id, role, content, model, created_at,
+                    knowledge_checked
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (message_id, conversation_id, role, content, model, now),
+                (
+                    message_id,
+                    conversation_id,
+                    role,
+                    content,
+                    model,
+                    now,
+                    int(knowledge_checked),
+                ),
             )
+            for position, source in enumerate(sources, start=1):
+                connection.execute(
+                    """
+                    INSERT INTO chat_message_knowledge_sources (
+                        message_id, record_id, citation_label, position, score,
+                        title, kind, content, relative_path, sha256
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        message_id,
+                        source.record_id,
+                        source.citation_label,
+                        position,
+                        source.score,
+                        source.title,
+                        source.kind,
+                        source.content,
+                        source.relative_path,
+                        source.sha256,
+                    ),
+                )
             connection.execute(
                 """
                 UPDATE chat_conversations
@@ -302,6 +429,8 @@ class ChatService:
             content=content,
             model=model,
             created_at=now,
+            knowledge_checked=knowledge_checked,
+            sources=tuple(sources),
         )
 
     def _set_title(self, conversation_id: str, title: str) -> None:
@@ -329,7 +458,10 @@ def _conversation_from_row(row: sqlite3.Row) -> ConversationRecord:
     )
 
 
-def _message_from_row(row: sqlite3.Row) -> MessageRecord:
+def _message_from_row(
+    row: sqlite3.Row,
+    sources: tuple[KnowledgeSourceRecord, ...] = (),
+) -> MessageRecord:
     return MessageRecord(
         id=str(row["id"]),
         conversation_id=str(row["conversation_id"]),
@@ -337,6 +469,21 @@ def _message_from_row(row: sqlite3.Row) -> MessageRecord:
         content=str(row["content"]),
         model=str(row["model"]) if row["model"] is not None else None,
         created_at=str(row["created_at"]),
+        knowledge_checked=bool(row["knowledge_checked"]),
+        sources=sources,
+    )
+
+
+def _knowledge_source_from_row(row: sqlite3.Row) -> KnowledgeSourceRecord:
+    return KnowledgeSourceRecord(
+        record_id=str(row["record_id"]),
+        citation_label=str(row["citation_label"]),
+        title=str(row["title"]),
+        kind=str(row["kind"]),
+        content=str(row["content"]),
+        relative_path=str(row["relative_path"]),
+        sha256=str(row["sha256"]),
+        score=float(row["score"]),
     )
 
 

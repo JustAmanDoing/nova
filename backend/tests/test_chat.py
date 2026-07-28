@@ -101,11 +101,17 @@ def test_local_chat_streams_and_persists_conversation(tmp_path: Path) -> None:
         events = [json.loads(line) for line in response.text.splitlines()]
         assert [event["type"] for event in events] == [
             "user",
+            "knowledge",
             "delta",
             "delta",
             "done",
         ]
-        assert events[1]["content"] + events[2]["content"] == "Hello Lyle."
+        assert events[1] == {
+            "type": "knowledge",
+            "checked": True,
+            "sources": [],
+        }
+        assert events[2]["content"] + events[3]["content"] == "Hello Lyle."
 
         conversation = client.get(
             f"/api/v1/chat/conversations/{conversation_id}"
@@ -144,7 +150,11 @@ def test_provider_failure_is_streamed_without_inventing_reply(
         )
         events = [json.loads(line) for line in response.text.splitlines()]
 
-        assert [event["type"] for event in events] == ["user", "error"]
+        assert [event["type"] for event in events] == [
+            "user",
+            "knowledge",
+            "error",
+        ]
         assert events[-1]["message"] == (
             "The local model provider is unavailable."
         )

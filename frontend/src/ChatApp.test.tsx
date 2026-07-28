@@ -12,6 +12,17 @@ const conversation = {
   message_count: 0,
 };
 
+const knowledgeSource = {
+  record_id: "record-1",
+  citation_label: "K1",
+  title: "Automated approval phrase",
+  kind: "fact",
+  content: "The automated approval phrase is amber lighthouse.",
+  relative_path: "Facts/automated-approval-phrase.md",
+  sha256: "a".repeat(64),
+  score: 1,
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -62,7 +73,7 @@ describe("ChatApp", () => {
       screen.getByText(/A suggestion is never permanent/),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Knowledge capture is local and approval-only/),
+      screen.getByText(/Retrieval uses approved local records only/),
     ).toBeInTheDocument();
   });
 
@@ -110,6 +121,11 @@ describe("ChatApp", () => {
                     created_at: "2026-07-28T09:01:00Z",
                   },
                 }),
+                JSON.stringify({
+                  type: "knowledge",
+                  checked: true,
+                  sources: [knowledgeSource],
+                }),
                 JSON.stringify({ type: "delta", content: "Hello " }),
                 JSON.stringify({ type: "delta", content: "from Nova." }),
                 JSON.stringify({
@@ -121,6 +137,8 @@ describe("ChatApp", () => {
                     content: "Hello from Nova.",
                     model: "qwen3:8b",
                     created_at: "2026-07-28T09:01:01Z",
+                    knowledge_checked: true,
+                    sources: [knowledgeSource],
                   },
                 }),
                 "",
@@ -147,6 +165,8 @@ describe("ChatApp", () => {
                       content: "Hello Nova",
                       model: "qwen3:8b",
                       created_at: "2026-07-28T09:01:00Z",
+                      knowledge_checked: false,
+                      sources: [],
                     },
                     {
                       id: "assistant-1",
@@ -155,6 +175,8 @@ describe("ChatApp", () => {
                       content: "Hello from Nova.",
                       model: "qwen3:8b",
                       created_at: "2026-07-28T09:01:01Z",
+                      knowledge_checked: true,
+                      sources: [knowledgeSource],
                     },
                   ]
                 : [],
@@ -184,6 +206,12 @@ describe("ChatApp", () => {
     expect(await screen.findByText("2 messages")).toBeInTheDocument();
     expect(screen.getByText("Hello from Nova.")).toBeInTheDocument();
     expect(screen.getByText("Hello Nova")).toBeInTheDocument();
+    expect(screen.getByText("Approved knowledge")).toBeInTheDocument();
+    expect(screen.getByText("[K1]")).toBeInTheDocument();
+    expect(screen.getByText("Automated approval phrase")).toBeInTheDocument();
+    expect(
+      screen.getByText("Facts/automated-approval-phrase.md"),
+    ).toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some(
         ([input, init]) =>
@@ -461,5 +489,72 @@ describe("ChatApp", () => {
       title: "Preferred response style",
       content: "Use concise answers with recommendations.",
     });
+  });
+
+  it("states clearly when no approved knowledge matches", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) {
+          return Promise.resolve(
+            jsonResponse([
+              {
+                name: "qwen3:8b",
+                size_bytes: 5_200_000_000,
+                parameter_size: "8.2B",
+                quantization_level: "Q4_K_M",
+              },
+            ]),
+          );
+        }
+        if (url.includes("/knowledge/candidates")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/chat/conversations/conversation-1")) {
+          return Promise.resolve(
+            jsonResponse({
+              ...conversation,
+              model: "qwen3:8b",
+              message_count: 2,
+              messages: [
+                {
+                  id: "user-no-match",
+                  conversation_id: conversation.id,
+                  role: "user",
+                  content: "What is my favourite fruit?",
+                  model: "qwen3:8b",
+                  created_at: "2026-07-28T11:00:00Z",
+                  knowledge_checked: false,
+                  sources: [],
+                },
+                {
+                  id: "assistant-no-match",
+                  conversation_id: conversation.id,
+                  role: "assistant",
+                  content: "I do not have approved knowledge for that.",
+                  model: "qwen3:8b",
+                  created_at: "2026-07-28T11:00:01Z",
+                  knowledge_checked: true,
+                  sources: [],
+                },
+              ],
+            }),
+          );
+        }
+        if (url.endsWith("/chat/conversations")) {
+          return Promise.resolve(
+            jsonResponse([{ ...conversation, message_count: 2 }]),
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    render(<ChatApp />);
+
+    expect(
+      await screen.findByText("No approved knowledge matched this message."),
+    ).toBeInTheDocument();
   });
 });

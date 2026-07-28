@@ -10,6 +10,17 @@ class ChatModel(BaseModel):
     quantization_level: str | None = None
 
 
+class ChatKnowledgeSource(BaseModel):
+    record_id: str
+    citation_label: str
+    title: str
+    kind: str
+    content: str
+    relative_path: str
+    sha256: str
+    score: float
+
+
 class ChatMessage(BaseModel):
     id: str
     conversation_id: str
@@ -17,6 +28,8 @@ class ChatMessage(BaseModel):
     content: str
     model: str | None
     created_at: datetime
+    knowledge_checked: bool = False
+    sources: list[ChatKnowledgeSource] = Field(default_factory=list)
 
 
 class ChatConversationSummary(BaseModel):

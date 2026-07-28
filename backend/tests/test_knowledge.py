@@ -269,11 +269,12 @@ def test_knowledge_proposal_failure_warns_without_breaking_chat(
 
         assert [event["type"] for event in events] == [
             "user",
+            "knowledge",
             "knowledge_warning",
             "delta",
             "done",
         ]
-        assert events[1]["message"] == (
+        assert events[2]["message"] == (
             "Chat is available, but memory review is unavailable."
         )
         conversation = client.get(

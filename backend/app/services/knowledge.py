@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -11,7 +12,7 @@ from pathlib import Path
 from typing import cast
 from uuid import uuid4
 
-from app.services.chat import MessageRecord
+from app.services.chat import KnowledgeSourceRecord, MessageRecord
 
 KNOWLEDGE_KINDS = (
     "fact",
@@ -94,6 +95,10 @@ class KnowledgeRecordWriteError(RuntimeError):
 
 class KnowledgeProposalError(RuntimeError):
     """Raised when Nova cannot prepare an optional knowledge proposal."""
+
+
+class KnowledgeRetrievalError(RuntimeError):
+    """Raised when approved knowledge cannot be verified for safe retrieval."""
 
 
 @dataclass(frozen=True)
@@ -236,6 +241,62 @@ class KnowledgeService:
                 """
             ).fetchall()
         return [_knowledge_record_from_row(row) for row in rows]
+
+    def retrieve_approved(
+        self,
+        query: str,
+        limit: int = 3,
+    ) -> list[KnowledgeSourceRecord]:
+        query_tokens = _retrieval_tokens(query)
+        if not query_tokens or limit < 1:
+            return []
+        with closing(self._connection()) as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    record.id,
+                    record.kind,
+                    record.title,
+                    record.content,
+                    record.relative_path,
+                    record.sha256
+                FROM knowledge_records AS record
+                JOIN knowledge_candidates AS candidate
+                  ON candidate.id = record.candidate_id
+                WHERE candidate.status = 'approved'
+                ORDER BY record.created_at DESC, record.id
+                """
+            ).fetchall()
+
+        ranked: list[tuple[float, sqlite3.Row]] = []
+        for row in rows:
+            score = _retrieval_score(
+                query_tokens,
+                str(row["title"]),
+                str(row["content"]),
+                str(row["kind"]),
+            )
+            if score > 0.0:
+                ranked.append((score, row))
+        ranked.sort(key=lambda item: (-item[0], str(item[1]["id"])))
+
+        sources: list[KnowledgeSourceRecord] = []
+        for position, (score, row) in enumerate(ranked[:limit], start=1):
+            relative_path = str(row["relative_path"])
+            self._verify_record_file(relative_path, str(row["sha256"]))
+            sources.append(
+                KnowledgeSourceRecord(
+                    record_id=str(row["id"]),
+                    citation_label=f"K{position}",
+                    title=str(row["title"]),
+                    kind=str(row["kind"]),
+                    content=str(row["content"]),
+                    relative_path=relative_path,
+                    sha256=str(row["sha256"]),
+                    score=round(score, 6),
+                )
+            )
+        return sources
 
     def reject_candidate(self, candidate_id: str) -> KnowledgeCandidateRecord:
         now = _now()
@@ -413,6 +474,23 @@ class KnowledgeService:
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
 
+    def _verify_record_file(self, relative_path: str, expected_sha256: str) -> None:
+        try:
+            root = self.knowledge_path.resolve(strict=True)
+            record_path = (root / relative_path).resolve(strict=True)
+            record_path.relative_to(root)
+            actual_sha256 = hashlib.sha256(record_path.read_bytes()).hexdigest()
+        except (OSError, ValueError) as error:
+            raise KnowledgeRetrievalError(
+                "Approved knowledge retrieval stopped because a cited local "
+                "record could not be verified."
+            ) from error
+        if not hmac.compare_digest(actual_sha256, expected_sha256):
+            raise KnowledgeRetrievalError(
+                "Approved knowledge retrieval stopped because a cited local "
+                "record failed its integrity check."
+            )
+
 
 _CANDIDATE_QUERY = """
     SELECT
@@ -500,6 +578,106 @@ def _suggest_title(content: str, kind: str) -> str:
 
 def _strip_terminal_punctuation(value: str) -> str:
     return value.rstrip(" \t\r\n.!?")
+
+
+_RETRIEVAL_STOP_WORDS = {
+    "a",
+    "about",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "do",
+    "does",
+    "for",
+    "from",
+    "how",
+    "i",
+    "in",
+    "is",
+    "it",
+    "me",
+    "my",
+    "of",
+    "on",
+    "please",
+    "tell",
+    "that",
+    "the",
+    "this",
+    "to",
+    "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "with",
+    "you",
+}
+_RETRIEVAL_ALIASES = {
+    "aim": "goal",
+    "aims": "goal",
+    "answer": "answer",
+    "answers": "answer",
+    "child": "child",
+    "children": "child",
+    "color": "colour",
+    "colours": "colour",
+    "colors": "colour",
+    "daughter": "child",
+    "favorite": "preference",
+    "favourite": "preference",
+    "favorites": "preference",
+    "favourites": "preference",
+    "goals": "goal",
+    "husband": "partner",
+    "objective": "goal",
+    "objectives": "goal",
+    "partner": "partner",
+    "preference": "preference",
+    "preferences": "preference",
+    "prefer": "preference",
+    "prefers": "preference",
+    "project": "project",
+    "projects": "project",
+    "replies": "answer",
+    "reply": "answer",
+    "response": "answer",
+    "responses": "answer",
+    "son": "child",
+    "spouse": "partner",
+    "wife": "partner",
+}
+
+
+def _retrieval_tokens(value: str) -> set[str]:
+    tokens: set[str] = set()
+    for token in re.findall(r"[a-z0-9]+", value.casefold()):
+        normalized = _RETRIEVAL_ALIASES.get(token, token)
+        if len(normalized) < 3 or normalized in _RETRIEVAL_STOP_WORDS:
+            continue
+        tokens.add(normalized)
+    return tokens
+
+
+def _retrieval_score(
+    query_tokens: set[str],
+    title: str,
+    content: str,
+    kind: str,
+) -> float:
+    title_tokens = _retrieval_tokens(title)
+    record_tokens = title_tokens | _retrieval_tokens(content) | {kind.casefold()}
+    overlap = query_tokens & record_tokens
+    required = 1 if len(query_tokens) == 1 else 2
+    if len(overlap) < required:
+        return 0.0
+    title_overlap = overlap & title_tokens
+    return (
+        len(overlap) + (1.5 * len(title_overlap))
+    ) / max(len(query_tokens), 1)
 
 
 def _slug(value: str) -> str:

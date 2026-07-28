@@ -24,6 +24,19 @@ export interface ChatMessage {
   content: string;
   model: string | null;
   created_at: string;
+  knowledge_checked: boolean;
+  sources: ChatKnowledgeSource[];
+}
+
+export interface ChatKnowledgeSource {
+  record_id: string;
+  citation_label: string;
+  title: string;
+  kind: string;
+  content: string;
+  relative_path: string;
+  sha256: string;
+  score: number;
 }
 
 export interface ChatConversationSummary {
@@ -43,6 +56,11 @@ export type ChatStreamEvent =
   | { type: "user"; message: ChatMessage }
   | { type: "delta"; content: string }
   | { type: "done"; message: ChatMessage }
+  | {
+      type: "knowledge";
+      checked: true;
+      sources: ChatKnowledgeSource[];
+    }
   | { type: "knowledge_warning"; message: string }
   | { type: "error"; message: string };
 

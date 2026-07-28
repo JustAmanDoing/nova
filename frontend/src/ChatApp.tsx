@@ -15,6 +15,7 @@ import {
   reviewKnowledgeCandidate,
   streamChatMessage,
   type ChatConversationSummary,
+  type ChatKnowledgeSource,
   type ChatMessage,
   type ChatModel,
   type ChatStreamEvent,
@@ -22,7 +23,10 @@ import {
   type KnowledgeKind,
 } from "./lib/api";
 
-type DraftMessage = Pick<ChatMessage, "id" | "role" | "content" | "model">;
+type DraftMessage = Pick<
+  ChatMessage,
+  "id" | "role" | "content" | "model" | "knowledge_checked" | "sources"
+>;
 
 function ChatApp() {
   const [models, setModels] = useState<ChatModel[]>([]);
@@ -152,8 +156,22 @@ function ChatApp() {
       conversationId = await ensureConversation();
       setMessages((current) => [
         ...current,
-        { id: userId, role: "user", content, model: selectedModel },
-        { id: assistantId, role: "assistant", content: "", model: selectedModel },
+        {
+          id: userId,
+          role: "user",
+          content,
+          model: selectedModel,
+          knowledge_checked: false,
+          sources: [],
+        },
+        {
+          id: assistantId,
+          role: "assistant",
+          content: "",
+          model: selectedModel,
+          knowledge_checked: false,
+          sources: [],
+        },
       ]);
       await streamChatMessage(
         conversationId,
@@ -206,6 +224,19 @@ function ChatApp() {
   }
 
   function handleStreamEvent(event: ChatStreamEvent, assistantId: string) {
+    if (event.type === "knowledge") {
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantId
+            ? {
+                ...message,
+                knowledge_checked: event.checked,
+                sources: event.sources,
+              }
+            : message,
+        ),
+      );
+    }
     if (event.type === "delta") {
       setMessages((current) =>
         current.map((message) =>
@@ -311,7 +342,7 @@ function ChatApp() {
         <section className="chat-stage" aria-labelledby="chat-title">
           <header className="chat-heading">
             <div>
-              <p className="eyebrow">Milestone 55 · Knowledge Capture</p>
+              <p className="eyebrow">Milestone 56 · Approved Retrieval</p>
               <h2 id="chat-title">Talk with Nova.</h2>
             </div>
             <label>
@@ -347,9 +378,9 @@ function ChatApp() {
                 <span className="nova-orb" aria-hidden="true">N</span>
                 <h3>Ready when you are.</h3>
                 <p>
-                  This prototype talks to Ollama on your PC. It can converse and
-                  keep local chat history. Say “Remember that…” to prepare a
-                  review card. Nova never silently saves personal facts.
+                  Nova can use owner-approved local knowledge and show the exact
+                  record it considered. Say “Remember that…” to prepare a review
+                  card. Nova never silently saves personal facts.
                 </p>
               </div>
             ) : (
@@ -364,6 +395,9 @@ function ChatApp() {
                           ? "Thinking…"
                           : "")}
                     </p>
+                    {message.role === "assistant" && message.knowledge_checked ? (
+                      <KnowledgeSources sources={message.sources} />
+                    ) : null}
                   </div>
                 </article>
               ))
@@ -427,8 +461,8 @@ function ChatApp() {
             )}
           </form>
           <p className="chat-boundary">
-            Knowledge capture is local and approval-only. Tools, web access,
-            autonomous actions, and RAG remain disabled.
+            Retrieval uses approved local records only. Tools, web access,
+            autonomous actions, and general document search remain disabled.
           </p>
         </section>
       </div>
@@ -437,6 +471,32 @@ function ChatApp() {
 }
 
 export default ChatApp;
+
+function KnowledgeSources({ sources }: { sources: ChatKnowledgeSource[] }) {
+  if (!sources.length) {
+    return (
+      <p className="knowledge-no-match">
+        No approved knowledge matched this message.
+      </p>
+    );
+  }
+  return (
+    <section className="knowledge-sources" aria-label="Approved knowledge sources">
+      <span>Approved knowledge</span>
+      <ul>
+        {sources.map((source) => (
+          <li key={source.record_id}>
+            <code>[{source.citation_label}]</code>
+            <div>
+              <strong>{source.title}</strong>
+              <small>{source.relative_path}</small>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 const KNOWLEDGE_KIND_LABELS: Record<KnowledgeKind, string> = {
   fact: "Fact",

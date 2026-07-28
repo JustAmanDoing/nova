@@ -25,6 +25,9 @@ React chat page
         │     └── pending owner review
         │           ├── reject → no permanent record
         │           └── approve → SQLite record + local Markdown copy
+        ├── approved-only knowledge retrieval
+        │     ├── path containment + current SHA-256 verification
+        │     └── exact persisted [K#] source evidence
         └── Nova-owned provider adapter
               └── Ollama on the Windows host
 ```
@@ -76,8 +79,11 @@ Local data/intake folder
 - Shows editable knowledge proposals with explicit **Approve & save** and
   **Don't save** controls.
 - Makes pending state explicit: a proposal is not permanent knowledge.
-- States that tools, web access, RAG, and autonomous actions remain
-  unavailable.
+- Shows exact approved source labels, titles, and local relative paths when
+  knowledge is used.
+- Shows a clear no-match message when no approved knowledge qualifies.
+- States that tools, web access, general document search, and autonomous
+  actions remain unavailable.
 - Displays service health, intake totals, file metadata, duplicate status, and
   normalized understanding results.
 - Reads authoritative, unfiltered totals from a dedicated summary endpoint so
@@ -111,6 +117,15 @@ Local data/intake folder
   approval.
 - Stores approved record contents in SQLite and writes a checksum-bound,
   no-overwrite Markdown copy under the configured knowledge directory.
+- Retrieves only records whose candidate is approved, whose resolved Markdown
+  path remains beneath the knowledge root, and whose live file still matches
+  the approved SHA-256.
+- Uses bounded deterministic lexical scoring and supplies at most three
+  approved records to one model turn.
+- Persists a checksum-bound source snapshot with the assistant message so
+  citations survive reloads and verified database backups.
+- Records an explicit checked-with-no-match state rather than implying that
+  unknown personal information was searched successfully.
 - Keeps optional proposal failure isolated so ordinary chat remains available
   with a truthful warning.
 - Stores no partial or invented assistant message when generation is stopped
@@ -165,6 +180,10 @@ Local data/intake folder
 - Explicitly filed documents are stored under `data/library`.
 - Chat conversations and messages live in the local SQLite database and are
   included in Nova's verified database backups.
+- Approved knowledge records live in SQLite and as checksum-bound Markdown
+  copies under the configured knowledge directory.
+- Historical chat citations are stored in SQLite; every new retrieval verifies
+  the current Markdown path and checksum before use.
 - Docker mounts the local `data` root so the guarded action boundary can move
   approved files; scanning and recommendation paths do not write to files.
 - SQLite lives in the `nova_data` Docker volume.

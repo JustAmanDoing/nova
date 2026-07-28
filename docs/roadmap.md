@@ -168,13 +168,30 @@ The evidence and limitations are recorded in
 
 ## Milestone 56 — Approved Knowledge Retrieval
 
+**Status (28 July 2026): complete; engineering acceptance passed and owner
+acceptance pending.**
+
+- Retrieve only owner-approved knowledge records — complete
+- Verify the current local record path and SHA-256 before retrieval — complete
+- Cite the exact local record used in an answer — complete
+- Persist citation evidence with the assistant message — complete
+- Keep retrieval separate from general model training and chat history —
+  complete
+- Provide clear no-match and retrieval-failure behavior — complete
+- Preserve local-only operation and owner control — complete
+
+The evidence and limitations are recorded in
+`docs/milestone-56-approved-knowledge-retrieval.md`.
+
+## Milestone 57 — Knowledge Lifecycle and Duplicate Controls
+
 **Status: proposed; runtime work not started.**
 
-- Retrieve only owner-approved knowledge records
-- Cite the exact local record used in an answer
-- Keep retrieval separate from general model training and chat history
-- Provide clear no-match and uncertainty behavior
-- Preserve local-only operation and owner control
+- Review and consolidate likely duplicate approved records
+- Edit or retire an approved record through an explicit guarded workflow
+- Preserve append-only decision history and reversible recovery evidence
+- Add independent backup coverage for Markdown knowledge copies
+- Measure retrieval quality before considering vector or embedding search
 
 ## Later capabilities
 

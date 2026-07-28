@@ -337,6 +337,40 @@ def _conversation_knowledge_capture(connection: sqlite3.Connection) -> None:
     _execute_all(connection, statements)
 
 
+def _approved_knowledge_retrieval(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        ALTER TABLE chat_messages
+        ADD COLUMN knowledge_checked INTEGER NOT NULL DEFAULT 0
+            CHECK (knowledge_checked IN (0, 1))
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS chat_message_knowledge_sources (
+            message_id TEXT NOT NULL
+                REFERENCES chat_messages(id) ON DELETE CASCADE,
+            record_id TEXT NOT NULL
+                REFERENCES knowledge_records(id) ON DELETE RESTRICT,
+            citation_label TEXT NOT NULL,
+            position INTEGER NOT NULL CHECK (position >= 1),
+            score REAL NOT NULL CHECK (score > 0.0),
+            title TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            content TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            sha256 TEXT NOT NULL,
+            PRIMARY KEY (message_id, record_id),
+            UNIQUE (message_id, citation_label),
+            UNIQUE (message_id, position)
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_chat_message_knowledge_sources_message
+        ON chat_message_knowledge_sources (message_id, position)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -350,6 +384,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(10, "learning-preference-controls", _learning_preference_controls),
     Migration(11, "local-chat-core", _local_chat_core),
     Migration(12, "conversation-knowledge-capture", _conversation_knowledge_capture),
+    Migration(13, "approved-knowledge-retrieval", _approved_knowledge_retrieval),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version
 
