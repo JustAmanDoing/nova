@@ -184,8 +184,8 @@ The evidence and limitations are recorded in
 
 ## Milestone 57 — Knowledge Lifecycle and Duplicate Controls
 
-**Status (28 July 2026): engineering release-readiness passed; owner acceptance
-pending.**
+**Status (29 July 2026): complete; architecture, engineering, and owner
+acceptance passed.**
 
 - Flag deterministic likely duplicates before approval — implemented
 - Require explicit confirmation to preserve likely duplicates separately —

@@ -8,7 +8,7 @@
 
 **Prototype release:** 0.57.0
 
-**Decision:** Engineering release-readiness passed; owner acceptance pending
+**Decision:** Accepted
 
 ## Scope delivered
 
@@ -121,14 +121,13 @@ knowledge-file SHA-256 manifest are stored under:
 
 ## Release-readiness decision
 
-Milestone 57 passes architecture and engineering release-readiness. Owner
-acceptance remains pending. The synthetic lifecycle record is intentionally
-retired and retained as acceptance evidence.
+Milestone 57 passes architecture, engineering, and owner acceptance. The owner
+confirmed `passes` on 29 July 2026. The synthetic lifecycle record is
+intentionally retired and retained as acceptance evidence.
 
 No merge to `main` or remote push is part of this milestone.
 
 ## Exact next action
 
-Complete the short owner acceptance check in the installed Chat interface.
-After acceptance, select the scope of Milestone 58 before adding another
-runtime capability.
+Select the bounded scope of Milestone 58 before adding another runtime
+capability.

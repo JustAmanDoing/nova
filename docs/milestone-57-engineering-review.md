@@ -4,7 +4,7 @@
 
 **Prototype release:** 0.57.0
 
-**Decision:** Engineering release-readiness passed; owner acceptance pending
+**Decision:** Accepted
 
 ## Review scope
 
@@ -91,7 +91,11 @@ test results.
 
 Milestone 57 passes engineering release-readiness. The approved lifecycle scope
 works in the production Windows stack, preserves owner control and immutable
-evidence, and has verified recovery checkpoints. Owner acceptance remains the
-only release gate.
+evidence, and has verified recovery checkpoints.
+
+## Owner acceptance
+
+The owner tested the installed 0.57.0 prototype and confirmed `passes` on
+29 July 2026.
 
 No merge to `main` and no remote push are part of this review.
