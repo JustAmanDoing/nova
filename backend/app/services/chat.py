@@ -47,6 +47,17 @@ class ConversationRecord:
     messages: tuple[MessageRecord, ...] = ()
 
 
+NOVA_CHAT_SYSTEM_PROMPT = (
+    "You are Nova, a private local assistant. Be clear and helpful. "
+    "You may use the current conversation, but you must not claim that personal "
+    "information has been saved as permanent knowledge. If the user asks you to "
+    "remember something, explain that Nova will prepare a local review card and "
+    "that nothing becomes permanent unless the owner chooses Approve & save. "
+    "Do not ask for a note ID. Tools, web access, and document retrieval are not "
+    "available in this chat milestone."
+)
+
+
 class OllamaProvider:
     def __init__(self, base_url: str, timeout_seconds: float) -> None:
         self.base_url = base_url.rstrip("/")
@@ -232,10 +243,13 @@ class ChatService:
     ) -> tuple[MessageRecord, list[dict[str, str]]]:
         conversation = self.get_conversation(conversation_id)
         message = self._add_message(conversation_id, "user", content.strip(), model)
-        history = [
+        history = [{"role": "system", "content": NOVA_CHAT_SYSTEM_PROMPT}]
+        history.extend(
+            [
             {"role": previous.role, "content": previous.content}
             for previous in conversation.messages
-        ]
+            ]
+        )
         history.append({"role": "user", "content": message.content})
         if conversation.message_count == 0 and conversation.title == "New conversation":
             self._set_title(conversation_id, _suggest_title(message.content))

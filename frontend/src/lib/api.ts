@@ -43,7 +43,43 @@ export type ChatStreamEvent =
   | { type: "user"; message: ChatMessage }
   | { type: "delta"; content: string }
   | { type: "done"; message: ChatMessage }
+  | { type: "knowledge_warning"; message: string }
   | { type: "error"; message: string };
+
+export type KnowledgeKind =
+  | "fact"
+  | "preference"
+  | "goal"
+  | "project"
+  | "lesson"
+  | "rule"
+  | "reference";
+
+export type KnowledgeCandidateStatus = "pending" | "approved" | "rejected";
+
+export interface KnowledgeCandidate {
+  id: string;
+  conversation_id: string;
+  source_message_id: string;
+  kind: KnowledgeKind;
+  title: string;
+  content: string;
+  source_excerpt: string;
+  reason: string;
+  confidence: number;
+  explicit_request: boolean;
+  status: KnowledgeCandidateStatus;
+  created_at: string;
+  reviewed_at: string | null;
+  record_path: string | null;
+}
+
+export interface KnowledgeReviewRequest {
+  action: "approve" | "reject";
+  kind?: KnowledgeKind;
+  title?: string;
+  content?: string;
+}
 
 export interface OperationalStatus {
   status: "healthy" | "attention";
@@ -299,6 +335,30 @@ export async function streamChatMessage(
     if (done) break;
   }
   if (buffer.trim()) onEvent(JSON.parse(buffer) as ChatStreamEvent);
+}
+
+export async function getKnowledgeCandidates(
+  status?: KnowledgeCandidateStatus,
+  signal?: AbortSignal,
+): Promise<KnowledgeCandidate[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request<KnowledgeCandidate[]>(`/api/v1/knowledge/candidates${query}`, {
+    signal,
+  });
+}
+
+export async function reviewKnowledgeCandidate(
+  candidateId: string,
+  review: KnowledgeReviewRequest,
+): Promise<KnowledgeCandidate> {
+  return request<KnowledgeCandidate>(
+    `/api/v1/knowledge/candidates/${encodeURIComponent(candidateId)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(review),
+    },
+  );
 }
 
 export async function getBackups(

@@ -110,9 +110,18 @@ available at:
 
 `http://localhost:5173/chat.html`
 
+## Owner acceptance
+
+The owner completed the five requested local tests on 28 July 2026:
+
+- exact response;
+- within-conversation recall;
+- normal multi-part answer;
+- stopping a long response; and
+- conversation-history persistence after refresh.
+
+The owner reported **passed**. Milestone 54 is therefore closed.
+
 ## Exact next milestone
 
-Milestone 55 — Conversation-to-Knowledge Capture is the next proposed product
-slice. It must preserve explicit owner approval and must not silently promote
-ordinary conversation into permanent personal knowledge. Runtime work has not
-started.
+Milestone 55 — Conversation-to-Knowledge Capture.

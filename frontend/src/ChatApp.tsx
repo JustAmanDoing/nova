@@ -11,11 +11,15 @@ import {
   getChatConversation,
   getChatConversations,
   getChatModels,
+  getKnowledgeCandidates,
+  reviewKnowledgeCandidate,
   streamChatMessage,
   type ChatConversationSummary,
   type ChatMessage,
   type ChatModel,
   type ChatStreamEvent,
+  type KnowledgeCandidate,
+  type KnowledgeKind,
 } from "./lib/api";
 
 type DraftMessage = Pick<ChatMessage, "id" | "role" | "content" | "model">;
@@ -30,6 +34,9 @@ function ChatApp() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [knowledgeCandidates, setKnowledgeCandidates] = useState<
+    KnowledgeCandidate[]
+  >([]);
   const abortRef = useRef<AbortController | null>(null);
   const draftIdRef = useRef(0);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
@@ -37,6 +44,12 @@ function ChatApp() {
   const refreshConversations = useCallback(async () => {
     const records = await getChatConversations();
     setConversations(records);
+    return records;
+  }, []);
+
+  const refreshKnowledgeCandidates = useCallback(async () => {
+    const records = await getKnowledgeCandidates("pending");
+    setKnowledgeCandidates(records);
     return records;
   }, []);
 
@@ -53,8 +66,9 @@ function ChatApp() {
     Promise.allSettled([
       getChatModels(controller.signal),
       getChatConversations(controller.signal),
+      getKnowledgeCandidates("pending", controller.signal),
     ])
-      .then(async ([modelResult, conversationResult]) => {
+      .then(async ([modelResult, conversationResult, knowledgeResult]) => {
         if (controller.signal.aborted) return;
         const failures: string[] = [];
         if (modelResult.status === "fulfilled") {
@@ -75,6 +89,11 @@ function ChatApp() {
         } else {
           failures.push(errorMessage(conversationResult.reason));
         }
+        if (knowledgeResult.status === "fulfilled") {
+          setKnowledgeCandidates(knowledgeResult.value);
+        } else {
+          failures.push(errorMessage(knowledgeResult.reason));
+        }
         setNotice(failures[0] ?? null);
       })
       .catch((error: unknown) => {
@@ -85,7 +104,7 @@ function ChatApp() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [openConversation]);
+  }, [openConversation, refreshKnowledgeCandidates]);
 
   useEffect(() => {
     transcriptRef.current?.scrollTo({
@@ -125,6 +144,7 @@ function ChatApp() {
     const controller = new AbortController();
     abortRef.current = controller;
     let conversationId: string | null = null;
+    let knowledgeWarning: string | null = null;
     draftIdRef.current += 1;
     const userId = `draft-user-${draftIdRef.current}`;
     const assistantId = `draft-assistant-${draftIdRef.current}`;
@@ -139,13 +159,21 @@ function ChatApp() {
         conversationId,
         selectedModel,
         content,
-        (streamEvent) => handleStreamEvent(streamEvent, assistantId),
+        (streamEvent) => {
+          if (streamEvent.type === "knowledge_warning") {
+            knowledgeWarning = streamEvent.message;
+            return;
+          }
+          handleStreamEvent(streamEvent, assistantId);
+        },
         controller.signal,
       );
       await Promise.all([
         openConversation(conversationId),
         refreshConversations(),
+        refreshKnowledgeCandidates(),
       ]);
+      if (knowledgeWarning) setNotice(knowledgeWarning);
     } catch (error: unknown) {
       const stopped = error instanceof DOMException && error.name === "AbortError";
       if (!stopped) {
@@ -158,6 +186,7 @@ function ChatApp() {
           await Promise.all([
             openConversation(conversationId),
             refreshConversations(),
+            refreshKnowledgeCandidates(),
           ]);
         } catch {
           // Keep the original stop or provider failure as the actionable notice.
@@ -191,6 +220,28 @@ function ChatApp() {
 
   function stopGeneration() {
     abortRef.current?.abort();
+  }
+
+  async function handleKnowledgeReview(
+    candidateId: string,
+    review: {
+      action: "approve" | "reject";
+      kind?: KnowledgeKind;
+      title?: string;
+      content?: string;
+    },
+  ) {
+    try {
+      const reviewed = await reviewKnowledgeCandidate(candidateId, review);
+      await refreshKnowledgeCandidates();
+      setNotice(
+        reviewed.status === "approved"
+          ? `Saved locally to ${reviewed.record_path}.`
+          : "Not saved. The proposal was rejected.",
+      );
+    } catch (error: unknown) {
+      setNotice(errorMessage(error));
+    }
   }
 
   return (
@@ -252,15 +303,15 @@ function ChatApp() {
             )}
           </div>
           <p className="privacy-note">
-            Chat history is local. Nothing from a conversation becomes permanent
-            personal knowledge in this prototype.
+            Chat history and approved knowledge stay local. A suggestion is never
+            permanent until you choose Approve &amp; save.
           </p>
         </aside>
 
         <section className="chat-stage" aria-labelledby="chat-title">
           <header className="chat-heading">
             <div>
-              <p className="eyebrow">Milestone 54 · Local Chat Core</p>
+              <p className="eyebrow">Milestone 55 · Knowledge Capture</p>
               <h2 id="chat-title">Talk with Nova.</h2>
             </div>
             <label>
@@ -297,8 +348,8 @@ function ChatApp() {
                 <h3>Ready when you are.</h3>
                 <p>
                   This prototype talks to Ollama on your PC. It can converse and
-                  keep local chat history, but it cannot act on files or silently
-                  save personal facts.
+                  keep local chat history. Say “Remember that…” to prepare a
+                  review card. Nova never silently saves personal facts.
                 </p>
               </div>
             ) : (
@@ -318,6 +369,27 @@ function ChatApp() {
               ))
             )}
           </div>
+
+          {knowledgeCandidates.length ? (
+            <section className="knowledge-review" aria-labelledby="knowledge-title">
+              <div className="knowledge-review-heading">
+                <div>
+                  <p className="section-number">Owner approval required</p>
+                  <h3 id="knowledge-title">Memory review</h3>
+                </div>
+                <span>{knowledgeCandidates.length} pending</span>
+              </div>
+              <div className="knowledge-candidate-list">
+                {knowledgeCandidates.map((candidate) => (
+                  <KnowledgeCandidateCard
+                    key={candidate.id}
+                    candidate={candidate}
+                    onReview={handleKnowledgeReview}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           {notice ? <p className="chat-notice" role="status">{notice}</p> : null}
 
@@ -355,8 +427,8 @@ function ChatApp() {
             )}
           </form>
           <p className="chat-boundary">
-            Nova prepares answers only. Tools, web access, RAG, and permanent
-            memory are disabled in this milestone.
+            Knowledge capture is local and approval-only. Tools, web access,
+            autonomous actions, and RAG remain disabled.
           </p>
         </section>
       </div>
@@ -365,6 +437,116 @@ function ChatApp() {
 }
 
 export default ChatApp;
+
+const KNOWLEDGE_KIND_LABELS: Record<KnowledgeKind, string> = {
+  fact: "Fact",
+  preference: "Preference",
+  goal: "Goal",
+  project: "Project",
+  lesson: "Lesson",
+  rule: "Rule",
+  reference: "Reference",
+};
+
+function KnowledgeCandidateCard({
+  candidate,
+  onReview,
+}: {
+  candidate: KnowledgeCandidate;
+  onReview: (
+    candidateId: string,
+    review: {
+      action: "approve" | "reject";
+      kind?: KnowledgeKind;
+      title?: string;
+      content?: string;
+    },
+  ) => Promise<void>;
+}) {
+  const [kind, setKind] = useState<KnowledgeKind>(candidate.kind);
+  const [title, setTitle] = useState(candidate.title);
+  const [content, setContent] = useState(candidate.content);
+  const [saving, setSaving] = useState(false);
+
+  async function review(action: "approve" | "reject") {
+    setSaving(true);
+    try {
+      await onReview(
+        candidate.id,
+        action === "approve"
+          ? { action, kind, title: title.trim(), content: content.trim() }
+          : { action },
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <article className="knowledge-candidate">
+      <div className="knowledge-candidate-summary">
+        <strong>
+          {candidate.explicit_request
+            ? "You asked Nova to remember this"
+            : "Suggested"}
+        </strong>
+        <span>Nothing has been saved yet.</span>
+      </div>
+      <p>{candidate.reason}</p>
+      <div className="knowledge-fields">
+        <label>
+          <span>Type</span>
+          <select
+            value={kind}
+            onChange={(event) => setKind(event.target.value as KnowledgeKind)}
+            disabled={saving}
+          >
+            {Object.entries(KNOWLEDGE_KIND_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Title</span>
+          <input
+            value={title}
+            maxLength={120}
+            onChange={(event) => setTitle(event.target.value)}
+            disabled={saving}
+          />
+        </label>
+        <label className="knowledge-content">
+          <span>Information to save</span>
+          <textarea
+            value={content}
+            maxLength={4000}
+            rows={3}
+            onChange={(event) => setContent(event.target.value)}
+            disabled={saving}
+          />
+        </label>
+      </div>
+      <div className="knowledge-actions">
+        <button
+          type="button"
+          className="reject-knowledge"
+          onClick={() => void review("reject")}
+          disabled={saving}
+        >
+          Don&apos;t save
+        </button>
+        <button
+          type="button"
+          className="approve-knowledge"
+          onClick={() => void review("approve")}
+          disabled={saving || !title.trim() || !content.trim()}
+        >
+          {saving ? "Saving…" : "Approve & save"}
+        </button>
+      </div>
+    </article>
+  );
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error

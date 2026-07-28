@@ -151,12 +151,31 @@ The evidence and current limitations are recorded in
 
 ## Milestone 55 — Conversation-to-Knowledge Capture
 
-**Status (28 July 2026): proposed; runtime work not started.**
+**Status (28 July 2026): working prototype; engineering acceptance passed,
+owner acceptance pending.**
 
-- Natural explicit "remember this" requests
-- Limited suggestions for high-value candidate knowledge
-- Owner review before any permanent personal record is created
-- No silent memory promotion
+- Natural explicit "remember this" requests — complete
+- Limited deterministic suggestions for high-value candidate knowledge —
+  complete
+- Editable owner review before any permanent personal record is created —
+  complete
+- Approval writes a local, no-overwrite Markdown record and recoverable SQLite
+  record — complete
+- Rejection creates no permanent record — complete
+- No silent memory promotion — verified
+
+The evidence and limitations are recorded in
+`docs/milestone-55-conversation-to-knowledge-capture.md`.
+
+## Milestone 56 — Approved Knowledge Retrieval
+
+**Status: proposed; runtime work not started.**
+
+- Retrieve only owner-approved knowledge records
+- Cite the exact local record used in an answer
+- Keep retrieval separate from general model training and chat history
+- Provide clear no-match and uncertainty behavior
+- Preserve local-only operation and owner control
 
 ## Later capabilities
 

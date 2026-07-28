@@ -59,10 +59,10 @@ describe("ChatApp", () => {
     expect(screen.getByRole("combobox")).toHaveValue("qwen3:8b");
     expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
     expect(
-      screen.getByText(/Nothing from a conversation becomes permanent/),
+      screen.getByText(/A suggestion is never permanent/),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Tools, web access, RAG, and permanent memory are disabled/),
+      screen.getByText(/Knowledge capture is local and approval-only/),
     ).toBeInTheDocument();
   });
 
@@ -83,6 +83,9 @@ describe("ChatApp", () => {
               },
             ]),
           );
+        }
+        if (url.includes("/knowledge/candidates")) {
+          return Promise.resolve(jsonResponse([]));
         }
         if (url.endsWith("/chat/conversations") && init?.method === "POST") {
           conversationCreated = true;
@@ -212,6 +215,9 @@ describe("ChatApp", () => {
             ]),
           );
         }
+        if (url.includes("/knowledge/candidates")) {
+          return Promise.resolve(jsonResponse([]));
+        }
         if (url.endsWith("/chat/conversations") && init?.method === "POST") {
           conversationCreated = true;
           return Promise.resolve(jsonResponse(conversation, 201));
@@ -325,6 +331,9 @@ describe("ChatApp", () => {
             jsonResponse({ detail: "Ollama is unavailable." }, 503),
           );
         }
+        if (url.includes("/knowledge/candidates")) {
+          return Promise.resolve(jsonResponse([]));
+        }
         if (url.endsWith("/chat/conversations/conversation-1")) {
           return Promise.resolve(
             jsonResponse({
@@ -359,5 +368,98 @@ describe("ChatApp", () => {
     expect(screen.getByText("Saved while local")).toBeInTheDocument();
     expect(screen.getByText("1 message")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message Nova" })).toBeDisabled();
+  });
+
+  it("requires explicit local approval before saving proposed knowledge", async () => {
+    const candidate = {
+      id: "candidate-1",
+      conversation_id: "conversation-1",
+      source_message_id: "user-1",
+      kind: "preference",
+      title: "Prefer short answers",
+      content: "I prefer short answers",
+      source_excerpt: "Remember that I prefer short answers",
+      reason: "You explicitly asked Nova to remember this.",
+      confidence: 1,
+      explicit_request: true,
+      status: "pending",
+      created_at: "2026-07-28T10:00:00Z",
+      reviewed_at: null,
+      record_path: null,
+    };
+    let reviewed = false;
+    const fetchMock = vi.fn(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) {
+          return Promise.resolve(
+            jsonResponse([
+              {
+                name: "qwen3:8b",
+                size_bytes: 5_200_000_000,
+                parameter_size: "8.2B",
+                quantization_level: "Q4_K_M",
+              },
+            ]),
+          );
+        }
+        if (url.endsWith("/chat/conversations")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/candidates?status=pending")) {
+          return Promise.resolve(jsonResponse(reviewed ? [] : [candidate]));
+        }
+        if (
+          url.endsWith("/knowledge/candidates/candidate-1") &&
+          init?.method === "PUT"
+        ) {
+          reviewed = true;
+          return Promise.resolve(
+            jsonResponse({
+              ...candidate,
+              title: "Preferred response style",
+              content: "Use concise answers with recommendations.",
+              status: "approved",
+              reviewed_at: "2026-07-28T10:01:00Z",
+              record_path: "Preferences/response-style.md",
+            }),
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    expect(await screen.findByText("Memory review")).toBeInTheDocument();
+    expect(screen.getByText("Nothing has been saved yet.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Preferred response style" },
+    });
+    fireEvent.change(screen.getByLabelText("Information to save"), {
+      target: { value: "Use concise answers with recommendations." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Approve & save" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Saved locally to Preferences/response-style.md.",
+    );
+    expect(screen.queryByText("Memory review")).toBeNull();
+    const reviewCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        input.toString().endsWith("/knowledge/candidates/candidate-1") &&
+        init?.method === "PUT",
+    );
+    expect(reviewCall).toBeDefined();
+    expect(new Headers(reviewCall?.[1]?.headers).get("X-Nova-Intent")).toBe(
+      "local-user-action",
+    );
+    expect(JSON.parse(reviewCall?.[1]?.body as string)).toEqual({
+      action: "approve",
+      kind: "preference",
+      title: "Preferred response style",
+      content: "Use concise answers with recommendations.",
+    });
   });
 });

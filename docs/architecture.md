@@ -21,6 +21,10 @@ Local chat is an optional parallel interface:
 React chat page
   └── versioned FastAPI chat endpoints
         ├── local SQLite conversation history
+        ├── deterministic knowledge proposal detector
+        │     └── pending owner review
+        │           ├── reject → no permanent record
+        │           └── approve → SQLite record + local Markdown copy
         └── Nova-owned provider adapter
               └── Ollama on the Windows host
 ```
@@ -69,8 +73,11 @@ Local data/intake folder
 
 - Provides a separate local chat page with model selection, streamed replies,
   local conversation history, and stop generation.
-- States that tools, web access, RAG, and permanent-memory promotion are
-  unavailable in the current chat milestone.
+- Shows editable knowledge proposals with explicit **Approve & save** and
+  **Don't save** controls.
+- Makes pending state explicit: a proposal is not permanent knowledge.
+- States that tools, web access, RAG, and autonomous actions remain
+  unavailable.
 - Displays service health, intake totals, file metadata, duplicate status, and
   normalized understanding results.
 - Reads authoritative, unfiltered totals from a dedicated summary endpoint so
@@ -98,10 +105,18 @@ Local data/intake folder
 - Discovers models and streams replies through a small Nova-owned Ollama
   adapter rather than coupling the application to a provider-specific UI.
 - Stores conversations and complete user/assistant messages locally in SQLite.
+- Detects only bounded, deterministic explicit-memory and high-value profile
+  patterns; the language model does not decide what becomes permanent.
+- Stores each proposal as pending and writes no permanent record before owner
+  approval.
+- Stores approved record contents in SQLite and writes a checksum-bound,
+  no-overwrite Markdown copy under the configured knowledge directory.
+- Keeps optional proposal failure isolated so ordinary chat remains available
+  with a truthful warning.
 - Stores no partial or invented assistant message when generation is stopped
   or the provider fails.
-- Requires the local browser-intent guard for conversation creation and message
-  submission.
+- Requires the local browser-intent guard for conversation creation, message
+  submission, and proposal review.
 - Scans the configured intake directory.
 - Reads every file locally to calculate its fingerprint.
 - Extracts UTF-8 text, PDF text layers, and DOCX document text up to the

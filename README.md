@@ -114,18 +114,27 @@ Open:
 - API docs: http://localhost:8000/docs
 - API health: http://localhost:8000/api/v1/health
 
-### Local chat prototype
+### Local chat and approved knowledge capture
 
 The **Chat** page uses the Ollama service already installed on the Windows host.
 Model discovery and replies remain local. Conversation history is stored in
 Nova's SQLite database and is therefore included in verified database backups.
 
-Milestone 54 deliberately keeps a narrow boundary: chat cannot browse the web,
-use tools, access intake documents, promote statements into permanent personal
-knowledge, or perform filesystem actions. Starting a conversation and sending
-a message require the same local browser-intent guard as other state-changing
-Nova requests. Stopping generation preserves only records that the backend had
-already committed; it never fabricates a completed assistant response.
+Milestone 55 adds bounded, deterministic conversation-to-knowledge capture.
+An explicit **Remember that...** request, or a limited high-value profile
+statement such as a preference or goal, can prepare an editable review card.
+The proposal remains pending until the owner selects **Approve & save**.
+Selecting **Don't save** records the rejection and creates no permanent
+knowledge file. Approved records are retained in SQLite and written as
+no-overwrite Markdown records under the configured local knowledge directory.
+The Windows deployment maps that directory to `N:\Nova\Memory`.
+
+Chat still cannot browse the web, use tools, access intake documents, retrieve
+saved knowledge, or perform autonomous actions. Starting a conversation,
+sending a message, and reviewing a knowledge proposal require the same local
+browser-intent guard as other state-changing Nova requests. Stopping generation
+preserves only records that the backend had already committed; it never
+fabricates a completed assistant response.
 
 Place a TXT, Markdown, PDF, DOCX, PNG, JPEG, TIFF, or BMP test file in
 `data/intake`. Nova scans automatically every three seconds, or you can select

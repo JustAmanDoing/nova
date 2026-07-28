@@ -20,6 +20,7 @@ from app.services.chat import (
     ChatService,
     LocalModelProviderError,
 )
+from app.services.knowledge import KnowledgeProposalError
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 LocalAction = Annotated[None, Depends(require_local_action)]
@@ -95,9 +96,16 @@ def send_message(
         )
     except ChatNotFoundError as error:
         raise HTTPException(status_code=404, detail="Conversation not found.") from error
+    knowledge_warning: str | None = None
+    try:
+        request.app.state.knowledge.propose_from_message(user_message)
+    except KnowledgeProposalError as error:
+        knowledge_warning = str(error)
 
     def events() -> Iterator[str]:
         yield _event("user", message=asdict(user_message))
+        if knowledge_warning is not None:
+            yield _event("knowledge_warning", message=knowledge_warning)
         assistant_parts: list[str] = []
         try:
             for content in chat.provider.stream_chat(payload.model, history):

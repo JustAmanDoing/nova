@@ -264,6 +264,79 @@ def _local_chat_core(connection: sqlite3.Connection) -> None:
     _execute_all(connection, statements)
 
 
+def _conversation_knowledge_capture(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_candidates (
+            id TEXT PRIMARY KEY,
+            conversation_id TEXT NOT NULL
+                REFERENCES chat_conversations(id) ON DELETE CASCADE,
+            source_message_id TEXT NOT NULL
+                REFERENCES chat_messages(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL CHECK (
+                kind IN (
+                    'fact', 'preference', 'goal', 'project',
+                    'lesson', 'rule', 'reference'
+                )
+            ),
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            source_excerpt TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            confidence REAL NOT NULL CHECK (
+                confidence >= 0.0 AND confidence <= 1.0
+            ),
+            explicit_request INTEGER NOT NULL CHECK (
+                explicit_request IN (0, 1)
+            ),
+            status TEXT NOT NULL CHECK (
+                status IN ('pending', 'approved', 'rejected')
+            ),
+            created_at TEXT NOT NULL,
+            reviewed_at TEXT,
+            UNIQUE (source_message_id)
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_candidates_status
+        ON knowledge_candidates (status, created_at DESC)
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_records (
+            id TEXT PRIMARY KEY,
+            candidate_id TEXT NOT NULL UNIQUE
+                REFERENCES knowledge_candidates(id),
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            relative_path TEXT NOT NULL UNIQUE,
+            sha256 TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_records_created
+        ON knowledge_records (created_at DESC)
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_events (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_id TEXT NOT NULL REFERENCES knowledge_candidates(id),
+            event_type TEXT NOT NULL CHECK (
+                event_type IN ('proposed', 'approved', 'rejected')
+            ),
+            detail TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_events_candidate
+        ON knowledge_events (candidate_id, sequence)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -276,6 +349,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(9, "confirmed-move-learning", _confirmed_move_learning),
     Migration(10, "learning-preference-controls", _learning_preference_controls),
     Migration(11, "local-chat-core", _local_chat_core),
+    Migration(12, "conversation-knowledge-capture", _conversation_knowledge_capture),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version
 

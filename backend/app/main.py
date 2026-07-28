@@ -13,6 +13,7 @@ from app.core.config import Settings, get_settings
 from app.services.backup import BackupService
 from app.services.chat import ChatService, OllamaProvider
 from app.services.intake import IntakeService
+from app.services.knowledge import KnowledgeService
 from app.services.ocr import LocalOcrService
 
 logger = logging.getLogger(__name__)
@@ -65,9 +66,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 timeout_seconds=resolved_settings.ollama_timeout_seconds,
             ),
         )
+        knowledge = KnowledgeService(
+            database_path=resolved_settings.database_path,
+            knowledge_path=resolved_settings.knowledge_path,
+            operation_lock=operation_lock,
+        )
+        await asyncio.to_thread(knowledge.initialize)
         application.state.intake = intake
         application.state.backups = backups
         application.state.chat = chat
+        application.state.knowledge = knowledge
         watcher = asyncio.create_task(
             watch_intake(intake, resolved_settings.intake_scan_seconds)
         )
@@ -93,6 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
+        allow_private_network=True,
     )
     application.add_middleware(
         TrustedHostMiddleware,
