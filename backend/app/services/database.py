@@ -371,6 +371,103 @@ def _approved_knowledge_retrieval(connection: sqlite3.Connection) -> None:
     _execute_all(connection, statements)
 
 
+def _knowledge_lifecycle_and_duplicates(connection: sqlite3.Connection) -> None:
+    _add_column_if_missing(
+        connection,
+        "knowledge_candidates",
+        "duplicate_record_id TEXT REFERENCES knowledge_records(id)",
+    )
+    _add_column_if_missing(
+        connection,
+        "knowledge_candidates",
+        "duplicate_score REAL",
+    )
+    _add_column_if_missing(
+        connection,
+        "knowledge_records",
+        "status TEXT NOT NULL DEFAULT 'active' "
+        "CHECK (status IN ('active', 'retired'))",
+    )
+    _add_column_if_missing(
+        connection,
+        "knowledge_records",
+        "revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1)",
+    )
+    _add_column_if_missing(connection, "knowledge_records", "updated_at TEXT")
+    _add_column_if_missing(connection, "knowledge_records", "retired_at TEXT")
+    connection.execute(
+        """
+        UPDATE knowledge_records
+        SET updated_at = created_at
+        WHERE updated_at IS NULL
+        """
+    )
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_record_revisions (
+            record_id TEXT NOT NULL
+                REFERENCES knowledge_records(id) ON DELETE RESTRICT,
+            revision INTEGER NOT NULL CHECK (revision >= 1),
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            sha256 TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('active', 'retired')),
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (record_id, revision)
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_record_revisions_path
+        ON knowledge_record_revisions (relative_path)
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_record_events (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            record_id TEXT NOT NULL
+                REFERENCES knowledge_records(id) ON DELETE RESTRICT,
+            event_type TEXT NOT NULL CHECK (
+                event_type IN ('created', 'updated', 'retired')
+            ),
+            detail TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_record_events_record
+        ON knowledge_record_events (record_id, sequence)
+        """,
+        """
+        INSERT OR IGNORE INTO knowledge_record_revisions (
+            record_id, revision, kind, title, content, relative_path,
+            sha256, status, created_at
+        )
+        SELECT
+            id, 1, kind, title, content, relative_path, sha256,
+            'active', created_at
+        FROM knowledge_records
+        """,
+        """
+        INSERT INTO knowledge_record_events (
+            record_id, event_type, detail, created_at
+        )
+        SELECT
+            record.id,
+            'created',
+            'Imported existing approved record into lifecycle history.',
+            record.created_at
+        FROM knowledge_records AS record
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM knowledge_record_events AS event
+            WHERE event.record_id = record.id
+        )
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -385,6 +482,11 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(11, "local-chat-core", _local_chat_core),
     Migration(12, "conversation-knowledge-capture", _conversation_knowledge_capture),
     Migration(13, "approved-knowledge-retrieval", _approved_knowledge_retrieval),
+    Migration(
+        14,
+        "knowledge-lifecycle-and-duplicates",
+        _knowledge_lifecycle_and_duplicates,
+    ),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version
 

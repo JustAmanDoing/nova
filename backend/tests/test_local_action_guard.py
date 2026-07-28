@@ -40,6 +40,20 @@ def test_every_mutating_api_requires_local_action_intent(tmp_path: Path) -> None
             client.post("/api/v1/intake/files/not-present/execute"),
             client.post("/api/v1/intake/actions/not-present/undo"),
             client.post("/api/v1/backups"),
+            client.put(
+                "/api/v1/knowledge/candidates/not-present",
+                json={"action": "reject"},
+            ),
+            client.put(
+                "/api/v1/knowledge/records/not-present",
+                json={
+                    "action": "update",
+                    "kind": "fact",
+                    "title": "Blocked update",
+                    "content": "This request must not reach the service.",
+                },
+            ),
+            client.post("/api/v1/knowledge/snapshots"),
             client.post(
                 "/api/v1/backups/nova-20260725T000000.000000Z.db/restore",
                 json={"confirmation": "RESTORE nova-20260725T000000.000000Z.db"},

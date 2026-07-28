@@ -7,13 +7,16 @@ import {
 } from "react";
 
 import {
+  createKnowledgeSnapshot,
   createChatConversation,
   getChatConversation,
   getChatConversations,
   getChatModels,
   getKnowledgeCandidates,
+  getKnowledgeRecords,
   reviewKnowledgeCandidate,
   streamChatMessage,
+  updateKnowledgeRecord,
   type ChatConversationSummary,
   type ChatKnowledgeSource,
   type ChatMessage,
@@ -21,6 +24,8 @@ import {
   type ChatStreamEvent,
   type KnowledgeCandidate,
   type KnowledgeKind,
+  type KnowledgeRecord,
+  type KnowledgeRecordLifecycleRequest,
 } from "./lib/api";
 
 type DraftMessage = Pick<
@@ -41,6 +46,8 @@ function ChatApp() {
   const [knowledgeCandidates, setKnowledgeCandidates] = useState<
     KnowledgeCandidate[]
   >([]);
+  const [knowledgeRecords, setKnowledgeRecords] = useState<KnowledgeRecord[]>([]);
+  const [snapshotting, setSnapshotting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const draftIdRef = useRef(0);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
@@ -54,6 +61,12 @@ function ChatApp() {
   const refreshKnowledgeCandidates = useCallback(async () => {
     const records = await getKnowledgeCandidates("pending");
     setKnowledgeCandidates(records);
+    return records;
+  }, []);
+
+  const refreshKnowledgeRecords = useCallback(async () => {
+    const records = await getKnowledgeRecords();
+    setKnowledgeRecords(records);
     return records;
   }, []);
 
@@ -71,8 +84,15 @@ function ChatApp() {
       getChatModels(controller.signal),
       getChatConversations(controller.signal),
       getKnowledgeCandidates("pending", controller.signal),
+      getKnowledgeRecords(controller.signal),
     ])
-      .then(async ([modelResult, conversationResult, knowledgeResult]) => {
+      .then(
+        async ([
+          modelResult,
+          conversationResult,
+          knowledgeResult,
+          recordResult,
+        ]) => {
         if (controller.signal.aborted) return;
         const failures: string[] = [];
         if (modelResult.status === "fulfilled") {
@@ -98,8 +118,14 @@ function ChatApp() {
         } else {
           failures.push(errorMessage(knowledgeResult.reason));
         }
+        if (recordResult.status === "fulfilled") {
+          setKnowledgeRecords(recordResult.value);
+        } else {
+          failures.push(errorMessage(recordResult.reason));
+        }
         setNotice(failures[0] ?? null);
-      })
+        },
+      )
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setNotice(errorMessage(error));
@@ -190,6 +216,7 @@ function ChatApp() {
         openConversation(conversationId),
         refreshConversations(),
         refreshKnowledgeCandidates(),
+        refreshKnowledgeRecords(),
       ]);
       if (knowledgeWarning) setNotice(knowledgeWarning);
     } catch (error: unknown) {
@@ -205,6 +232,7 @@ function ChatApp() {
             openConversation(conversationId),
             refreshConversations(),
             refreshKnowledgeCandidates(),
+            refreshKnowledgeRecords(),
           ]);
         } catch {
           // Keep the original stop or provider failure as the actionable notice.
@@ -260,11 +288,15 @@ function ChatApp() {
       kind?: KnowledgeKind;
       title?: string;
       content?: string;
+      duplicate_confirmation?: string;
     },
   ) {
     try {
       const reviewed = await reviewKnowledgeCandidate(candidateId, review);
-      await refreshKnowledgeCandidates();
+      await Promise.all([
+        refreshKnowledgeCandidates(),
+        refreshKnowledgeRecords(),
+      ]);
       setNotice(
         reviewed.status === "approved"
           ? `Saved locally to ${reviewed.record_path}.`
@@ -272,6 +304,38 @@ function ChatApp() {
       );
     } catch (error: unknown) {
       setNotice(errorMessage(error));
+    }
+  }
+
+  async function handleKnowledgeLifecycle(
+    recordId: string,
+    lifecycle: KnowledgeRecordLifecycleRequest,
+  ) {
+    try {
+      const record = await updateKnowledgeRecord(recordId, lifecycle);
+      await refreshKnowledgeRecords();
+      setNotice(
+        record.status === "retired"
+          ? `Retired ${record.title}. Its files and history were retained.`
+          : `Updated ${record.title} to revision ${record.revision}.`,
+      );
+    } catch (error: unknown) {
+      setNotice(errorMessage(error));
+    }
+  }
+
+  async function handleKnowledgeSnapshot() {
+    setSnapshotting(true);
+    try {
+      const snapshot = await createKnowledgeSnapshot();
+      setNotice(
+        `Verified knowledge snapshot created: ${snapshot.filename} ` +
+          `(${snapshot.file_count} files, SHA-256 ${snapshot.sha256.slice(0, 12)}…).`,
+      );
+    } catch (error: unknown) {
+      setNotice(errorMessage(error));
+    } finally {
+      setSnapshotting(false);
     }
   }
 
@@ -342,7 +406,7 @@ function ChatApp() {
         <section className="chat-stage" aria-labelledby="chat-title">
           <header className="chat-heading">
             <div>
-              <p className="eyebrow">Milestone 56 · Approved Retrieval</p>
+              <p className="eyebrow">Milestone 57 · Knowledge Lifecycle</p>
               <h2 id="chat-title">Talk with Nova.</h2>
             </div>
             <label>
@@ -425,6 +489,43 @@ function ChatApp() {
             </section>
           ) : null}
 
+          <section className="knowledge-library" aria-labelledby="library-title">
+            <div className="knowledge-review-heading">
+              <div>
+                <p className="section-number">Owner-controlled records</p>
+                <h3 id="library-title">Knowledge library</h3>
+              </div>
+              <div className="knowledge-library-tools">
+                <span>
+                  {knowledgeRecords.filter((record) => record.status === "active").length}
+                  {" active"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleKnowledgeSnapshot()}
+                  disabled={snapshotting}
+                >
+                  {snapshotting ? "Verifying…" : "Create verified snapshot"}
+                </button>
+              </div>
+            </div>
+            {knowledgeRecords.length ? (
+              <div className="knowledge-record-list">
+                {knowledgeRecords.map((record) => (
+                  <KnowledgeRecordCard
+                    key={record.id}
+                    record={record}
+                    onLifecycle={handleKnowledgeLifecycle}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="knowledge-library-empty">
+                No approved records yet. Use “Remember that…” to prepare one.
+              </p>
+            )}
+          </section>
+
           {notice ? <p className="chat-notice" role="status">{notice}</p> : null}
 
           <form className="chat-composer" onSubmit={handleSend}>
@@ -461,8 +562,10 @@ function ChatApp() {
             )}
           </form>
           <p className="chat-boundary">
-            Retrieval uses approved local records only. Tools, web access,
-            autonomous actions, and general document search remain disabled.
+            Retrieval uses active, approved local records only. Updates create
+            immutable revisions; retirement never deletes a knowledge file.
+            Tools, web access, autonomous actions, and general document search
+            remain disabled.
           </p>
         </section>
       </div>
@@ -520,6 +623,7 @@ function KnowledgeCandidateCard({
       kind?: KnowledgeKind;
       title?: string;
       content?: string;
+      duplicate_confirmation?: string;
     },
   ) => Promise<void>;
 }) {
@@ -527,6 +631,7 @@ function KnowledgeCandidateCard({
   const [title, setTitle] = useState(candidate.title);
   const [content, setContent] = useState(candidate.content);
   const [saving, setSaving] = useState(false);
+  const [separateConfirmed, setSeparateConfirmed] = useState(false);
 
   async function review(action: "approve" | "reject") {
     setSaving(true);
@@ -534,7 +639,16 @@ function KnowledgeCandidateCard({
       await onReview(
         candidate.id,
         action === "approve"
-          ? { action, kind, title: title.trim(), content: content.trim() }
+          ? {
+              action,
+              kind,
+              title: title.trim(),
+              content: content.trim(),
+              duplicate_confirmation:
+                separateConfirmed
+                  ? "CREATE SEPARATE RECORD"
+                  : undefined,
+            }
           : { action },
       );
     } finally {
@@ -553,6 +667,34 @@ function KnowledgeCandidateCard({
         <span>Nothing has been saved yet.</span>
       </div>
       <p>{candidate.reason}</p>
+      {candidate.duplicate_record_id ? (
+        <div className="duplicate-warning" role="alert">
+          <strong>Possible duplicate</strong>
+          <p>
+            This closely matches “{candidate.duplicate_title}” at{" "}
+            <code>{candidate.duplicate_path}</code>.
+          </p>
+          <label>
+            <input
+              type="checkbox"
+              checked={separateConfirmed}
+              onChange={(event) => setSeparateConfirmed(event.target.checked)}
+              disabled={saving}
+            />
+            Keep both as separate records
+          </label>
+        </div>
+      ) : (
+        <label className="separate-record-option">
+          <input
+            type="checkbox"
+            checked={separateConfirmed}
+            onChange={(event) => setSeparateConfirmed(event.target.checked)}
+            disabled={saving}
+          />
+          If my edits match another record, keep both separately
+        </label>
+      )}
       <div className="knowledge-fields">
         <label>
           <span>Type</span>
@@ -599,12 +741,171 @@ function KnowledgeCandidateCard({
           type="button"
           className="approve-knowledge"
           onClick={() => void review("approve")}
-          disabled={saving || !title.trim() || !content.trim()}
+          disabled={
+            saving ||
+            !title.trim() ||
+            !content.trim() ||
+            Boolean(candidate.duplicate_record_id && !separateConfirmed)
+          }
         >
           {saving ? "Saving…" : "Approve & save"}
         </button>
       </div>
     </article>
+  );
+}
+
+function KnowledgeRecordCard({
+  record,
+  onLifecycle,
+}: {
+  record: KnowledgeRecord;
+  onLifecycle: (
+    recordId: string,
+    lifecycle: KnowledgeRecordLifecycleRequest,
+  ) => Promise<void>;
+}) {
+  const [kind, setKind] = useState<KnowledgeKind>(record.kind);
+  const [title, setTitle] = useState(record.title);
+  const [content, setContent] = useState(record.content);
+  const [retireConfirmation, setRetireConfirmation] = useState("");
+  const [separateConfirmed, setSeparateConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const retirePhrase = `RETIRE ${record.id.slice(0, 8)}`;
+  const changed =
+    kind !== record.kind ||
+    title.trim() !== record.title ||
+    content.trim() !== record.content;
+
+  async function applyLifecycle(lifecycle: KnowledgeRecordLifecycleRequest) {
+    setSaving(true);
+    try {
+      await onLifecycle(record.id, lifecycle);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <details className={`knowledge-record ${record.status}`}>
+      <summary>
+        <span>
+          <strong>{record.title}</strong>
+          <small>{record.relative_path}</small>
+        </span>
+        <span>
+          {record.status === "active" ? "Active" : "Retired"} · revision{" "}
+          {record.revision}
+        </span>
+      </summary>
+      <div className="knowledge-record-body">
+        {record.status === "active" ? (
+          <>
+            <div className="knowledge-fields">
+              <label>
+                <span>Type</span>
+                <select
+                  value={kind}
+                  onChange={(event) =>
+                    setKind(event.target.value as KnowledgeKind)
+                  }
+                  disabled={saving}
+                >
+                  {Object.entries(KNOWLEDGE_KIND_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Title</span>
+                <input
+                  value={title}
+                  maxLength={120}
+                  onChange={(event) => setTitle(event.target.value)}
+                  disabled={saving}
+                />
+              </label>
+              <label className="knowledge-content">
+                <span>Approved information</span>
+                <textarea
+                  value={content}
+                  maxLength={4000}
+                  rows={3}
+                  onChange={(event) => setContent(event.target.value)}
+                  disabled={saving}
+                />
+              </label>
+            </div>
+            <label className="separate-record-option">
+              <input
+                type="checkbox"
+                checked={separateConfirmed}
+                onChange={(event) =>
+                  setSeparateConfirmed(event.target.checked)
+                }
+                disabled={saving}
+              />
+              If this revision matches another record, keep both separately
+            </label>
+            <div className="knowledge-actions">
+              <button
+                type="button"
+                className="approve-knowledge"
+                disabled={
+                  saving || !changed || !title.trim() || !content.trim()
+                }
+                onClick={() =>
+                  void applyLifecycle({
+                    action: "update",
+                    kind,
+                    title: title.trim(),
+                    content: content.trim(),
+                    duplicate_confirmation: separateConfirmed
+                      ? "CREATE SEPARATE RECORD"
+                      : undefined,
+                  })
+                }
+              >
+                {saving ? "Saving…" : "Save new revision"}
+              </button>
+            </div>
+            <div className="retire-record">
+              <p>
+                Retirement removes this record from future retrieval without
+                deleting its files or history. Type <code>{retirePhrase}</code>.
+              </p>
+              <div>
+                <input
+                  aria-label={`Retire confirmation for ${record.title}`}
+                  value={retireConfirmation}
+                  onChange={(event) => setRetireConfirmation(event.target.value)}
+                  disabled={saving}
+                  placeholder={retirePhrase}
+                />
+                <button
+                  type="button"
+                  className="reject-knowledge"
+                  disabled={saving || retireConfirmation !== retirePhrase}
+                  onClick={() =>
+                    void applyLifecycle({
+                      action: "retire",
+                      confirmation: retireConfirmation,
+                    })
+                  }
+                >
+                  Retire record
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p>
+            This record is excluded from retrieval. Its approved file and
+            revision history remain available for recovery.
+          </p>
+        )}
+      </div>
+    </details>
   );
 }
 

@@ -184,13 +184,22 @@ The evidence and limitations are recorded in
 
 ## Milestone 57 — Knowledge Lifecycle and Duplicate Controls
 
-**Status: proposed; runtime work not started.**
+**Status (28 July 2026): engineering release-readiness passed; owner acceptance
+pending.**
 
-- Review and consolidate likely duplicate approved records
-- Edit or retire an approved record through an explicit guarded workflow
-- Preserve append-only decision history and reversible recovery evidence
-- Add independent backup coverage for Markdown knowledge copies
-- Measure retrieval quality before considering vector or embedding search
+- Flag deterministic likely duplicates before approval — implemented
+- Require explicit confirmation to preserve likely duplicates separately —
+  implemented
+- Update approved records through immutable, no-overwrite revisions —
+  implemented
+- Retire records from retrieval without deleting files or history — implemented
+- Preserve append-only lifecycle events and revision metadata — implemented
+- Create checksum-verified snapshots of all tracked Markdown revisions —
+  implemented
+- Preserve approved-only retrieval and all local safety boundaries — verified
+
+The evidence and current decision are recorded in
+`docs/milestone-57-knowledge-lifecycle.md`.
 
 ## Later capabilities
 

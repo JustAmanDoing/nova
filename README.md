@@ -11,6 +11,11 @@ The current MVP can:
 - Keep conversation and message history in Nova's local SQLite database
 - Stop an in-progress reply without storing an invented or partial assistant answer
 - Report local-model failure clearly while keeping saved conversations available
+- Warn when proposed knowledge appears to duplicate an active approved record
+- Require explicit confirmation before keeping likely duplicate records separately
+- Update approved knowledge by creating a new immutable Markdown revision
+- Retire approved knowledge from future retrieval without deleting its files
+- Create checksum-verified knowledge snapshots containing every tracked revision
 - Observe files placed in a local intake folder
 - Record filename, path, size, timestamps, and SHA-256 fingerprint
 - Detect exact duplicates without deleting either copy
@@ -134,6 +139,14 @@ local Markdown copy remains inside the configured knowledge directory and still
 matches its approved SHA-256 before supplying it to the model. Answers show
 exact `[K#]` source cards, and citation evidence is stored with the assistant
 message. If nothing approved matches, the chat says so clearly.
+
+Milestone 57 adds owner-controlled lifecycle management. Likely duplicates are
+flagged before approval and cannot be kept separately without explicit
+confirmation. An approved record can be updated only by creating a new,
+no-overwrite Markdown revision; its previous revisions remain unchanged.
+Retirement removes a record from future retrieval without deleting any
+revision. The owner can also create a checksum-verified ZIP snapshot containing
+the lifecycle manifest and every tracked Markdown revision.
 
 Chat still cannot browse the web, use tools, access intake documents, perform
 general document search, or take autonomous actions. Starting a conversation,
@@ -442,5 +455,8 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 54 local chat core](docs/milestone-54-local-chat-core.md)
 - [Milestone 55 conversation-to-knowledge capture](docs/milestone-55-conversation-to-knowledge-capture.md)
 - [Milestone 56 approved knowledge retrieval](docs/milestone-56-approved-knowledge-retrieval.md)
+- [Milestone 57 knowledge lifecycle and duplicate controls](docs/milestone-57-knowledge-lifecycle.md)
+- [Milestone 57 architecture review](docs/milestone-57-architecture-review.md)
+- [Milestone 57 engineering review](docs/milestone-57-engineering-review.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

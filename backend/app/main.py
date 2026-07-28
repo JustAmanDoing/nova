@@ -69,6 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         knowledge = KnowledgeService(
             database_path=resolved_settings.database_path,
             knowledge_path=resolved_settings.knowledge_path,
+            backup_path=resolved_settings.backup_path,
             operation_lock=operation_lock,
         )
         await asyncio.to_thread(knowledge.initialize)

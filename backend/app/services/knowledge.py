@@ -4,6 +4,7 @@ import json
 import os
 import re
 import sqlite3
+import zipfile
 from _thread import RLock
 from contextlib import closing
 from dataclasses import dataclass
@@ -101,6 +102,22 @@ class KnowledgeRetrievalError(RuntimeError):
     """Raised when approved knowledge cannot be verified for safe retrieval."""
 
 
+class KnowledgeDuplicateConfirmationError(RuntimeError):
+    """Raised when a likely duplicate needs explicit owner confirmation."""
+
+
+class KnowledgeRecordNotFoundError(LookupError):
+    """Raised when an approved knowledge record does not exist."""
+
+
+class KnowledgeRecordStateError(RuntimeError):
+    """Raised when a lifecycle action is invalid for the record state."""
+
+
+class KnowledgeBackupError(RuntimeError):
+    """Raised when a knowledge snapshot cannot be created and verified."""
+
+
 @dataclass(frozen=True)
 class KnowledgeCandidateRecord:
     id: str
@@ -117,6 +134,10 @@ class KnowledgeCandidateRecord:
     created_at: str
     reviewed_at: str | None
     record_path: str | None
+    duplicate_record_id: str | None
+    duplicate_title: str | None
+    duplicate_path: str | None
+    duplicate_score: float | None
 
 
 @dataclass(frozen=True)
@@ -128,6 +149,20 @@ class KnowledgeRecord:
     content: str
     relative_path: str
     sha256: str
+    created_at: str
+    status: str
+    revision: int
+    updated_at: str
+    retired_at: str | None
+
+
+@dataclass(frozen=True)
+class KnowledgeSnapshotRecord:
+    filename: str
+    size_bytes: int
+    sha256: str
+    record_count: int
+    file_count: int
     created_at: str
 
 
@@ -146,14 +181,17 @@ class KnowledgeService:
         self,
         database_path: Path,
         knowledge_path: Path,
+        backup_path: Path,
         operation_lock: RLock,
     ) -> None:
         self.database_path = database_path
         self.knowledge_path = knowledge_path
+        self.backup_path = backup_path
         self.operation_lock = operation_lock
 
     def initialize(self) -> None:
         self.knowledge_path.mkdir(parents=True, exist_ok=True)
+        (self.backup_path / "knowledge").mkdir(parents=True, exist_ok=True)
 
     def propose_from_message(
         self,
@@ -170,13 +208,26 @@ class KnowledgeService:
                 closing(self._connection()) as connection,
                 connection,
             ):
+                duplicate = self._find_duplicate(
+                    connection,
+                    draft.kind,
+                    draft.title,
+                    draft.content,
+                )
+                duplicate_record_id = (
+                    str(duplicate[0]["id"]) if duplicate is not None else None
+                )
+                duplicate_score = duplicate[1] if duplicate is not None else None
                 connection.execute(
                     """
                     INSERT OR IGNORE INTO knowledge_candidates (
                         id, conversation_id, source_message_id, kind, title,
                         content, source_excerpt, reason, confidence,
-                        explicit_request, status, created_at, reviewed_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NULL)
+                        explicit_request, status, created_at, reviewed_at,
+                        duplicate_record_id, duplicate_score
+                    ) VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NULL, ?, ?
+                    )
                     """,
                     (
                         candidate_id,
@@ -190,6 +241,8 @@ class KnowledgeService:
                         draft.confidence,
                         int(draft.explicit_request),
                         now,
+                        duplicate_record_id,
+                        duplicate_score,
                     ),
                 )
                 row = connection.execute(
@@ -235,9 +288,13 @@ class KnowledgeService:
                 """
                 SELECT
                     id, candidate_id, kind, title, content,
-                    relative_path, sha256, created_at
+                    relative_path, sha256, created_at, status, revision,
+                    updated_at, retired_at
                 FROM knowledge_records
-                ORDER BY created_at DESC
+                ORDER BY
+                    CASE status WHEN 'active' THEN 0 ELSE 1 END,
+                    updated_at DESC,
+                    id
                 """
             ).fetchall()
         return [_knowledge_record_from_row(row) for row in rows]
@@ -264,6 +321,7 @@ class KnowledgeService:
                 JOIN knowledge_candidates AS candidate
                   ON candidate.id = record.candidate_id
                 WHERE candidate.status = 'approved'
+                  AND record.status = 'active'
                 ORDER BY record.created_at DESC, record.id
                 """
             ).fetchall()
@@ -332,18 +390,13 @@ class KnowledgeService:
         kind: str,
         title: str,
         content: str,
+        duplicate_confirmation: str | None = None,
     ) -> KnowledgeCandidateRecord:
-        normalized_kind = kind.strip().lower()
-        normalized_title = " ".join(title.split())
-        normalized_content = content.strip()
-        if normalized_kind not in KNOWLEDGE_KINDS:
-            raise ValueError("Choose a valid knowledge type.")
-        if not normalized_title or len(normalized_title) > 120:
-            raise ValueError("The knowledge title must be between 1 and 120 characters.")
-        if not normalized_content or len(normalized_content) > 4_000:
-            raise ValueError(
-                "The knowledge content must be between 1 and 4,000 characters."
-            )
+        normalized_kind, normalized_title, normalized_content = _validate_record_fields(
+            kind,
+            title,
+            content,
+        )
 
         record_id = str(uuid4())
         now = _now()
@@ -367,6 +420,20 @@ class KnowledgeService:
 
         with self.operation_lock, closing(self._connection()) as connection:
             self._pending_row(connection, candidate_id)
+            duplicate = self._find_duplicate(
+                connection,
+                normalized_kind,
+                normalized_title,
+                normalized_content,
+            )
+            if (
+                duplicate is not None
+                and duplicate_confirmation != "CREATE SEPARATE RECORD"
+            ):
+                raise KnowledgeDuplicateConfirmationError(
+                    "This looks like an existing active record. Review the "
+                    "possible duplicate before choosing Create separate record."
+                )
             full_path.parent.mkdir(parents=True, exist_ok=True)
             file_created = False
             try:
@@ -377,8 +444,11 @@ class KnowledgeService:
                         """
                             INSERT INTO knowledge_records (
                                 id, candidate_id, kind, title, content,
-                                relative_path, sha256, created_at
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                relative_path, sha256, created_at, status,
+                                revision, updated_at, retired_at
+                            ) VALUES (
+                                ?, ?, ?, ?, ?, ?, ?, ?, 'active', 1, ?, NULL
+                            )
                             """,
                         (
                             record_id,
@@ -388,6 +458,42 @@ class KnowledgeService:
                             normalized_content,
                             relative_path.as_posix(),
                             digest,
+                            now,
+                            now,
+                        ),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO knowledge_record_revisions (
+                            record_id, revision, kind, title, content,
+                            relative_path, sha256, status, created_at
+                        ) VALUES (?, 1, ?, ?, ?, ?, ?, 'active', ?)
+                        """,
+                        (
+                            record_id,
+                            normalized_kind,
+                            normalized_title,
+                            normalized_content,
+                            relative_path.as_posix(),
+                            digest,
+                            now,
+                        ),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO knowledge_record_events (
+                            record_id, event_type, detail, created_at
+                        ) VALUES (?, 'created', ?, ?)
+                        """,
+                        (
+                            record_id,
+                            json.dumps(
+                                {
+                                    "relative_path": relative_path.as_posix(),
+                                    "sha256": digest,
+                                },
+                                sort_keys=True,
+                            ),
                             now,
                         ),
                     )
@@ -438,6 +544,332 @@ class KnowledgeService:
             raise KnowledgeCandidateNotFoundError(candidate_id)
         return _candidate_from_row(row)
 
+    def update_record(
+        self,
+        record_id: str,
+        kind: str,
+        title: str,
+        content: str,
+        duplicate_confirmation: str | None = None,
+    ) -> KnowledgeRecord:
+        normalized_kind, normalized_title, normalized_content = _validate_record_fields(
+            kind,
+            title,
+            content,
+        )
+        now = _now()
+        with self.operation_lock, closing(self._connection()) as connection:
+            row = self._record_row(connection, record_id)
+            if str(row["status"]) != "active":
+                raise KnowledgeRecordStateError(
+                    "Retired knowledge cannot be edited. Create a new proposal instead."
+                )
+            self._verify_record_file(
+                str(row["relative_path"]),
+                str(row["sha256"]),
+            )
+            duplicate = self._find_duplicate(
+                connection,
+                normalized_kind,
+                normalized_title,
+                normalized_content,
+                exclude_record_id=record_id,
+            )
+            if (
+                duplicate is not None
+                and duplicate_confirmation != "CREATE SEPARATE RECORD"
+            ):
+                raise KnowledgeDuplicateConfirmationError(
+                    "This edit looks like another active record. Review the "
+                    "possible duplicate before keeping a separate record."
+                )
+            revision = int(row["revision"]) + 1
+            relative_path = self._relative_record_revision_path(
+                normalized_kind,
+                normalized_title,
+                record_id,
+                revision,
+                now,
+            )
+            full_path = self.knowledge_path / relative_path
+            payload = _markdown_record(
+                record_id=record_id,
+                candidate_id=str(row["candidate_id"]),
+                kind=normalized_kind,
+                title=normalized_title,
+                content=normalized_content,
+                created_at=now,
+                revision=revision,
+            )
+            encoded = payload.encode("utf-8")
+            digest = hashlib.sha256(encoded).hexdigest()
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            file_created = False
+            try:
+                _write_exclusive(full_path, encoded)
+                file_created = True
+                with connection:
+                    connection.execute(
+                        """
+                        INSERT INTO knowledge_record_revisions (
+                            record_id, revision, kind, title, content,
+                            relative_path, sha256, status, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)
+                        """,
+                        (
+                            record_id,
+                            revision,
+                            normalized_kind,
+                            normalized_title,
+                            normalized_content,
+                            relative_path.as_posix(),
+                            digest,
+                            now,
+                        ),
+                    )
+                    connection.execute(
+                        """
+                        UPDATE knowledge_records
+                        SET
+                            kind = ?,
+                            title = ?,
+                            content = ?,
+                            relative_path = ?,
+                            sha256 = ?,
+                            revision = ?,
+                            updated_at = ?
+                        WHERE id = ?
+                        """,
+                        (
+                            normalized_kind,
+                            normalized_title,
+                            normalized_content,
+                            relative_path.as_posix(),
+                            digest,
+                            revision,
+                            now,
+                            record_id,
+                        ),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO knowledge_record_events (
+                            record_id, event_type, detail, created_at
+                        ) VALUES (?, 'updated', ?, ?)
+                        """,
+                        (
+                            record_id,
+                            json.dumps(
+                                {
+                                    "previous_revision": int(row["revision"]),
+                                    "previous_path": str(row["relative_path"]),
+                                    "previous_sha256": str(row["sha256"]),
+                                    "new_revision": revision,
+                                    "new_path": relative_path.as_posix(),
+                                    "new_sha256": digest,
+                                },
+                                sort_keys=True,
+                            ),
+                            now,
+                        ),
+                    )
+            except Exception as error:
+                if file_created and full_path.exists():
+                    full_path.unlink()
+                if isinstance(
+                    error,
+                    (
+                        ValueError,
+                        KnowledgeDuplicateConfirmationError,
+                        KnowledgeRecordStateError,
+                    ),
+                ):
+                    raise
+                raise KnowledgeRecordWriteError(
+                    "Nova could not safely update the approved knowledge record."
+                ) from error
+            updated = self._record_row(connection, record_id)
+        return _knowledge_record_from_row(updated)
+
+    def retire_record(
+        self,
+        record_id: str,
+        confirmation: str,
+    ) -> KnowledgeRecord:
+        expected = f"RETIRE {record_id[:8]}"
+        if not hmac.compare_digest(confirmation, expected):
+            raise ValueError(f"Type {expected} to retire this record.")
+        now = _now()
+        with (
+            self.operation_lock,
+            closing(self._connection()) as connection,
+            connection,
+        ):
+            row = self._record_row(connection, record_id)
+            if str(row["status"]) != "active":
+                raise KnowledgeRecordStateError(
+                    "This knowledge record is already retired."
+                )
+            self._verify_record_file(
+                str(row["relative_path"]),
+                str(row["sha256"]),
+            )
+            revision = int(row["revision"]) + 1
+            connection.execute(
+                """
+                INSERT INTO knowledge_record_revisions (
+                    record_id, revision, kind, title, content,
+                    relative_path, sha256, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'retired', ?)
+                """,
+                (
+                    record_id,
+                    revision,
+                    str(row["kind"]),
+                    str(row["title"]),
+                    str(row["content"]),
+                    str(row["relative_path"]),
+                    str(row["sha256"]),
+                    now,
+                ),
+            )
+            connection.execute(
+                """
+                UPDATE knowledge_records
+                SET status = 'retired', revision = ?, updated_at = ?,
+                    retired_at = ?
+                WHERE id = ?
+                """,
+                (revision, now, now, record_id),
+            )
+            connection.execute(
+                """
+                INSERT INTO knowledge_record_events (
+                    record_id, event_type, detail, created_at
+                ) VALUES (?, 'retired', ?, ?)
+                """,
+                (
+                    record_id,
+                    json.dumps(
+                        {
+                            "revision": revision,
+                            "retained_path": str(row["relative_path"]),
+                            "sha256": str(row["sha256"]),
+                        },
+                        sort_keys=True,
+                    ),
+                    now,
+                ),
+            )
+            updated = self._record_row(connection, record_id)
+        return _knowledge_record_from_row(updated)
+
+    def create_snapshot(self) -> KnowledgeSnapshotRecord:
+        now = _now()
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
+        filename = f"nova-knowledge-{timestamp}.zip"
+        snapshot_root = self.backup_path / "knowledge"
+        final_path = snapshot_root / filename
+        temporary_path = snapshot_root / f".{filename}.{uuid4().hex}.tmp"
+        sidecar_path = final_path.with_suffix(".zip.sha256")
+
+        with self.operation_lock, closing(self._connection()) as connection:
+            records = connection.execute(
+                """
+                SELECT
+                    id, candidate_id, kind, title, content, relative_path,
+                    sha256, created_at, status, revision, updated_at, retired_at
+                FROM knowledge_records
+                ORDER BY id
+                """
+            ).fetchall()
+            revisions = connection.execute(
+                """
+                SELECT
+                    record_id, revision, relative_path, sha256, status,
+                    created_at
+                FROM knowledge_record_revisions
+                ORDER BY record_id, revision
+                """
+            ).fetchall()
+            files: dict[str, tuple[Path, str]] = {}
+            try:
+                for revision in revisions:
+                    relative_path = str(revision["relative_path"])
+                    expected_sha256 = str(revision["sha256"])
+                    verified_path = self._verify_record_file(
+                        relative_path,
+                        expected_sha256,
+                    )
+                    existing = files.get(relative_path)
+                    if existing is not None and existing[1] != expected_sha256:
+                        raise KnowledgeBackupError(
+                            "Knowledge snapshot stopped because one path has "
+                            "conflicting recorded checksums."
+                        )
+                    files[relative_path] = (verified_path, expected_sha256)
+
+                manifest = {
+                    "format": "nova-knowledge-snapshot-v1",
+                    "created_at": now,
+                    "record_count": len(records),
+                    "file_count": len(files),
+                    "records": [dict(record) for record in records],
+                    "revisions": [dict(revision) for revision in revisions],
+                }
+                with zipfile.ZipFile(
+                    temporary_path,
+                    "x",
+                    compression=zipfile.ZIP_DEFLATED,
+                ) as archive:
+                    archive.writestr(
+                        "manifest.json",
+                        json.dumps(
+                            manifest,
+                            indent=2,
+                            sort_keys=True,
+                            ensure_ascii=False,
+                        )
+                        + "\n",
+                    )
+                    for relative_path, (verified_path, _) in sorted(files.items()):
+                        archive.write(
+                            verified_path,
+                            (Path("knowledge") / relative_path).as_posix(),
+                        )
+                with zipfile.ZipFile(temporary_path, "r") as archive:
+                    if archive.testzip() is not None:
+                        raise KnowledgeBackupError(
+                            "Knowledge snapshot failed its ZIP integrity check."
+                        )
+                digest = hashlib.sha256(temporary_path.read_bytes()).hexdigest()
+                os.replace(temporary_path, final_path)
+                _write_exclusive(
+                    sidecar_path,
+                    f"{digest}  {filename}\n".encode(),
+                )
+            except Exception as error:
+                temporary_path.unlink(missing_ok=True)
+                final_path.unlink(missing_ok=True)
+                sidecar_path.unlink(missing_ok=True)
+                if isinstance(
+                    error,
+                    (KnowledgeBackupError, KnowledgeRetrievalError),
+                ):
+                    raise KnowledgeBackupError(str(error)) from error
+                raise KnowledgeBackupError(
+                    "Nova could not create a verified knowledge snapshot."
+                ) from error
+
+        return KnowledgeSnapshotRecord(
+            filename=filename,
+            size_bytes=final_path.stat().st_size,
+            sha256=digest,
+            record_count=len(records),
+            file_count=len(files),
+            created_at=now,
+        )
+
     def _pending_row(
         self,
         connection: sqlite3.Connection,
@@ -468,13 +900,92 @@ class KnowledgeService:
             f"{created_date} - {slug} - {record_id[:8]}.md"
         )
 
+    def _relative_record_revision_path(
+        self,
+        kind: str,
+        title: str,
+        record_id: str,
+        revision: int,
+        created_at: str,
+    ) -> Path:
+        created_date = datetime.fromisoformat(created_at).date().isoformat()
+        slug = _slug(title)
+        return Path(_KIND_DIRECTORIES[kind]) / (
+            f"{created_date} - {slug} - {record_id[:8]}-r{revision}.md"
+        )
+
+    def _record_row(
+        self,
+        connection: sqlite3.Connection,
+        record_id: str,
+    ) -> sqlite3.Row:
+        row = connection.execute(
+            """
+            SELECT
+                id, candidate_id, kind, title, content, relative_path,
+                sha256, created_at, status, revision, updated_at, retired_at
+            FROM knowledge_records
+            WHERE id = ?
+            """,
+            (record_id,),
+        ).fetchone()
+        if row is None:
+            raise KnowledgeRecordNotFoundError(record_id)
+        return cast(sqlite3.Row, row)
+
+    def _find_duplicate(
+        self,
+        connection: sqlite3.Connection,
+        kind: str,
+        title: str,
+        content: str,
+        *,
+        exclude_record_id: str | None = None,
+    ) -> tuple[sqlite3.Row, float] | None:
+        rows = connection.execute(
+            """
+            SELECT id, kind, title, content, relative_path
+            FROM knowledge_records
+            WHERE status = 'active'
+              AND (? IS NULL OR id != ?)
+            ORDER BY updated_at DESC, id
+            """,
+            (exclude_record_id, exclude_record_id),
+        ).fetchall()
+        requested_content = _normalized_duplicate_text(content)
+        requested_tokens = _duplicate_tokens(f"{title} {content}")
+        best: tuple[sqlite3.Row, float] | None = None
+        for row in rows:
+            existing_content = _normalized_duplicate_text(str(row["content"]))
+            if requested_content == existing_content:
+                score = 1.0
+            elif str(row["kind"]) != kind:
+                continue
+            else:
+                existing_tokens = _duplicate_tokens(
+                    f"{row['title']} {row['content']}"
+                )
+                union = requested_tokens | existing_tokens
+                score = (
+                    len(requested_tokens & existing_tokens) / len(union)
+                    if union
+                    else 0.0
+                )
+            if score >= 0.8 and (best is None or score > best[1]):
+                best = (row, round(score, 6))
+        return best
+
     def _connection(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
 
-    def _verify_record_file(self, relative_path: str, expected_sha256: str) -> None:
+    def _verify_record_file(
+        self,
+        relative_path: str,
+        expected_sha256: str,
+    ) -> Path:
         try:
             root = self.knowledge_path.resolve(strict=True)
             record_path = (root / relative_path).resolve(strict=True)
@@ -490,6 +1001,7 @@ class KnowledgeService:
                 "Approved knowledge retrieval stopped because a cited local "
                 "record failed its integrity check."
             )
+        return record_path
 
 
 _CANDIDATE_QUERY = """
@@ -507,10 +1019,17 @@ _CANDIDATE_QUERY = """
         candidate.status,
         candidate.created_at,
         candidate.reviewed_at,
-        record.relative_path AS record_path
+        record.relative_path AS record_path,
+        candidate.duplicate_record_id,
+        duplicate.title AS duplicate_title,
+        duplicate.relative_path AS duplicate_path,
+        candidate.duplicate_score
     FROM knowledge_candidates AS candidate
     LEFT JOIN knowledge_records AS record
       ON record.candidate_id = candidate.id
+    LEFT JOIN knowledge_records AS duplicate
+      ON duplicate.id = candidate.duplicate_record_id
+     AND duplicate.status = 'active'
 """
 
 
@@ -578,6 +1097,37 @@ def _suggest_title(content: str, kind: str) -> str:
 
 def _strip_terminal_punctuation(value: str) -> str:
     return value.rstrip(" \t\r\n.!?")
+
+
+def _validate_record_fields(
+    kind: str,
+    title: str,
+    content: str,
+) -> tuple[str, str, str]:
+    normalized_kind = kind.strip().lower()
+    normalized_title = " ".join(title.split())
+    normalized_content = content.strip()
+    if normalized_kind not in KNOWLEDGE_KINDS:
+        raise ValueError("Choose a valid knowledge type.")
+    if not normalized_title or len(normalized_title) > 120:
+        raise ValueError("The knowledge title must be between 1 and 120 characters.")
+    if not normalized_content or len(normalized_content) > 4_000:
+        raise ValueError(
+            "The knowledge content must be between 1 and 4,000 characters."
+        )
+    return normalized_kind, normalized_title, normalized_content
+
+
+def _normalized_duplicate_text(value: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", value.casefold()))
+
+
+def _duplicate_tokens(value: str) -> set[str]:
+    return {
+        token
+        for token in _retrieval_tokens(value)
+        if token not in {"remember", "saved", "record"}
+    }
 
 
 _RETRIEVAL_STOP_WORDS = {
@@ -693,6 +1243,7 @@ def _markdown_record(
     title: str,
     content: str,
     created_at: str,
+    revision: int = 1,
 ) -> str:
     metadata = {
         "id": record_id,
@@ -702,6 +1253,7 @@ def _markdown_record(
         "owner_approved": True,
         "created": created_at,
         "last_reviewed": created_at,
+        "revision": revision,
     }
     lines = ["---"]
     lines.extend(
@@ -758,6 +1310,27 @@ def _candidate_from_row(row: sqlite3.Row) -> KnowledgeCandidateRecord:
         record_path=(
             str(row["record_path"]) if row["record_path"] is not None else None
         ),
+        duplicate_record_id=(
+            str(row["duplicate_record_id"])
+            if row["duplicate_title"] is not None
+            else None
+        ),
+        duplicate_title=(
+            str(row["duplicate_title"])
+            if row["duplicate_title"] is not None
+            else None
+        ),
+        duplicate_path=(
+            str(row["duplicate_path"])
+            if row["duplicate_path"] is not None
+            else None
+        ),
+        duplicate_score=(
+            float(row["duplicate_score"])
+            if row["duplicate_title"] is not None
+            and row["duplicate_score"] is not None
+            else None
+        ),
     )
 
 
@@ -771,6 +1344,12 @@ def _knowledge_record_from_row(row: sqlite3.Row) -> KnowledgeRecord:
         relative_path=str(row["relative_path"]),
         sha256=str(row["sha256"]),
         created_at=str(row["created_at"]),
+        status=str(row["status"]),
+        revision=int(row["revision"]),
+        updated_at=str(row["updated_at"]),
+        retired_at=(
+            str(row["retired_at"]) if row["retired_at"] is not None else None
+        ),
     )
 
 

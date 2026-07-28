@@ -90,6 +90,10 @@ export interface KnowledgeCandidate {
   created_at: string;
   reviewed_at: string | null;
   record_path: string | null;
+  duplicate_record_id: string | null;
+  duplicate_title: string | null;
+  duplicate_path: string | null;
+  duplicate_score: number | null;
 }
 
 export interface KnowledgeReviewRequest {
@@ -97,6 +101,46 @@ export interface KnowledgeReviewRequest {
   kind?: KnowledgeKind;
   title?: string;
   content?: string;
+  duplicate_confirmation?: string;
+}
+
+export type KnowledgeRecordStatus = "active" | "retired";
+
+export interface KnowledgeRecord {
+  id: string;
+  candidate_id: string;
+  kind: KnowledgeKind;
+  title: string;
+  content: string;
+  relative_path: string;
+  sha256: string;
+  created_at: string;
+  status: KnowledgeRecordStatus;
+  revision: number;
+  updated_at: string;
+  retired_at: string | null;
+}
+
+export type KnowledgeRecordLifecycleRequest =
+  | {
+      action: "update";
+      kind: KnowledgeKind;
+      title: string;
+      content: string;
+      duplicate_confirmation?: string;
+    }
+  | {
+      action: "retire";
+      confirmation: string;
+    };
+
+export interface KnowledgeSnapshot {
+  filename: string;
+  size_bytes: number;
+  sha256: string;
+  record_count: number;
+  file_count: number;
+  created_at: string;
 }
 
 export interface OperationalStatus {
@@ -377,6 +421,32 @@ export async function reviewKnowledgeCandidate(
       body: JSON.stringify(review),
     },
   );
+}
+
+export async function getKnowledgeRecords(
+  signal?: AbortSignal,
+): Promise<KnowledgeRecord[]> {
+  return request<KnowledgeRecord[]>("/api/v1/knowledge/records", { signal });
+}
+
+export async function updateKnowledgeRecord(
+  recordId: string,
+  lifecycle: KnowledgeRecordLifecycleRequest,
+): Promise<KnowledgeRecord> {
+  return request<KnowledgeRecord>(
+    `/api/v1/knowledge/records/${encodeURIComponent(recordId)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(lifecycle),
+    },
+  );
+}
+
+export async function createKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
+  return request<KnowledgeSnapshot>("/api/v1/knowledge/snapshots", {
+    method: "POST",
+  });
 }
 
 export async function getBackups(

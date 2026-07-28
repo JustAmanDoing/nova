@@ -23,6 +23,21 @@ const knowledgeSource = {
   score: 1,
 };
 
+const knowledgeRecord = {
+  id: "record-1",
+  candidate_id: "candidate-1",
+  kind: "fact",
+  title: "Automated approval phrase",
+  content: "The automated approval phrase is amber lighthouse.",
+  relative_path: "Facts/automated-approval-phrase.md",
+  sha256: "a".repeat(64),
+  created_at: "2026-07-28T09:00:00Z",
+  status: "active",
+  revision: 1,
+  updated_at: "2026-07-28T09:00:00Z",
+  retired_at: null,
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -73,7 +88,7 @@ describe("ChatApp", () => {
       screen.getByText(/A suggestion is never permanent/),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Retrieval uses approved local records only/),
+      screen.getByText(/Retrieval uses active, approved local records only/),
     ).toBeInTheDocument();
   });
 
@@ -96,6 +111,9 @@ describe("ChatApp", () => {
           );
         }
         if (url.includes("/knowledge/candidates")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/records")) {
           return Promise.resolve(jsonResponse([]));
         }
         if (url.endsWith("/chat/conversations") && init?.method === "POST") {
@@ -246,6 +264,9 @@ describe("ChatApp", () => {
         if (url.includes("/knowledge/candidates")) {
           return Promise.resolve(jsonResponse([]));
         }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([]));
+        }
         if (url.endsWith("/chat/conversations") && init?.method === "POST") {
           conversationCreated = true;
           return Promise.resolve(jsonResponse(conversation, 201));
@@ -362,6 +383,9 @@ describe("ChatApp", () => {
         if (url.includes("/knowledge/candidates")) {
           return Promise.resolve(jsonResponse([]));
         }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([]));
+        }
         if (url.endsWith("/chat/conversations/conversation-1")) {
           return Promise.resolve(
             jsonResponse({
@@ -437,6 +461,9 @@ describe("ChatApp", () => {
         if (url.endsWith("/knowledge/candidates?status=pending")) {
           return Promise.resolve(jsonResponse(reviewed ? [] : [candidate]));
         }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([]));
+        }
         if (
           url.endsWith("/knowledge/candidates/candidate-1") &&
           init?.method === "PUT"
@@ -491,6 +518,173 @@ describe("ChatApp", () => {
     });
   });
 
+  it("requires separate-record confirmation for a possible duplicate", async () => {
+    const candidate = {
+      id: "candidate-duplicate",
+      conversation_id: "conversation-1",
+      source_message_id: "user-1",
+      kind: "fact",
+      title: "Automated approval phrase copy",
+      content: "The automated approval phrase is amber lighthouse.",
+      source_excerpt: "Remember the automated approval phrase.",
+      reason: "You explicitly asked Nova to remember this.",
+      confidence: 1,
+      explicit_request: true,
+      status: "pending",
+      created_at: "2026-07-28T10:00:00Z",
+      reviewed_at: null,
+      record_path: null,
+      duplicate_record_id: knowledgeRecord.id,
+      duplicate_title: knowledgeRecord.title,
+      duplicate_path: knowledgeRecord.relative_path,
+      duplicate_score: 1,
+    };
+    let reviewed = false;
+    const fetchMock = vi.fn(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) return Promise.resolve(jsonResponse([]));
+        if (url.endsWith("/chat/conversations")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/candidates?status=pending")) {
+          return Promise.resolve(jsonResponse(reviewed ? [] : [candidate]));
+        }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([knowledgeRecord]));
+        }
+        if (
+          url.endsWith("/knowledge/candidates/candidate-duplicate") &&
+          init?.method === "PUT"
+        ) {
+          reviewed = true;
+          return Promise.resolve(
+            jsonResponse({
+              ...candidate,
+              status: "approved",
+              reviewed_at: "2026-07-28T10:01:00Z",
+              record_path: "Facts/automated-approval-phrase-copy.md",
+            }),
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    expect(await screen.findByText("Possible duplicate")).toBeInTheDocument();
+    const approve = screen.getByRole("button", { name: "Approve & save" });
+    expect(approve).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Keep both as separate records" }),
+    );
+    expect(approve).toBeEnabled();
+    fireEvent.click(approve);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Saved locally to Facts/automated-approval-phrase-copy.md.",
+    );
+    const reviewCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        input
+          .toString()
+          .endsWith("/knowledge/candidates/candidate-duplicate") &&
+        init?.method === "PUT",
+    );
+    expect(JSON.parse(reviewCall?.[1]?.body as string)).toMatchObject({
+      action: "approve",
+      duplicate_confirmation: "CREATE SEPARATE RECORD",
+    });
+  });
+
+  it("creates an immutable revision and a verified knowledge snapshot", async () => {
+    let currentRecord = knowledgeRecord;
+    const fetchMock = vi.fn(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) return Promise.resolve(jsonResponse([]));
+        if (url.endsWith("/chat/conversations")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/candidates?status=pending")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/records") && !init?.method) {
+          return Promise.resolve(jsonResponse([currentRecord]));
+        }
+        if (
+          url.endsWith("/knowledge/records/record-1") &&
+          init?.method === "PUT"
+        ) {
+          currentRecord = {
+            ...knowledgeRecord,
+            title: "Revised approval phrase",
+            content: "The revised approval phrase is golden comet.",
+            relative_path: "Facts/revised-approval-phrase-r2.md",
+            sha256: "b".repeat(64),
+            revision: 2,
+            updated_at: "2026-07-28T10:30:00Z",
+          };
+          return Promise.resolve(jsonResponse(currentRecord));
+        }
+        if (
+          url.endsWith("/knowledge/snapshots") &&
+          init?.method === "POST"
+        ) {
+          return Promise.resolve(
+            jsonResponse({
+              filename: "nova-knowledge-20260728T103100Z.zip",
+              size_bytes: 2048,
+              sha256: "c".repeat(64),
+              record_count: 1,
+              file_count: 2,
+              created_at: "2026-07-28T10:31:00Z",
+            }),
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    fireEvent.click(await screen.findByText("Automated approval phrase"));
+    fireEvent.change(screen.getByLabelText("Approved information"), {
+      target: { value: "The revised approval phrase is golden comet." },
+    });
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Revised approval phrase" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save new revision" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Updated Revised approval phrase to revision 2.",
+    );
+    const updateCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        input.toString().endsWith("/knowledge/records/record-1") &&
+        init?.method === "PUT",
+    );
+    expect(new Headers(updateCall?.[1]?.headers).get("X-Nova-Intent")).toBe(
+      "local-user-action",
+    );
+    expect(JSON.parse(updateCall?.[1]?.body as string)).toMatchObject({
+      action: "update",
+      title: "Revised approval phrase",
+      content: "The revised approval phrase is golden comet.",
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create verified snapshot" }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Verified knowledge snapshot created",
+    );
+  });
+
   it("states clearly when no approved knowledge matches", async () => {
     vi.stubGlobal(
       "fetch",
@@ -509,6 +703,9 @@ describe("ChatApp", () => {
           );
         }
         if (url.includes("/knowledge/candidates")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/records")) {
           return Promise.resolve(jsonResponse([]));
         }
         if (url.endsWith("/chat/conversations/conversation-1")) {
