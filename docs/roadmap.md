@@ -125,19 +125,26 @@
 
 ## Milestone 53 — Local v1 completion review
 
-**Status (28 July 2026): in progress; not release-ready.**
+**Status (28 July 2026): complete; local v1 accepted.**
 
-- Static usability and accessibility defects corrected on the dedicated
-  Milestone 53 branch
+- Static usability and accessibility defects corrected and verified
 - Architecture and scope boundaries reconfirmed
-- Full automated verification matrix pending
-- Docker production workflow pending
-- Interactive Windows-host acceptance pending
+- Full automated verification matrix passed
+- Docker production workflow passed
+- Representative Windows-host and browser acceptance passed
 
 The detailed evidence and open blockers are recorded in
-`docs/milestone-53-local-v1-completion-review.md`. Milestone 54 runtime work
-must not begin before Milestone 53 receives an evidence-backed release-ready
-decision.
+`docs/milestone-53-local-v1-completion-review.md`.
+
+## Milestone 54 — Local Chat Core
+
+**Status (28 July 2026): approved; implementation beginning.**
+
+- Local Ollama model discovery and streaming chat
+- Local conversation history
+- Stop generation
+- Clear provider-failure handling
+- No tools, web access, RAG, or permanent personal-memory promotion
 
 ## Later capabilities
 

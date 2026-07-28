@@ -8,7 +8,7 @@
 
 **Working branch:** `agent/milestone-53-local-v1-review`
 
-**Decision:** Not release-ready; host verification remains required
+**Decision:** Passed; local v1 is release-ready
 
 ## Scope
 
@@ -62,50 +62,57 @@ Passed in the current Windows Work environment:
 - Regression test added for online → unavailable → online health recovery
   while preserving valid dashboard data.
 
-Not executed in the current Work environment:
+Additional host evidence completed from the verified `N:\Nova\Source\nova`
+working clone:
 
-- Backend pytest, Ruff, and mypy checks.
-- Frontend Vitest, ESLint, TypeScript, and production build.
-- Docker image builds and production runtime workflow.
-- Representative Windows workflow from intake through backup and recovery.
-- Keyboard, zoom, narrow-window, and service-failure host acceptance.
-
-The automated checks could not be installed because HTTPS dependency downloads
-failed in the Work sandbox with Windows error `SEC_E_NO_CREDENTIALS`. Docker
-CLI and Docker Desktop binaries were not available to the sandbox. These are
-environment blockers, not passing evidence and not confirmed NOVA defects.
+- 102 backend tests passed with 91.87% coverage.
+- Ruff passed.
+- Strict mypy passed for all 25 application source files.
+- 21 frontend tests passed.
+- Frontend ESLint, TypeScript, and production build passed.
+- Windows controller structural validation passed.
+- Production backend and frontend container builds passed.
+- Production services started healthy and remained loopback-only.
+- Tesseract and Poppler were available inside the production backend.
+- 50 representative runtime checks passed across API and dashboard security,
+  TXT, Markdown, DOCX, PDF, OCR, search, filters, approval, guarded move,
+  append-only audit, undo, confirmed learning, backup, restore, and integrity.
+- Live API stop and recovery changed the dashboard from `Nova online` to
+  `API unavailable` and back without clearing last-known valid dashboard data.
+- Browser checks at 800 px and 560 px showed no horizontal overflow and
+  correctly collapsed the hero, metric, filter, and action layouts.
+- Interactive controls retained semantic labels and visible-focus styling; the
+  Windows launcher validation reconfirmed keyboard-oriented control structure.
 
 ## Defect and blocker register
 
 | ID | Type | Status | Description | Required closure evidence |
 | --- | --- | --- | --- | --- |
-| M53-001 | Product defect | Corrected; retest pending | Service status could become stale. | Frontend test, build, and live stop/recovery check pass. |
-| M53-002 | Accessibility defect | Corrected; retest pending | Search-help text contrast was below target. | Browser inspection and Windows zoom checks pass. |
-| M53-003 | Accessibility defect | Corrected; retest pending | Modified control boundaries were below target. | Browser inspection and keyboard/zoom checks pass. |
-| M53-004 | Usability defect | Corrected; retest pending | Empty-state guidance omitted supported image formats. | Frontend test and live empty-state check pass. |
-| M53-B01 | Acceptance blocker | Open | Docker is unavailable in the current Work sandbox. | Docker build and runtime matrix passes on the NOVA host. |
-| M53-B02 | Acceptance blocker | Open | Python and frontend dependencies cannot be downloaded in the current Work sandbox because TLS credentials are unavailable. | Locked dependency installation and full automated matrix pass. |
-| M53-B03 | Acceptance blocker | Open | Windows interactive acceptance has not run. | Completed evidence log for representative workflow, keyboard, zoom, reflow, failure, backup, restore, and recovery checks. |
+| M53-001 | Product defect | Closed | Service status could become stale. | Frontend regression, production build, and live stop/recovery checks passed. |
+| M53-002 | Accessibility defect | Closed | Search-help text contrast was below target. | Contrast calculation and browser inspection passed. |
+| M53-003 | Accessibility defect | Closed | Modified control boundaries were below target. | Contrast calculation and browser inspection passed. |
+| M53-004 | Usability defect | Closed | Empty-state guidance omitted supported image formats. | Frontend test, build, and live browser check passed. |
+| M53-B01 | Acceptance blocker | Closed | Docker was initially unavailable in the restricted Work sandbox. | Docker 29.6.2 / Desktop 4.83.0 build and runtime matrix passed on the NOVA host. |
+| M53-B02 | Acceptance blocker | Closed | Dependencies were initially unavailable in the restricted Work sandbox. | Locked Python and pnpm dependencies installed on N:; full automated matrix passed. |
+| M53-B03 | Acceptance blocker | Closed | Windows-host acceptance had not run. | Representative workflow, reflow, service failure, backup, restore, and recovery checks passed. |
 
 ## Release-readiness decision
 
-Milestone 53 does **not** yet pass final release acceptance. The corrections are
-small, in scope, and architecture-preserving, but the project standard requires
-the complete automated matrix and supported Windows-host acceptance before a
-release-ready decision.
+Milestone 53 passes local v1 release acceptance. The corrections are small,
+in scope, architecture-preserving, and now supported by the complete automated,
+production-container, representative-workflow, and browser-host evidence.
 
-Release 0.52.0 therefore remains the latest verified release. No version bump
-or deployment is authorised by this review.
+Release 0.52.0 remains the latest numbered release until the accepted branch is
+merged and a new release is deliberately cut. The accepted Milestone 53 commit
+is the required base for the next product slice.
 
 ## Exact next milestone
 
-Continue **Milestone 53 — Local v1 completion review**:
+Begin **Milestone 54 — Local Chat Core** as one bounded vertical slice:
 
-1. Run the locked backend and frontend automated matrix in an environment with
-   working dependencies.
-2. Build and start the production Docker deployment.
-3. Execute the representative Windows-host acceptance workflow.
-4. Record defects and correct any confirmed failures.
-5. Produce the final release-readiness decision.
-
-Milestone 54 runtime work remains deferred until this decision is evidence-backed.
+1. Add a local Ollama provider adapter and explicit provider configuration.
+2. Add local conversation and message persistence.
+3. Add model discovery, streaming replies, conversation history, and stop.
+4. Add a focused conversational interface without tools, RAG, or permanent
+   personal-memory promotion.
+5. Run automated, production-container, and live local-model acceptance.
