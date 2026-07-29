@@ -468,5 +468,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 58 knowledge quality and gap analysis](docs/milestone-58-knowledge-quality-gap-analysis.md)
 - [Milestone 58 architecture review](docs/milestone-58-architecture-review.md)
 - [Milestone 58 engineering review](docs/milestone-58-engineering-review.md)
+- [Milestone 59 guided knowledge onboarding proposal](docs/milestone-59-guided-knowledge-onboarding-proposal.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

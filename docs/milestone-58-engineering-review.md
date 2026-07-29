@@ -4,7 +4,7 @@
 
 **Prototype release:** 0.58.0
 
-**Decision:** Accepted for owner acceptance
+**Decision:** Accepted
 
 ## Review scope
 
@@ -66,5 +66,5 @@
 - Existing non-failing React `act(...)` warnings in intake dashboard tests
   remain and predate Milestone 58.
 
-The implementation is suitable for owner acceptance. No engineering blocker
-remains within the approved scope.
+The implementation passed owner acceptance on 29 July 2026. No engineering
+blocker remains within the approved scope.

@@ -203,8 +203,8 @@ The evidence and current decision are recorded in
 
 ## Milestone 58 — Knowledge Quality and Gap Analysis
 
-**Status (29 July 2026): implementation and engineering acceptance complete;
-owner acceptance pending.**
+**Status (29 July 2026): complete; architecture, engineering, and owner
+acceptance passed.**
 
 - Verify every active record before including it in quality reporting —
   implemented
@@ -224,6 +224,21 @@ owner acceptance pending.**
 
 The method, evidence, and current decision are recorded in
 `docs/milestone-58-knowledge-quality-gap-analysis.md`.
+
+## Milestone 59 — Guided Knowledge Onboarding
+
+**Status (29 July 2026): proposed; runtime work not approved or started.**
+
+- Turn a selected missing area into one focused, editable chat prompt
+- Never send a prompt or save knowledge from a suggestion click alone
+- Reuse the existing conversation, proposal, and approval workflow
+- Let review-due suggestions identify the matching approved record
+- Refresh Knowledge health after an approved update
+- Keep optional areas visibly optional
+- Preserve all local-only, owner-approval, and no-silent-memory boundaries
+
+The bounded proposal is recorded in
+`docs/milestone-59-guided-knowledge-onboarding-proposal.md`.
 
 ## Later capabilities
 

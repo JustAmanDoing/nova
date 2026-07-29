@@ -8,7 +8,7 @@
 
 **Prototype release:** 0.58.0
 
-**Decision:** Engineering accepted; owner acceptance pending
+**Decision:** Accepted
 
 ## Scope delivered
 
@@ -146,6 +146,11 @@ SHA-256:
 
 ## Exact next action
 
-Complete the short owner-facing browser acceptance of the installed Knowledge
-health panel. If accepted, record owner acceptance and select the bounded scope
-of Milestone 59 before starting another runtime capability.
+Obtain explicit approval for the bounded Milestone 59 Guided Knowledge
+Onboarding proposal before starting runtime work.
+
+## Owner acceptance
+
+The owner inspected the installed Knowledge health panel and confirmed
+`passes` on 29 July 2026. Architecture, engineering, live Windows, responsive
+browser, and owner acceptance are complete.
