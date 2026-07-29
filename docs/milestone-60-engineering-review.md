@@ -93,9 +93,10 @@ branch through post-merge verification provides a simple recovery reference.
 
 ## Required pre-merge recheck
 
-Proposal documentation will change the pull request head. Before any merge:
+Documentation-only commits can change the pull request head without changing
+the accepted runtime source. Before any merge:
 
-1. record the new exact head;
+1. record the exact current pull request head from GitHub;
 2. wait for all four checks on that head;
 3. confirm clean mergeability;
 4. confirm accepted checkpoint hashes again; and
@@ -105,8 +106,9 @@ Proposal documentation will change the pull request head. Before any merge:
 
 - The cumulative change has not been merged into remote `main`.
 - `main` has no protection.
-- The proposal-document commit has not yet completed a new CI run.
 - No post-merge `main` workflow evidence exists.
+- The exact merge head must be obtained from GitHub immediately before the
+  approval action rather than embedded self-referentially in this document.
 - The old C-drive checkout may remain open in another Codex task and is outside
   this milestone.
 
