@@ -344,6 +344,9 @@ describe("ChatApp", () => {
     const documentSelector = await screen.findByRole("combobox", {
       name: "Local document for this turn",
     });
+    expect(
+      await screen.findByRole("option", { name: documentSource.original_name }),
+    ).toBeInTheDocument();
     fireEvent.change(documentSelector, {
       target: { value: documentSource.file_id },
     });
