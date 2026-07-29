@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ChatApp from "./ChatApp";
@@ -340,6 +346,9 @@ describe("ChatApp", () => {
     });
     fireEvent.change(documentSelector, {
       target: { value: documentSource.file_id },
+    });
+    await waitFor(() => {
+      expect(documentSelector).toHaveValue(documentSource.file_id);
     });
     const composer = await screen.findByRole("textbox", { name: "Message Nova" });
     fireEvent.change(composer, { target: { value: "Hello Nova" } });
