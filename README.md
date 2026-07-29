@@ -499,5 +499,6 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 63 explicit document context proposal](docs/milestone-63-explicit-document-context-proposal.md)
 - [Milestone 63 architecture review](docs/milestone-63-architecture-review.md)
 - [Milestone 63 engineering review](docs/milestone-63-engineering-review.md)
+- [Milestone 63 release report](docs/milestone-63-release-report.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
