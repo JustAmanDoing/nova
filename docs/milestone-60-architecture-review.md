@@ -4,13 +4,17 @@
 
 **Accepted runtime release:** 0.59.0
 
-**Decision:** Approved as a proposal; remote integration requires owner approval
+**Decision:** Conditionally approved; owner approval is recorded and the exact
+release head must pass the complete gate
 
 ## Assessment
 
-Milestone 60 changes repository governance and source-history integration only.
-It introduces no application component, API endpoint, database migration,
-background worker, provider, network exposure, or new source of truth.
+Milestone 60 is primarily a repository-governance and source-history
+integration gate. Its independent review found bounded release corrections:
+truthful supported-format guidance, a patched production packaging toolchain,
+and documentation alignment. These corrections introduce no application
+component, API endpoint, database migration, background worker, provider,
+network exposure, or new source of truth.
 
 The accepted Milestones 53–59 branch is a direct descendant of remote `main`.
 A merge commit is the least destructive integration method because it
@@ -26,7 +30,9 @@ between the old remote baseline and the working prototype.
 - Local database and Markdown knowledge authority: unchanged.
 - Guarded file actions and reversible operations: unchanged.
 - Existing loopback-only deployment: unchanged.
-- Accepted Windows runtime: not rebuilt or restarted.
+- Accepted Windows runtime: unchanged during the pre-merge gate; after
+  integration, the existing guarded update path may create a recovery
+  checkpoint and align the installed 0.59.0 containers with verified `main`.
 
 ## Repository-governance assessment
 
@@ -42,17 +48,19 @@ integration gate:
   approval, execution, undo, backup, and restore.
 
 Adding another verification system would duplicate evidence and increase
-maintenance. Milestone 60 should instead require the existing checks on
-`main`.
+maintenance. Milestone 60 should strengthen the existing production-runtime
+job with the packaging-version assertion, then require the four existing jobs
+on `main`.
 
 ## Risks and controls
 
 ### Large cumulative pull request
 
-Pull request 1 integrates seven milestones and 54 changed files. The risk is
-controlled by preserved milestone commits, accepted milestone records,
-exact-head CI, local owner acceptance, and a merge commit that does not rewrite
-history.
+Pull request 1 integrates seven milestones in one cumulative change. Its live
+file and commit counts are release-gate evidence and must be read from GitHub
+on the exact reviewed head. The risk is controlled by preserved milestone
+commits, accepted milestone records, complete changed-file review, exact-head
+CI, local owner acceptance, and a merge commit that does not rewrite history.
 
 ### Unprotected `main`
 
@@ -73,10 +81,12 @@ finishes.
 - Do not merge a different head than the reviewed SHA.
 - Do not squash, rebase, or force-update the accepted milestone history.
 - Do not delete the feature branch during the merge.
-- Do not alter the running runtime or personal data.
-- Show the proposed branch rule and merge action before applying them.
+- Do not alter personal data. Do not rebuild the runtime before merge; the
+  only permitted runtime change is the guarded post-merge 0.59.0 source
+  alignment after a verified recovery checkpoint.
+- Record the exact branch rule and merge action in release evidence.
 - Re-run GitHub checks after any proposal-document commit changes the PR head.
 
-No architectural blocker exists for the bounded proposal. Implementation
-remains gated by explicit owner approval because it changes remote repository
-governance and `main`.
+No architectural blocker exists for the bounded integration design. Owner
+approval is recorded. Implementation remains gated by a clean independent
+release review, exact-head checks, and verified recovery evidence.

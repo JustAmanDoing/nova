@@ -475,8 +475,8 @@ function App() {
               <span aria-hidden="true">↓</span>
               <h3>Your intake is empty</h3>
               <p>
-                Drop a TXT, Markdown, PDF, DOCX, PNG, JPG, JPEG, TIFF, BMP, or
-                WEBP file into <code>data/intake</code>.
+                Drop a TXT, Markdown, PDF, DOCX, PNG, JPG, JPEG, TIFF, or BMP
+                file into <code>data/intake</code>.
               </p>
             </div>
           ) : (

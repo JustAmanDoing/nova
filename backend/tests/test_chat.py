@@ -36,7 +36,7 @@ class FakeProvider:
         assert model == "qwen3:8b"
         assert messages[-1] == {"role": "user", "content": "Hello Nova"}
         yield "Hello"
-        yield " Lyle."
+        yield " Example Owner."
 
 
 class FailingProvider(FakeProvider):
@@ -111,7 +111,8 @@ def test_local_chat_streams_and_persists_conversation(tmp_path: Path) -> None:
             "checked": True,
             "sources": [],
         }
-        assert events[2]["content"] + events[3]["content"] == "Hello Lyle."
+        response_text = events[2]["content"] + events[3]["content"]
+        assert response_text == "Hello Example Owner."
 
         conversation = client.get(
             f"/api/v1/chat/conversations/{conversation_id}"
@@ -126,7 +127,7 @@ def test_local_chat_streams_and_persists_conversation(tmp_path: Path) -> None:
             for message in body["messages"]
         ] == [
             ("user", "Hello Nova"),
-            ("assistant", "Hello Lyle."),
+            ("assistant", "Hello Example Owner."),
         ]
 
 

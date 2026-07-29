@@ -34,8 +34,8 @@ visible. The indicator recovers automatically when health succeeds again.
 ### M53-002 — Search-help contrast
 
 Search-help text changed from `#68736d` to `#8d9892`. Calculated contrast
-against the dashboard background is 6.47:1, exceeding the 4.5:1 normal-text
-target.
+against the immediate search-panel background is 6.22:1, exceeding the 4.5:1
+normal-text target.
 
 ### M53-003 — Control-boundary contrast
 

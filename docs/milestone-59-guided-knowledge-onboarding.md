@@ -157,10 +157,11 @@ The owner exercised the installed end-to-end workflow on 29 July 2026:
 4. selected **Approve & save**; and
 5. supplied visual evidence of the refreshed quality report.
 
-The approved `Name is Lyle` record is active, path- and checksum-tracked, and
-matched deterministically to Preferred name. Live core coverage rose from 0%
-to 16.7%, freshness is 100%, and retrieval self-checking passes for all 4
-active records.
+The approved preferred-name acceptance record is active, path- and
+checksum-tracked, and matched deterministically to Preferred name. Its personal
+value is intentionally omitted from this public repository. Live core coverage
+rose from 0% to 16.7%, freshness is 100%, and retrieval self-checking passes for
+all 4 active records.
 
 Final accepted-state checkpoints are stored under:
 

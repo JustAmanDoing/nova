@@ -429,7 +429,13 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Your intake is empty")).toBeInTheDocument();
+    const emptyHeading = await screen.findByText("Your intake is empty");
+    expect(emptyHeading).toBeInTheDocument();
+    const emptyState = emptyHeading.closest(".empty-state");
+    expect(emptyState).toHaveTextContent(
+      "Drop a TXT, Markdown, PDF, DOCX, PNG, JPG, JPEG, TIFF, or BMP file into data/intake.",
+    );
+    expect(emptyState).not.toHaveTextContent("WEBP");
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Learning preferences: Learning history unavailable",
     );

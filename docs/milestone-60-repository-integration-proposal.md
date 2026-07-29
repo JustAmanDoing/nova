@@ -8,30 +8,31 @@
 
 **Draft pull request:** <https://github.com/JustAmanDoing/nova/pull/1>
 
-**Status:** Proposed; remote changes and merge require explicit owner approval
+**Status:** Approved by the owner; release gate and exact-head verification
+remain mandatory
 
 ## Purpose
 
 Milestones 53 through 59 are accepted on the local working branch and the
 installed Windows prototype is healthy. GitHub `main` still represents the
 pre-Milestone-53 baseline. Milestone 60 should make GitHub a trustworthy
-release baseline without changing the accepted runtime.
+release baseline, then align the installed 0.59.0 runtime with that exact
+verified source without changing its accepted data or architecture.
 
 This is repository integration work, not a product-feature milestone.
 
 ## Verified starting state
 
 - Accepted local release: `0.59.0`.
-- Accepted branch head:
+- Milestone 59 owner-accepted runtime checkpoint:
   `3aa42a8a3ffd2731f67561dd95761b22ebe192c5`.
 - Remote `main`:
   `210a39f88dc0acadb9ec2e12d0c4d4e8053cf687`.
 - Remote `main` is an ancestor of the accepted branch head.
-- Draft pull request 1 is open and GitHub reports it as cleanly mergeable.
-- The pull request contains 14 intentional commits across Milestones 53–59.
-- Continuous verification run `30442222388` passed on the exact accepted head.
-- Backend quality, frontend quality, Windows controls, and production runtime
-  all passed.
+- Draft pull request 1 is the cumulative Milestones 53–59 integration request.
+- Pull-request head, scope, mergeability, and checks are live release-gate
+  evidence. They must be obtained from GitHub immediately before integration
+  rather than copied from an earlier proposal snapshot.
 - The installed API reports `0.59.0` and both services remain loopback-bound.
 - The final accepted database and knowledge checkpoints exist and their
   SHA-256 hashes match the Milestone 59 record.
@@ -48,6 +49,8 @@ This is repository integration work, not a product-feature milestone.
 - Refuse integration if the head changes, a check is missing, or the pull
   request is no longer cleanly mergeable.
 - Preserve the accepted database and knowledge checkpoints unchanged.
+- Review every changed file and stop for any security, privacy, documentation,
+  dependency, generated-artifact, or release-evidence defect.
 
 ### 2. Protected `main`
 
@@ -60,16 +63,17 @@ Before integration, configure a narrowly scoped rule for `main` that:
   provide; and
 - preserves merge commits so the accepted milestone history remains visible.
 
-The exact remote rule must be shown to the owner before it is created.
+The owner approved the bounded integration operation on 29 July 2026. The
+created rule must be recorded exactly in the final release report.
 
 ### 3. Guarded merge
 
-After explicit owner approval:
+After the release gate passes on the exact pull-request head:
 
 - move the pull request out of draft;
 - merge with a merge commit;
 - preserve the remote feature branch initially;
-- do not squash or rewrite the 14 accepted milestone commits; and
+- do not squash or rewrite the accepted milestone commits; and
 - record the resulting merge commit.
 
 ### 4. Post-merge verification
@@ -79,20 +83,29 @@ After explicit owner approval:
 - Align the working copy at `N:\Nova\Source\nova` with remote `main` using
   normal Git operations that preserve the feature-branch reference.
 - Confirm the N-drive working tree is clean and tracks `origin/main`.
-- Confirm the already installed 0.59.0 runtime remains healthy.
+- Create and verify a fresh local recovery checkpoint.
+- Use the existing guarded Windows update path to rebuild and restart the
+  installed 0.59.0 runtime from the verified merge source.
+- Confirm the aligned runtime is healthy, loopback-bound, and still reports
+  0.59.0 without changing accepted database or knowledge contents.
+- Create annotated tag `v0.59.0` on the verified merge commit and publish a
+  GitHub release titled `Release 0.59.0`.
+- Confirm the tag and GitHub release target the verified merge commit.
 - Update the project status with the merge commit and exact next milestone.
 
 ## Explicit exclusions
 
 - No product or runtime feature changes.
 - No database migration.
-- No Docker rebuild, restart, or reinstall merely to integrate Git history.
+- No Docker rebuild or restart before the merge and post-merge source gate.
+- No runtime change beyond the one guarded rebuild needed to align the
+  installed 0.59.0 release with the verified merge source.
 - No change to the accepted database or knowledge files.
 - No deletion of the feature branch.
 - No deletion of the old C-drive checkout.
-- No GitHub release, tag, or version bump.
+- No version bump beyond the already accepted release `0.59.0`.
 - No Milestone 61 runtime work.
-- No merge or branch-rule mutation without explicit owner approval.
+- No merge if any release-gate defect or exact-head check remains unresolved.
 
 ## Acceptance criteria
 
@@ -105,8 +118,12 @@ After explicit owner approval:
 6. Remote `main` contains the accepted branch head.
 7. Continuous verification passes on the integrated `main`.
 8. The N-drive working copy is clean and tracks the integrated `main`.
-9. The installed local prototype remains release 0.59.0 and healthy.
-10. No user data, knowledge, backups, or runtime service is changed.
+9. The installed local prototype is rebuilt from verified `main`, remains
+   release 0.59.0, and is healthy.
+10. No user database or knowledge contents are changed; a new verified recovery
+    checkpoint may be created as release evidence.
+11. Annotated tag `v0.59.0` and GitHub release `Release 0.59.0` target the
+    verified merge commit.
 
 ## Rollback and recovery
 
@@ -121,7 +138,7 @@ knowledge snapshot, or Docker services.
 
 ## Recommendation
 
-Approve Milestone 60 as an integration-only operation. Use a merge commit,
+Execute Milestone 60 as an approved integration-only operation. Use a merge commit,
 retain the feature branch through verification, and add a narrow `main` rule
 before merging. Do not begin another runtime feature until GitHub and the
 N-drive working copy both identify the accepted 0.59.0 source as their
@@ -132,11 +149,12 @@ authoritative baseline.
 - Guarded Intake MVP: 100%.
 - Practical local NOVA prototype: approximately 99%.
 - Broader long-term NOVA vision: approximately 75%.
-- Milestone 60 implementation: not started; proposal and reviews only.
+- Milestone 60 implementation: release-gate correction and verification in
+  progress.
 
 ## Exact next decision
 
-The owner must explicitly approve or reject:
-
-> Configure the proposed `main` protection, mark pull request 1 ready, and
-> merge it with a merge commit while preserving the feature branch.
+Complete the independent release gate on the exact corrected pull-request head.
+If and only if it passes, configure `main` protection, mark pull request 1
+ready, merge with a merge commit while preserving the feature branch, verify
+the integrated `main`, and publish `v0.59.0`.

@@ -248,7 +248,8 @@ The implementation and evidence are recorded in
 
 ## Milestone 60 — Repository Integration and Protected Main
 
-**Status (29 July 2026): proposed; remote integration not yet approved.**
+**Status (29 July 2026): in progress; owner approved, with corrected exact-head
+verification required before integration.**
 
 - Bind repository integration to one exact pull-request head and its checks
 - Require the existing backend, frontend, Windows, and production-runtime jobs
@@ -256,7 +257,10 @@ The implementation and evidence are recorded in
   owner
 - Preserve Milestones 53–59 as individual commits through a merge commit
 - Align the N-drive working copy with integrated `main`
-- Keep the accepted 0.59.0 runtime and personal data unchanged
+- Align the installed 0.59.0 runtime with verified `main` through the guarded
+  update path without changing accepted personal data
+- Publish annotated tag `v0.59.0` and GitHub release `Release 0.59.0` only
+  after post-merge verification passes
 
 The bounded scope, evidence, exclusions, and approval decision are recorded in:
 
@@ -267,6 +271,7 @@ The bounded scope, evidence, exclusions, and approval decision are recorded in:
 ## Later capabilities
 
 - Optional local or cloud AI provider adapters
-- Project and personal memory with source references
+- Broader project and document memory beyond the approved conversational
+  knowledge implemented in Milestones 55–59
 - Plugin and agent interfaces
 - Broader operational monitoring and disaster recovery

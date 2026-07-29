@@ -90,13 +90,13 @@ def test_only_approved_active_records_count_toward_coverage(
 ) -> None:
     application = _application(tmp_path)
     with TestClient(application) as client:
-        name = _proposal(application, "my preferred name is Lyle")
+        name = _proposal(application, "my preferred name is Example Owner")
         _approve(
             client,
             name.id,
             kind="fact",
             title="Preferred name",
-            content="My preferred name is Lyle.",
+            content="My preferred name is Example Owner.",
         )
 
         pending = _proposal(application, "my current project is still pending")
@@ -146,13 +146,16 @@ def test_stale_record_remains_covered_but_reduces_freshness(
 ) -> None:
     application = _application(tmp_path)
     with TestClient(application) as client:
-        candidate = _proposal(application, "my preferred name is Lyle")
+        candidate = _proposal(
+            application,
+            "my preferred name is Example Owner",
+        )
         record = _approve(
             client,
             candidate.id,
             kind="fact",
             title="Preferred name",
-            content="My preferred name is Lyle.",
+            content="My preferred name is Example Owner.",
         )
         stale_at = (datetime.now(UTC) - timedelta(days=500)).isoformat()
         connection = sqlite3.connect(tmp_path / "nova.db")

@@ -82,6 +82,16 @@ Local data/intake folder
 - Shows exact approved source labels, titles, and local relative paths when
   knowledge is used.
 - Shows a clear no-match message when no approved knowledge qualifies.
+- Lists active and retired knowledge records and preserves immutable revision
+  history.
+- Requires exact typed confirmation before retiring a record and explains that
+  retirement excludes it from future retrieval without deleting its files or
+  history.
+- Creates verified, checksum-recorded local knowledge snapshots on request.
+- Reports priority-weighted core coverage, freshness, bounded retrieval
+  self-checks, and highest-value knowledge gaps without scoring the owner.
+- Lets the owner prepare an editable chat prompt for a missing or review-due
+  area; preparation alone sends nothing and stores nothing.
 - States that tools, web access, general document search, and autonomous
   actions remain unavailable.
 - Displays service health, intake totals, file metadata, duplicate status, and
@@ -132,6 +142,21 @@ Local data/intake folder
   or the provider fails.
 - Requires the local browser-intent guard for conversation creation, message
   submission, and proposal review.
+- Rejects duplicate permanent knowledge unless the owner explicitly chooses to
+  keep a separate record.
+- Updates approved knowledge through immutable revisions with checksum-bound,
+  no-overwrite Markdown files.
+- Retires knowledge without deleting any approved revision or audit event and
+  excludes retired records from future retrieval.
+- Creates verified ZIP snapshots containing the manifest, current records,
+  every immutable revision, and checksum-verified Markdown files.
+- Calculates knowledge coverage only from verified active records against a
+  published priority-weighted capability checklist.
+- Calculates freshness from review windows and runs bounded retrieval
+  self-checks that reapply path-containment and checksum verification.
+- Produces deterministic missing-information and review-due suggestions; the
+  language model does not score coverage or decide what information is
+  required.
 - Scans the configured intake directory.
 - Reads every file locally to calculate its fingerprint.
 - Extracts UTF-8 text, PDF text layers, and DOCX document text up to the
@@ -182,6 +207,12 @@ Local data/intake folder
   included in Nova's verified database backups.
 - Approved knowledge records live in SQLite and as checksum-bound Markdown
   copies under the configured knowledge directory.
+- Every approved update creates a new no-overwrite Markdown revision while the
+  previous revision and append-only record event remain available.
+- Retired records and their files remain local and auditable but are excluded
+  from new retrieval.
+- Verified knowledge snapshots are written beneath the local backup root and
+  never modify the live knowledge store.
 - Historical chat citations are stored in SQLite; every new retrieval verifies
   the current Markdown path and checksum before use.
 - Docker mounts the local `data` root so the guarded action boundary can move
