@@ -248,25 +248,59 @@ The implementation and evidence are recorded in
 
 ## Milestone 60 — Repository Integration and Protected Main
 
-**Status (29 July 2026): in progress; owner approved, with corrected exact-head
-verification required before integration.**
+**Status (29 July 2026): complete; release 0.59.0 published from protected
+`main`.**
 
-- Bind repository integration to one exact pull-request head and its checks
-- Require the existing backend, frontend, Windows, and production-runtime jobs
-- Protect `main` from force pushes and deletion without locking out the sole
-  owner
-- Preserve Milestones 53–59 as individual commits through a merge commit
-- Align the N-drive working copy with integrated `main`
-- Align the installed 0.59.0 runtime with verified `main` through the guarded
-  update path without changing accepted personal data
-- Publish annotated tag `v0.59.0` and GitHub release `Release 0.59.0` only
-  after post-merge verification passes
+- Repository integration was bound to one exact pull-request head and its
+  successful checks — complete
+- Backend, frontend, Windows, and production-runtime checks are required on
+  protected `main` — complete
+- Force pushes and deletion are disabled without locking out the sole owner —
+  complete
+- Milestones 53–59 remain individual commits behind one merge commit —
+  complete
+- N-drive working copy and installed runtime were aligned with verified
+  `main` — complete
+- Annotated tag `v0.59.0` and GitHub release `Release 0.59.0` were published
+  after post-merge verification — complete
 
-The bounded scope, evidence, exclusions, and approval decision are recorded in:
+The final outcome and review evidence are recorded in:
 
 - `docs/milestone-60-repository-integration-proposal.md`
 - `docs/milestone-60-architecture-review.md`
 - `docs/milestone-60-engineering-review.md`
+- `docs/milestone-60-release-report.md`
+
+## Milestone 61 — Daily-Use Beta Validation
+
+**Status (30 July 2026): complete; release 0.59.0 remained stable and owner
+acceptance passed.**
+
+- Real local conversation and knowledge activity observed without publishing
+  personal content — complete
+- Container stability and logs reviewed — complete
+- Active database and approved knowledge verified — complete
+- Fresh database and knowledge recovery checkpoints verified — complete
+- Backend, frontend, Windows, Compose, and runtime boundary checks repeated —
+  complete
+- No release-blocking defect found — complete
+
+The evidence and decisions are recorded in:
+
+- `docs/milestone-61-daily-use-beta-validation.md`
+- `docs/milestone-61-architecture-review.md`
+- `docs/milestone-61-engineering-review.md`
+
+## Milestone 62 — Evidence-Led Next Capability Selection
+
+**Status: not started; product decision required before runtime work.**
+
+- Review beta evidence and current owner priorities
+- Rank bounded candidate capabilities by value, privacy, complexity, reuse,
+  and maintenance cost
+- Select one product slice
+- Complete architecture and engineering reviews
+- Obtain explicit owner approval before implementation
 
 ## Later capabilities
 
