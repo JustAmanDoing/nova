@@ -293,14 +293,34 @@ The evidence and decisions are recorded in:
 
 ## Milestone 62 — Evidence-Led Next Capability Selection
 
-**Status: not started; product decision required before runtime work.**
+**Status (30 July 2026): complete; explicit local document context selected.**
 
-- Review beta evidence and current owner priorities
-- Rank bounded candidate capabilities by value, privacy, complexity, reuse,
-  and maintenance cost
-- Select one product slice
-- Complete architecture and engineering reviews
-- Obtain explicit owner approval before implementation
+- Beta evidence and current owner priorities reviewed — complete
+- Six bounded candidates ranked by value, architecture fit, privacy, reuse,
+  delivery, and maintenance — complete
+- Milestone 63 explicit local document context selected — complete
+- Architecture and engineering proposal reviews passed — complete
+- Runtime implementation remains gated by explicit owner approval — preserved
+
+The selection and reviews are recorded in:
+
+- `docs/milestone-62-next-capability-selection.md`
+- `docs/milestone-62-architecture-review.md`
+- `docs/milestone-62-engineering-review.md`
+- `docs/milestone-63-explicit-document-context-proposal.md`
+
+## Milestone 63 — Explicit Local Document Context
+
+**Status: selected proposal; awaiting explicit owner approval.**
+
+- Let the owner explicitly select one ready intake document for one chat turn
+- Revalidate current source path and SHA-256 before use
+- Add at most 8,000 UTF-8 bytes as untrusted local `[D1]` context
+- Persist citation metadata only for completed assistant responses
+- Keep full extracted text out of browser API responses
+- Preserve no-selection behavior and every existing safety boundary
+- Exclude semantic search, automatic retrieval, uploads, broad host access,
+  tools, voice, remote access, plugins, agents, and automation
 
 ## Later capabilities
 
