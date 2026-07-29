@@ -80,4 +80,3 @@ finishes.
 No architectural blocker exists for the bounded proposal. Implementation
 remains gated by explicit owner approval because it changes remote repository
 governance and `main`.
-

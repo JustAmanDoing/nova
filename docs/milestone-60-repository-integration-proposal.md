@@ -140,4 +140,3 @@ The owner must explicitly approve or reject:
 
 > Configure the proposed `main` protection, mark pull request 1 ready, and
 > merge it with a merge commit while preserving the feature branch.
-

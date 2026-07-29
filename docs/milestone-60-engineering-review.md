@@ -113,4 +113,3 @@ Proposal documentation will change the pull request head. Before any merge:
 No engineering blocker exists for the proposed guarded integration sequence.
 The branch rule and merge are external repository mutations and therefore
 remain pending explicit owner approval.
-
