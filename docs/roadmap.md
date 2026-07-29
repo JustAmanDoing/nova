@@ -246,6 +246,24 @@ owner acceptance passed.**
 The implementation and evidence are recorded in
 `docs/milestone-59-guided-knowledge-onboarding.md`.
 
+## Milestone 60 — Repository Integration and Protected Main
+
+**Status (29 July 2026): proposed; remote integration not yet approved.**
+
+- Bind repository integration to one exact pull-request head and its checks
+- Require the existing backend, frontend, Windows, and production-runtime jobs
+- Protect `main` from force pushes and deletion without locking out the sole
+  owner
+- Preserve Milestones 53–59 as individual commits through a merge commit
+- Align the N-drive working copy with integrated `main`
+- Keep the accepted 0.59.0 runtime and personal data unchanged
+
+The bounded scope, evidence, exclusions, and approval decision are recorded in:
+
+- `docs/milestone-60-repository-integration-proposal.md`
+- `docs/milestone-60-architecture-review.md`
+- `docs/milestone-60-engineering-review.md`
+
 ## Later capabilities
 
 - Optional local or cloud AI provider adapters

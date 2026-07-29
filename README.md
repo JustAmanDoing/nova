@@ -479,5 +479,8 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 59 guided knowledge onboarding](docs/milestone-59-guided-knowledge-onboarding.md)
 - [Milestone 59 architecture review](docs/milestone-59-architecture-review.md)
 - [Milestone 59 engineering review](docs/milestone-59-engineering-review.md)
+- [Milestone 60 repository integration proposal](docs/milestone-60-repository-integration-proposal.md)
+- [Milestone 60 architecture review](docs/milestone-60-architecture-review.md)
+- [Milestone 60 engineering review](docs/milestone-60-engineering-review.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
