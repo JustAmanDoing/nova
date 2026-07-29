@@ -18,7 +18,8 @@ RUN addgroup --system nova && adduser --system --ingroup nova nova
 COPY pyproject.toml constraints.txt README.md ./
 COPY app ./app
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/nova-entrypoint
-RUN pip install --no-cache-dir --constraint constraints.txt .
+RUN python -m pip install --no-cache-dir --upgrade "pip==26.1.2" \
+    && python -m pip install --no-cache-dir --constraint constraints.txt .
 
 EXPOSE 8000
 

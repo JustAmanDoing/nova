@@ -123,9 +123,155 @@
 - User-controlled automation rules
 - Measured thresholds before any automatic filing
 
+## Milestone 53 — Local v1 completion review
+
+**Status (28 July 2026): complete; local v1 accepted.**
+
+- Static usability and accessibility defects corrected and verified
+- Architecture and scope boundaries reconfirmed
+- Full automated verification matrix passed
+- Docker production workflow passed
+- Representative Windows-host and browser acceptance passed
+
+The detailed evidence and open blockers are recorded in
+`docs/milestone-53-local-v1-completion-review.md`.
+
+## Milestone 54 — Local Chat Core
+
+**Status (28 July 2026): complete; working local prototype accepted.**
+
+- Local Ollama model discovery and streaming chat — complete
+- Local conversation history — complete
+- Stop generation — complete
+- Clear provider-failure handling — complete
+- No tools, web access, RAG, or permanent personal-memory promotion — preserved
+
+The evidence and current limitations are recorded in
+`docs/milestone-54-local-chat-core.md`.
+
+## Milestone 55 — Conversation-to-Knowledge Capture
+
+**Status (28 July 2026): complete; engineering and owner acceptance passed.**
+
+- Natural explicit "remember this" requests — complete
+- Limited deterministic suggestions for high-value candidate knowledge —
+  complete
+- Editable owner review before any permanent personal record is created —
+  complete
+- Approval writes a local, no-overwrite Markdown record and recoverable SQLite
+  record — complete
+- Rejection creates no permanent record — complete
+- No silent memory promotion — verified
+
+The evidence and limitations are recorded in
+`docs/milestone-55-conversation-to-knowledge-capture.md`.
+
+## Milestone 56 — Approved Knowledge Retrieval
+
+**Status (28 July 2026): complete; engineering and owner acceptance passed.**
+
+- Retrieve only owner-approved knowledge records — complete
+- Verify the current local record path and SHA-256 before retrieval — complete
+- Cite the exact local record used in an answer — complete
+- Persist citation evidence with the assistant message — complete
+- Keep retrieval separate from general model training and chat history —
+  complete
+- Provide clear no-match and retrieval-failure behavior — complete
+- Preserve local-only operation and owner control — complete
+
+The evidence and limitations are recorded in
+`docs/milestone-56-approved-knowledge-retrieval.md`.
+
+## Milestone 57 — Knowledge Lifecycle and Duplicate Controls
+
+**Status (29 July 2026): complete; architecture, engineering, and owner
+acceptance passed.**
+
+- Flag deterministic likely duplicates before approval — implemented
+- Require explicit confirmation to preserve likely duplicates separately —
+  implemented
+- Update approved records through immutable, no-overwrite revisions —
+  implemented
+- Retire records from retrieval without deleting files or history — implemented
+- Preserve append-only lifecycle events and revision metadata — implemented
+- Create checksum-verified snapshots of all tracked Markdown revisions —
+  implemented
+- Preserve approved-only retrieval and all local safety boundaries — verified
+
+The evidence and current decision are recorded in
+`docs/milestone-57-knowledge-lifecycle.md`.
+
+## Milestone 58 — Knowledge Quality and Gap Analysis
+
+**Status (29 July 2026): complete; architecture, engineering, and owner
+acceptance passed.**
+
+- Verify every active record before including it in quality reporting —
+  implemented
+- Measure priority-weighted core capability coverage against a published
+  seven-item checklist — implemented
+- Track review-age freshness without treating stale information as missing —
+  implemented
+- Keep optional opportunities outside the core completion score — implemented
+- Rank missing and review-due suggestions without changing knowledge —
+  implemented
+- Run a bounded deterministic retrieval self-check over active records —
+  implemented
+- Isolate quality-report failures so chat and knowledge remain usable —
+  verified
+- Preserve local-only operation, explicit approval, and non-destructive
+  lifecycle controls — verified
+
+The method, evidence, and current decision are recorded in
+`docs/milestone-58-knowledge-quality-gap-analysis.md`.
+
+## Milestone 59 — Guided Knowledge Onboarding
+
+**Status (29 July 2026): complete; architecture, engineering, Windows, and
+owner acceptance passed.**
+
+- Turn a selected missing area into one focused, editable chat prompt —
+  implemented
+- Never send a prompt or save knowledge from a suggestion click alone —
+  verified
+- Reuse the existing conversation, proposal, and approval workflow —
+  implemented
+- Let review-due suggestions identify the matching approved record —
+  implemented
+- Refresh Knowledge health after an approved update — preserved
+- Keep optional areas visibly optional — verified
+- Preserve all local-only, owner-approval, and no-silent-memory boundaries —
+  verified
+
+The implementation and evidence are recorded in
+`docs/milestone-59-guided-knowledge-onboarding.md`.
+
+## Milestone 60 — Repository Integration and Protected Main
+
+**Status (29 July 2026): in progress; owner approved, with corrected exact-head
+verification required before integration.**
+
+- Bind repository integration to one exact pull-request head and its checks
+- Require the existing backend, frontend, Windows, and production-runtime jobs
+- Protect `main` from force pushes and deletion without locking out the sole
+  owner
+- Preserve Milestones 53–59 as individual commits through a merge commit
+- Align the N-drive working copy with integrated `main`
+- Align the installed 0.59.0 runtime with verified `main` through the guarded
+  update path without changing accepted personal data
+- Publish annotated tag `v0.59.0` and GitHub release `Release 0.59.0` only
+  after post-merge verification passes
+
+The bounded scope, evidence, exclusions, and approval decision are recorded in:
+
+- `docs/milestone-60-repository-integration-proposal.md`
+- `docs/milestone-60-architecture-review.md`
+- `docs/milestone-60-engineering-review.md`
+
 ## Later capabilities
 
 - Optional local or cloud AI provider adapters
-- Project and personal memory with source references
+- Broader project and document memory beyond the approved conversational
+  knowledge implemented in Milestones 55–59
 - Plugin and agent interfaces
 - Broader operational monitoring and disaster recovery

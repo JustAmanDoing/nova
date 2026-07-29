@@ -15,6 +15,25 @@ guarded **Execute**, append-only **Audit**, and conservative destination
 confirmed action that passes current-approval, path, conflict, and fingerprint
 checks.
 
+Local chat is an optional parallel interface:
+
+```text
+React chat page
+  └── versioned FastAPI chat endpoints
+        ├── local SQLite conversation history
+        ├── deterministic knowledge proposal detector
+        │     └── pending owner review
+        │           ├── reject → no permanent record
+        │           └── approve → SQLite record + local Markdown copy
+        ├── approved-only knowledge retrieval
+        │     ├── path containment + current SHA-256 verification
+        │     └── exact persisted [K#] source evidence
+        └── Nova-owned provider adapter
+              └── Ollama on the Windows host
+```
+
+It does not bypass or extend the guarded file workflow.
+
 ## Current vertical slice
 
 ```text
@@ -55,6 +74,26 @@ Local data/intake folder
 
 ### Frontend
 
+- Provides a separate local chat page with model selection, streamed replies,
+  local conversation history, and stop generation.
+- Shows editable knowledge proposals with explicit **Approve & save** and
+  **Don't save** controls.
+- Makes pending state explicit: a proposal is not permanent knowledge.
+- Shows exact approved source labels, titles, and local relative paths when
+  knowledge is used.
+- Shows a clear no-match message when no approved knowledge qualifies.
+- Lists active and retired knowledge records and preserves immutable revision
+  history.
+- Requires exact typed confirmation before retiring a record and explains that
+  retirement excludes it from future retrieval without deleting its files or
+  history.
+- Creates verified, checksum-recorded local knowledge snapshots on request.
+- Reports priority-weighted core coverage, freshness, bounded retrieval
+  self-checks, and highest-value knowledge gaps without scoring the owner.
+- Lets the owner prepare an editable chat prompt for a missing or review-due
+  area; preparation alone sends nothing and stores nothing.
+- States that tools, web access, general document search, and autonomous
+  actions remain unavailable.
 - Displays service health, intake totals, file metadata, duplicate status, and
   normalized understanding results.
 - Reads authoritative, unfiltered totals from a dedicated summary endpoint so
@@ -79,6 +118,45 @@ Local data/intake folder
 
 ### Backend
 
+- Discovers models and streams replies through a small Nova-owned Ollama
+  adapter rather than coupling the application to a provider-specific UI.
+- Stores conversations and complete user/assistant messages locally in SQLite.
+- Detects only bounded, deterministic explicit-memory and high-value profile
+  patterns; the language model does not decide what becomes permanent.
+- Stores each proposal as pending and writes no permanent record before owner
+  approval.
+- Stores approved record contents in SQLite and writes a checksum-bound,
+  no-overwrite Markdown copy under the configured knowledge directory.
+- Retrieves only records whose candidate is approved, whose resolved Markdown
+  path remains beneath the knowledge root, and whose live file still matches
+  the approved SHA-256.
+- Uses bounded deterministic lexical scoring and supplies at most three
+  approved records to one model turn.
+- Persists a checksum-bound source snapshot with the assistant message so
+  citations survive reloads and verified database backups.
+- Records an explicit checked-with-no-match state rather than implying that
+  unknown personal information was searched successfully.
+- Keeps optional proposal failure isolated so ordinary chat remains available
+  with a truthful warning.
+- Stores no partial or invented assistant message when generation is stopped
+  or the provider fails.
+- Requires the local browser-intent guard for conversation creation, message
+  submission, and proposal review.
+- Rejects duplicate permanent knowledge unless the owner explicitly chooses to
+  keep a separate record.
+- Updates approved knowledge through immutable revisions with checksum-bound,
+  no-overwrite Markdown files.
+- Retires knowledge without deleting any approved revision or audit event and
+  excludes retired records from future retrieval.
+- Creates verified ZIP snapshots containing the manifest, current records,
+  every immutable revision, and checksum-verified Markdown files.
+- Calculates knowledge coverage only from verified active records against a
+  published priority-weighted capability checklist.
+- Calculates freshness from review windows and runs bounded retrieval
+  self-checks that reapply path-containment and checksum verification.
+- Produces deterministic missing-information and review-due suggestions; the
+  language model does not score coverage or decide what information is
+  required.
 - Scans the configured intake directory.
 - Reads every file locally to calculate its fingerprint.
 - Extracts UTF-8 text, PDF text layers, and DOCX document text up to the
@@ -118,12 +196,25 @@ Local data/intake folder
 - Removes a learning group's derived examples transactionally only after exact
   confirmation, advances its revision, and records a reset event.
 - Exposes versioned endpoints under `/api/v1`.
-- Runs without an AI model or cloud service.
+- Keeps the complete intake workflow available without an AI model or cloud
+  service. The optional chat page requires the configured local Ollama service.
 
 ### Local storage
 
 - Pending files remain in `data/intake`.
 - Explicitly filed documents are stored under `data/library`.
+- Chat conversations and messages live in the local SQLite database and are
+  included in Nova's verified database backups.
+- Approved knowledge records live in SQLite and as checksum-bound Markdown
+  copies under the configured knowledge directory.
+- Every approved update creates a new no-overwrite Markdown revision while the
+  previous revision and append-only record event remain available.
+- Retired records and their files remain local and auditable but are excluded
+  from new retrieval.
+- Verified knowledge snapshots are written beneath the local backup root and
+  never modify the live knowledge store.
+- Historical chat citations are stored in SQLite; every new retrieval verifies
+  the current Markdown path and checksum before use.
 - Docker mounts the local `data` root so the guarded action boundary can move
   approved files; scanning and recommendation paths do not write to files.
 - SQLite lives in the `nova_data` Docker volume.

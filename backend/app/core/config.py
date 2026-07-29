@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "Nova API"
-    app_version: str = "0.52.0"
+    app_version: str = "0.59.0"
     environment: str = "development"
     api_prefix: str = "/api/v1"
     api_host: str = "0.0.0.0"
@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     library_path: Path | None = None
     database_path: Path = Path("data/nova.db")
     backup_path: Path = Path("data/backups")
+    knowledge_path: Path = Path("data/knowledge")
     intake_scan_seconds: float = 3.0
     action_stale_seconds: float = 300.0
     max_text_bytes: int = 1_000_000
@@ -45,6 +46,8 @@ class Settings(BaseSettings):
         ge=1_000_000,
         le=500_000_000,
     )
+    ollama_base_url: str = "http://host.docker.internal:11434"
+    ollama_timeout_seconds: float = Field(default=120.0, ge=5.0, le=600.0)
 
     @field_validator("cors_origins", "allowed_hosts", mode="before")
     @classmethod
@@ -61,6 +64,7 @@ class Settings(BaseSettings):
                 self.library_path or self.intake_path.parent / "library"
             ).resolve(),
             "backup": self.backup_path.resolve(),
+            "knowledge": self.knowledge_path.resolve(),
         }
         directory_items = list(directories.items())
         for index, (left_name, left_path) in enumerate(directory_items):

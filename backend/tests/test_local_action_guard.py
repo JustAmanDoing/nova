@@ -40,6 +40,20 @@ def test_every_mutating_api_requires_local_action_intent(tmp_path: Path) -> None
             client.post("/api/v1/intake/files/not-present/execute"),
             client.post("/api/v1/intake/actions/not-present/undo"),
             client.post("/api/v1/backups"),
+            client.put(
+                "/api/v1/knowledge/candidates/not-present",
+                json={"action": "reject"},
+            ),
+            client.put(
+                "/api/v1/knowledge/records/not-present",
+                json={
+                    "action": "update",
+                    "kind": "fact",
+                    "title": "Blocked update",
+                    "content": "This request must not reach the service.",
+                },
+            ),
+            client.post("/api/v1/knowledge/snapshots"),
             client.post(
                 "/api/v1/backups/nova-20260725T000000.000000Z.db/restore",
                 json={"confirmation": "RESTORE nova-20260725T000000.000000Z.db"},
@@ -84,6 +98,15 @@ def test_cors_preflight_allows_only_the_configured_local_interface(
             "/api/v1/intake/scan",
             headers={"Origin": "http://127.0.0.1:5173", **requested_headers},
         )
+        allowed_private_network = client.options(
+            "/api/v1/intake/scan",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": LOCAL_ACTION_HEADER,
+                "Access-Control-Request-Private-Network": "true",
+            },
+        )
         blocked = client.options(
             "/api/v1/intake/scan",
             headers={"Origin": "https://example.invalid", **requested_headers},
@@ -98,6 +121,11 @@ def test_cors_preflight_allows_only_the_configured_local_interface(
     assert (
         allowed_loopback.headers["access-control-allow-origin"]
         == "http://127.0.0.1:5173"
+    )
+    assert allowed_private_network.status_code == 200
+    assert (
+        allowed_private_network.headers["access-control-allow-private-network"]
+        == "true"
     )
     assert blocked.status_code == 400
     assert "access-control-allow-origin" not in blocked.headers

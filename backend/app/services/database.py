@@ -230,6 +230,244 @@ def _no_schema_change(_: sqlite3.Connection) -> None:
     return
 
 
+def _local_chat_core(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS chat_conversations (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            model TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_chat_conversations_updated
+        ON chat_conversations (updated_at DESC)
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id TEXT PRIMARY KEY,
+            conversation_id TEXT NOT NULL
+                REFERENCES chat_conversations(id) ON DELETE CASCADE,
+            role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+            content TEXT NOT NULL,
+            model TEXT,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_chat_messages_conversation
+        ON chat_messages (conversation_id, created_at, id)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
+def _conversation_knowledge_capture(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_candidates (
+            id TEXT PRIMARY KEY,
+            conversation_id TEXT NOT NULL
+                REFERENCES chat_conversations(id) ON DELETE CASCADE,
+            source_message_id TEXT NOT NULL
+                REFERENCES chat_messages(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL CHECK (
+                kind IN (
+                    'fact', 'preference', 'goal', 'project',
+                    'lesson', 'rule', 'reference'
+                )
+            ),
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            source_excerpt TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            confidence REAL NOT NULL CHECK (
+                confidence >= 0.0 AND confidence <= 1.0
+            ),
+            explicit_request INTEGER NOT NULL CHECK (
+                explicit_request IN (0, 1)
+            ),
+            status TEXT NOT NULL CHECK (
+                status IN ('pending', 'approved', 'rejected')
+            ),
+            created_at TEXT NOT NULL,
+            reviewed_at TEXT,
+            UNIQUE (source_message_id)
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_candidates_status
+        ON knowledge_candidates (status, created_at DESC)
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_records (
+            id TEXT PRIMARY KEY,
+            candidate_id TEXT NOT NULL UNIQUE
+                REFERENCES knowledge_candidates(id),
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            relative_path TEXT NOT NULL UNIQUE,
+            sha256 TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_records_created
+        ON knowledge_records (created_at DESC)
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_events (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_id TEXT NOT NULL REFERENCES knowledge_candidates(id),
+            event_type TEXT NOT NULL CHECK (
+                event_type IN ('proposed', 'approved', 'rejected')
+            ),
+            detail TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_events_candidate
+        ON knowledge_events (candidate_id, sequence)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
+def _approved_knowledge_retrieval(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        ALTER TABLE chat_messages
+        ADD COLUMN knowledge_checked INTEGER NOT NULL DEFAULT 0
+            CHECK (knowledge_checked IN (0, 1))
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS chat_message_knowledge_sources (
+            message_id TEXT NOT NULL
+                REFERENCES chat_messages(id) ON DELETE CASCADE,
+            record_id TEXT NOT NULL
+                REFERENCES knowledge_records(id) ON DELETE RESTRICT,
+            citation_label TEXT NOT NULL,
+            position INTEGER NOT NULL CHECK (position >= 1),
+            score REAL NOT NULL CHECK (score > 0.0),
+            title TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            content TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            sha256 TEXT NOT NULL,
+            PRIMARY KEY (message_id, record_id),
+            UNIQUE (message_id, citation_label),
+            UNIQUE (message_id, position)
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_chat_message_knowledge_sources_message
+        ON chat_message_knowledge_sources (message_id, position)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
+def _knowledge_lifecycle_and_duplicates(connection: sqlite3.Connection) -> None:
+    _add_column_if_missing(
+        connection,
+        "knowledge_candidates",
+        "duplicate_record_id TEXT REFERENCES knowledge_records(id)",
+    )
+    _add_column_if_missing(
+        connection,
+        "knowledge_candidates",
+        "duplicate_score REAL",
+    )
+    _add_column_if_missing(
+        connection,
+        "knowledge_records",
+        "status TEXT NOT NULL DEFAULT 'active' "
+        "CHECK (status IN ('active', 'retired'))",
+    )
+    _add_column_if_missing(
+        connection,
+        "knowledge_records",
+        "revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1)",
+    )
+    _add_column_if_missing(connection, "knowledge_records", "updated_at TEXT")
+    _add_column_if_missing(connection, "knowledge_records", "retired_at TEXT")
+    connection.execute(
+        """
+        UPDATE knowledge_records
+        SET updated_at = created_at
+        WHERE updated_at IS NULL
+        """
+    )
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_record_revisions (
+            record_id TEXT NOT NULL
+                REFERENCES knowledge_records(id) ON DELETE RESTRICT,
+            revision INTEGER NOT NULL CHECK (revision >= 1),
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            sha256 TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('active', 'retired')),
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (record_id, revision)
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_record_revisions_path
+        ON knowledge_record_revisions (relative_path)
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_record_events (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            record_id TEXT NOT NULL
+                REFERENCES knowledge_records(id) ON DELETE RESTRICT,
+            event_type TEXT NOT NULL CHECK (
+                event_type IN ('created', 'updated', 'retired')
+            ),
+            detail TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_knowledge_record_events_record
+        ON knowledge_record_events (record_id, sequence)
+        """,
+        """
+        INSERT OR IGNORE INTO knowledge_record_revisions (
+            record_id, revision, kind, title, content, relative_path,
+            sha256, status, created_at
+        )
+        SELECT
+            id, 1, kind, title, content, relative_path, sha256,
+            'active', created_at
+        FROM knowledge_records
+        """,
+        """
+        INSERT INTO knowledge_record_events (
+            record_id, event_type, detail, created_at
+        )
+        SELECT
+            record.id,
+            'created',
+            'Imported existing approved record into lifecycle history.',
+            record.created_at
+        FROM knowledge_records AS record
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM knowledge_record_events AS event
+            WHERE event.record_id = record.id
+        )
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -241,6 +479,14 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(8, "guarded-database-restore", _no_schema_change),
     Migration(9, "confirmed-move-learning", _confirmed_move_learning),
     Migration(10, "learning-preference-controls", _learning_preference_controls),
+    Migration(11, "local-chat-core", _local_chat_core),
+    Migration(12, "conversation-knowledge-capture", _conversation_knowledge_capture),
+    Migration(13, "approved-knowledge-retrieval", _approved_knowledge_retrieval),
+    Migration(
+        14,
+        "knowledge-lifecycle-and-duplicates",
+        _knowledge_lifecycle_and_duplicates,
+    ),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version
 

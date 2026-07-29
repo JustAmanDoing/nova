@@ -7,6 +7,15 @@ file intake. Its core remains useful without an AI provider.
 
 The current MVP can:
 
+- Discover local Ollama models and stream conversational replies
+- Keep conversation and message history in Nova's local SQLite database
+- Stop an in-progress reply without storing an invented or partial assistant answer
+- Report local-model failure clearly while keeping saved conversations available
+- Warn when proposed knowledge appears to duplicate an active approved record
+- Require explicit confirmation before keeping likely duplicate records separately
+- Update approved knowledge by creating a new immutable Markdown revision
+- Retire approved knowledge from future retrieval without deleting its files
+- Create checksum-verified knowledge snapshots containing every tracked revision
 - Observe files placed in a local intake folder
 - Record filename, path, size, timestamps, and SHA-256 fingerprint
 - Detect exact duplicates without deleting either copy
@@ -106,8 +115,59 @@ docker compose up --build
 Open:
 
 - Nova: http://localhost:5173
+- Local chat: http://localhost:5173/chat.html
 - API docs: http://localhost:8000/docs
 - API health: http://localhost:8000/api/v1/health
+
+### Local chat, approved knowledge capture, and retrieval
+
+The **Chat** page uses the Ollama service already installed on the Windows host.
+Model discovery and replies remain local. Conversation history is stored in
+Nova's SQLite database and is therefore included in verified database backups.
+
+Milestone 55 adds bounded, deterministic conversation-to-knowledge capture.
+An explicit **Remember that...** request, or a limited high-value profile
+statement such as a preference or goal, can prepare an editable review card.
+The proposal remains pending until the owner selects **Approve & save**.
+Selecting **Don't save** records the rejection and creates no permanent
+knowledge file. Approved records are retained in SQLite and written as
+no-overwrite Markdown records under the configured local knowledge directory.
+The Windows deployment maps that directory to `N:\Nova\Memory`.
+
+Milestone 56 retrieves only owner-approved records. Nova verifies that each
+local Markdown copy remains inside the configured knowledge directory and still
+matches its approved SHA-256 before supplying it to the model. Answers show
+exact `[K#]` source cards, and citation evidence is stored with the assistant
+message. If nothing approved matches, the chat says so clearly.
+
+Milestone 57 adds owner-controlled lifecycle management. Likely duplicates are
+flagged before approval and cannot be kept separately without explicit
+confirmation. An approved record can be updated only by creating a new,
+no-overwrite Markdown revision; its previous revisions remain unchanged.
+Retirement removes a record from future retrieval without deleting any
+revision. The owner can also create a checksum-verified ZIP snapshot containing
+the lifecycle manifest and every tracked Markdown revision.
+
+Milestone 58 adds a read-only **Knowledge health** report. It verifies every
+active record before measuring priority-weighted core coverage, review-age
+freshness, and deterministic retrieval quality. Its seven core areas and
+matching rules are published in source. Optional opportunities never lower
+core coverage. The report scores NOVA's knowledge capability, not the owner,
+and it never saves, edits, retires, or uploads knowledge.
+
+Milestone 59 makes those suggestions actionable without adding another
+knowledge-writing path. **Add through chat** prepares a focused, editable
+starter in the composer but never sends or saves it. A review-due suggestion
+opens the exact approved record in the existing immutable lifecycle editor.
+Permanent knowledge still requires the owner to send the completed prompt and
+separately choose **Approve & save**.
+
+Chat still cannot browse the web, use tools, access intake documents, perform
+general document search, or take autonomous actions. Starting a conversation,
+sending a message, and reviewing a knowledge proposal require the same local
+browser-intent guard as other state-changing Nova requests. Stopping generation
+preserves only records that the backend had already committed; it never
+fabricates a completed assistant response.
 
 Place a TXT, Markdown, PDF, DOCX, PNG, JPEG, TIFF, or BMP test file in
 `data/intake`. Nova scans automatically every three seconds, or you can select
@@ -405,5 +465,22 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 50 precise backup API states](docs/milestone-50-precise-backup-api-states.md)
 - [Milestone 51 resilient backup inventory](docs/milestone-51-resilient-backup-inventory.md)
 - [Milestone 52 on-demand database integrity](docs/milestone-52-on-demand-database-integrity.md)
+- [Milestone 53 local v1 completion review](docs/milestone-53-local-v1-completion-review.md)
+- [Milestone 54 local chat core](docs/milestone-54-local-chat-core.md)
+- [Milestone 55 conversation-to-knowledge capture](docs/milestone-55-conversation-to-knowledge-capture.md)
+- [Milestone 56 approved knowledge retrieval](docs/milestone-56-approved-knowledge-retrieval.md)
+- [Milestone 57 knowledge lifecycle and duplicate controls](docs/milestone-57-knowledge-lifecycle.md)
+- [Milestone 57 architecture review](docs/milestone-57-architecture-review.md)
+- [Milestone 57 engineering review](docs/milestone-57-engineering-review.md)
+- [Milestone 58 knowledge quality and gap analysis](docs/milestone-58-knowledge-quality-gap-analysis.md)
+- [Milestone 58 architecture review](docs/milestone-58-architecture-review.md)
+- [Milestone 58 engineering review](docs/milestone-58-engineering-review.md)
+- [Milestone 59 guided knowledge onboarding proposal](docs/milestone-59-guided-knowledge-onboarding-proposal.md)
+- [Milestone 59 guided knowledge onboarding](docs/milestone-59-guided-knowledge-onboarding.md)
+- [Milestone 59 architecture review](docs/milestone-59-architecture-review.md)
+- [Milestone 59 engineering review](docs/milestone-59-engineering-review.md)
+- [Milestone 60 repository integration proposal](docs/milestone-60-repository-integration-proposal.md)
+- [Milestone 60 architecture review](docs/milestone-60-architecture-review.md)
+- [Milestone 60 engineering review](docs/milestone-60-engineering-review.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
