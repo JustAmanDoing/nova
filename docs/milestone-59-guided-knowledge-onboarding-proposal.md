@@ -4,8 +4,7 @@
 
 **Proposed base:** accepted Milestone 58 release 0.58.0
 
-**Status:** Approved by the owner on 29 July 2026; implemented on the protected
-Milestone 59 branch
+**Status:** Approved, implemented, and owner accepted on 29 July 2026
 
 ## Purpose
 

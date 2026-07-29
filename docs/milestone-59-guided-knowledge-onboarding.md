@@ -8,7 +8,7 @@
 
 **Prototype release:** 0.59.0
 
-**Decision:** Engineering accepted; owner acceptance pending
+**Decision:** Accepted
 
 ## Scope delivered
 
@@ -144,5 +144,40 @@ SHA-256:
 
 ## Exact next action
 
-Obtain owner acceptance of the installed guided controls. Do not begin another
-runtime milestone until that decision is recorded.
+Select and explicitly approve the bounded product scope of Milestone 60 before
+beginning more runtime work.
+
+## Owner acceptance
+
+The owner exercised the installed end-to-end workflow on 29 July 2026:
+
+1. selected a missing Preferred name area;
+2. completed and sent the prepared prompt;
+3. reviewed the generated candidate;
+4. selected **Approve & save**; and
+5. supplied visual evidence of the refreshed quality report.
+
+The approved `Name is Lyle` record is active, path- and checksum-tracked, and
+matched deterministically to Preferred name. Live core coverage rose from 0%
+to 16.7%, freshness is 100%, and retrieval self-checking passes for all 4
+active records.
+
+Final accepted-state checkpoints are stored under:
+
+`N:\Nova\Backups\Post-Milestone-59-Accepted`
+
+Database:
+
+`nova-20260729T094338.115509Z.db`
+
+SHA-256:
+
+`025dca5a2c02a66b566c9cd3b61f219bd5fda78afb03d29ba2d33c8b9221b9ec`
+
+Knowledge snapshot:
+
+`nova-knowledge-20260729T094338.326237Z.zip`
+
+SHA-256:
+
+`c3bfc4e4dab9a981068caba7f93f0d76f80a25f1242640b912eadd39194a9942`

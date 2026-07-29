@@ -4,7 +4,7 @@
 
 **Prototype release:** 0.59.0
 
-**Decision:** Accepted; owner acceptance pending
+**Decision:** Accepted
 
 ## Review scope
 
@@ -62,5 +62,6 @@
 - The existing non-failing React `act(...)` warnings in intake dashboard tests
   remain and predate Milestone 59.
 
-No engineering blocker remains within the approved scope. Final milestone
-completion requires owner acceptance of the installed controls.
+No engineering blocker remains within the approved scope. The owner completed
+the installed conversation-to-approved-knowledge workflow and supplied visual
+acceptance evidence on 29 July 2026.

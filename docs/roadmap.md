@@ -227,8 +227,8 @@ The method, evidence, and current decision are recorded in
 
 ## Milestone 59 — Guided Knowledge Onboarding
 
-**Status (29 July 2026): implemented; architecture and engineering review
-passed; owner acceptance pending.**
+**Status (29 July 2026): complete; architecture, engineering, Windows, and
+owner acceptance passed.**
 
 - Turn a selected missing area into one focused, editable chat prompt —
   implemented
