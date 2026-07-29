@@ -4,7 +4,8 @@
 
 **Base release:** 0.59.0
 
-**Status:** Selected by Milestone 62; awaiting explicit owner approval
+**Status:** Approved by the owner on 30 July 2026; implemented for release
+0.63.0
 
 ## User outcome
 
@@ -76,12 +77,12 @@ Example:
   failure messaging, and no-selection regression on Windows; and
 - architecture and engineering completion reviews find no release blocker.
 
-## Approval required
+## Approval record
 
-Implementation may begin only after the owner explicitly approves:
+The owner explicitly approved:
 
 > Milestone 63 - Explicit Local Document Context
 
-Approval authorizes only the scope above. It does not authorize semantic
+That approval authorized only the scope above. It did not authorize semantic
 search, broad document memory, voice, remote access, plugins, agents,
 automation, or external providers.

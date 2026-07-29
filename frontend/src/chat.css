@@ -825,6 +825,79 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
 
+.document-selector {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 5px;
+  padding: 2px 4px 8px;
+  color: #a6b3ac;
+  font-size: 0.7rem;
+}
+
+.document-selector select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  color: #edf1ed;
+  border: 1px solid #68736d;
+  border-radius: 9px;
+  outline: none;
+  background: #090c0b;
+  font: inherit;
+}
+
+.document-selector select:focus {
+  border-color: #8bf6b8;
+  box-shadow: 0 0 0 3px rgba(139, 246, 184, 0.1);
+}
+
+.document-sources {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #50695c;
+  border-radius: 10px;
+  background: #0b1710;
+}
+
+.document-sources > span {
+  color: #8bf6b8;
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.document-sources ul {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.document-sources li {
+  display: flex;
+  gap: 9px;
+}
+
+.document-sources code {
+  color: #8bf6b8;
+}
+
+.document-sources li div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.document-sources strong,
+.document-sources small {
+  overflow-wrap: anywhere;
+}
+
+.document-sources small {
+  color: #9eaaa3;
+  font-size: 0.68rem;
+}
+
 .chat-composer:focus-within {
   border-color: #8bf6b8;
   box-shadow: 0 0 0 3px rgba(139, 246, 184, 0.1);

@@ -311,7 +311,8 @@ The selection and reviews are recorded in:
 
 ## Milestone 63 — Explicit Local Document Context
 
-**Status: selected proposal; awaiting explicit owner approval.**
+**Status (30 July 2026): implemented and independently verified for release
+0.63.0; protected-main integration and owner acceptance pending.**
 
 - Let the owner explicitly select one ready intake document for one chat turn
 - Revalidate current source path and SHA-256 before use
@@ -321,6 +322,14 @@ The selection and reviews are recorded in:
 - Preserve no-selection behavior and every existing safety boundary
 - Exclude semantic search, automatic retrieval, uploads, broad host access,
   tools, voice, remote access, plugins, agents, and automation
+- Backend, frontend, migration, privacy, stale-source, and no-selection
+  regression tests pass
+- Architecture and engineering completion reviews pass
+
+Completion evidence is recorded in:
+
+- `docs/milestone-63-architecture-review.md`
+- `docs/milestone-63-engineering-review.md`
 
 ## Later capabilities
 

@@ -468,6 +468,34 @@ def _knowledge_lifecycle_and_duplicates(connection: sqlite3.Connection) -> None:
     _execute_all(connection, statements)
 
 
+def _explicit_local_document_context(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS chat_message_document_sources (
+            message_id TEXT NOT NULL
+                REFERENCES chat_messages(id) ON DELETE CASCADE,
+            file_id TEXT NOT NULL,
+            citation_label TEXT NOT NULL,
+            position INTEGER NOT NULL CHECK (position >= 1),
+            title TEXT NOT NULL,
+            original_name TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            sha256 TEXT NOT NULL,
+            document_type TEXT,
+            character_count INTEGER NOT NULL CHECK (character_count >= 0),
+            PRIMARY KEY (message_id, file_id),
+            UNIQUE (message_id, citation_label),
+            UNIQUE (message_id, position)
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_chat_message_document_sources_message
+        ON chat_message_document_sources (message_id, position)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -486,6 +514,11 @@ MIGRATIONS: tuple[Migration, ...] = (
         14,
         "knowledge-lifecycle-and-duplicates",
         _knowledge_lifecycle_and_duplicates,
+    ),
+    Migration(
+        15,
+        "explicit-local-document-context",
+        _explicit_local_document_context,
     ),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version
