@@ -162,8 +162,15 @@ opens the exact approved record in the existing immutable lifecycle editor.
 Permanent knowledge still requires the owner to send the completed prompt and
 separately choose **Approve & save**.
 
-Chat still cannot browse the web, use tools, access intake documents, perform
-general document search, or take autonomous actions. Starting a conversation,
+Milestone 63 adds explicit, single-document context. The owner may select one
+currently indexed, ready intake document for one chat turn. The backend
+revalidates its intake boundary and SHA-256 before supplying at most 8,000
+UTF-8 bytes as untrusted `[D1]` reference data. Completed replies retain only
+source metadata for display; document text is not returned by selector or
+citation APIs. NOVA does not select documents automatically.
+
+Chat still cannot browse the web, use tools, perform semantic or general
+document search, or take autonomous actions. Starting a conversation,
 sending a message, and reviewing a knowledge proposal require the same local
 browser-intent guard as other state-changing Nova requests. Stopping generation
 preserves only records that the backend had already committed; it never
@@ -490,5 +497,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 62 architecture review](docs/milestone-62-architecture-review.md)
 - [Milestone 62 engineering review](docs/milestone-62-engineering-review.md)
 - [Milestone 63 explicit document context proposal](docs/milestone-63-explicit-document-context-proposal.md)
+- [Milestone 63 architecture review](docs/milestone-63-architecture-review.md)
+- [Milestone 63 engineering review](docs/milestone-63-engineering-review.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

@@ -11,6 +11,7 @@ from app.api.dependencies import require_local_action
 from app.schemas.chat import (
     ChatConversation,
     ChatConversationSummary,
+    ChatDocumentOption,
     ChatModel,
     CreateConversationRequest,
     SendChatMessageRequest,
@@ -18,6 +19,7 @@ from app.schemas.chat import (
 from app.services.chat import (
     ChatNotFoundError,
     ChatService,
+    DocumentContextError,
     KnowledgeSourceRecord,
     LocalModelProviderError,
 )
@@ -38,6 +40,12 @@ async def list_models(request: Request) -> list[ChatModel]:
     except LocalModelProviderError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     return [ChatModel(**asdict(record)) for record in records]
+
+
+@router.get("/documents", response_model=list[ChatDocumentOption])
+async def list_documents(request: Request) -> list[ChatDocumentOption]:
+    records = await asyncio.to_thread(_chat(request).list_context_documents)
+    return [ChatDocumentOption(**asdict(record)) for record in records]
 
 
 @router.get(
@@ -92,6 +100,12 @@ def send_message(
     _local_action: LocalAction,
 ) -> StreamingResponse:
     chat = _chat(request)
+    document = None
+    if payload.document_id is not None:
+        try:
+            document = chat.prepare_document_context(payload.document_id)
+        except DocumentContextError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
     try:
         user_message, history = chat.begin_turn(
             conversation_id,
@@ -111,6 +125,8 @@ def send_message(
         knowledge_checked = True
     except KnowledgeRetrievalError as error:
         knowledge_warnings.append(str(error))
+    if document is not None:
+        history = chat.add_document_context(history, document)
     try:
         request.app.state.knowledge.propose_from_message(user_message)
     except KnowledgeProposalError as error:
@@ -123,6 +139,11 @@ def send_message(
                 "knowledge",
                 checked=True,
                 sources=[asdict(source) for source in knowledge_sources],
+            )
+        if document is not None:
+            yield _event(
+                "document",
+                source=asdict(document.source),
             )
         for knowledge_warning in knowledge_warnings:
             yield _event("knowledge_warning", message=knowledge_warning)
@@ -137,6 +158,9 @@ def send_message(
                 payload.model,
                 knowledge_checked=knowledge_checked,
                 sources=knowledge_sources,
+                document_sources=(
+                    [document.source] if document is not None else []
+                ),
             )
             yield _event("done", message=asdict(assistant))
         except LocalModelProviderError as error:

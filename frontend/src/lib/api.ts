@@ -26,6 +26,7 @@ export interface ChatMessage {
   created_at: string;
   knowledge_checked: boolean;
   sources: ChatKnowledgeSource[];
+  document_sources: ChatDocumentSource[];
 }
 
 export interface ChatKnowledgeSource {
@@ -37,6 +38,28 @@ export interface ChatKnowledgeSource {
   relative_path: string;
   sha256: string;
   score: number;
+}
+
+export interface ChatDocumentOption {
+  file_id: string;
+  title: string;
+  original_name: string;
+  relative_path: string;
+  sha256: string;
+  document_type: string | null;
+  character_count: number;
+  understood_at: string;
+}
+
+export interface ChatDocumentSource {
+  file_id: string;
+  citation_label: string;
+  title: string;
+  original_name: string;
+  relative_path: string;
+  sha256: string;
+  document_type: string | null;
+  character_count: number;
 }
 
 export interface ChatConversationSummary {
@@ -61,6 +84,7 @@ export type ChatStreamEvent =
       checked: true;
       sources: ChatKnowledgeSource[];
     }
+  | { type: "document"; source: ChatDocumentSource }
   | { type: "knowledge_warning"; message: string }
   | { type: "error"; message: string };
 
@@ -373,6 +397,12 @@ export async function getChatModels(
   return request<ChatModel[]>("/api/v1/chat/models", { signal });
 }
 
+export async function getChatDocuments(
+  signal?: AbortSignal,
+): Promise<ChatDocumentOption[]> {
+  return request<ChatDocumentOption[]>("/api/v1/chat/documents", { signal });
+}
+
 export async function getChatConversations(
   signal?: AbortSignal,
 ): Promise<ChatConversationSummary[]> {
@@ -407,6 +437,7 @@ export async function streamChatMessage(
   content: string,
   onEvent: (event: ChatStreamEvent) => void,
   signal?: AbortSignal,
+  documentId?: string,
 ): Promise<void> {
   const response = await fetch(
     `${API_URL}/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/messages`,
@@ -416,7 +447,11 @@ export async function streamChatMessage(
         "Content-Type": "application/json",
         [LOCAL_ACTION_HEADER]: LOCAL_ACTION_VALUE,
       },
-      body: JSON.stringify({ model, content }),
+      body: JSON.stringify({
+        model,
+        content,
+        document_id: documentId || null,
+      }),
       signal,
     },
   );

@@ -61,6 +61,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await asyncio.to_thread(backups.initialize)
         chat = ChatService(
             database_path=resolved_settings.database_path,
+            intake_path=resolved_settings.intake_path,
             provider=OllamaProvider(
                 base_url=resolved_settings.ollama_base_url,
                 timeout_seconds=resolved_settings.ollama_timeout_seconds,

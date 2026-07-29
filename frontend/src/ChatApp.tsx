@@ -11,6 +11,7 @@ import {
   createChatConversation,
   getChatConversation,
   getChatConversations,
+  getChatDocuments,
   getChatModels,
   getKnowledgeCandidates,
   getKnowledgeQuality,
@@ -19,6 +20,8 @@ import {
   streamChatMessage,
   updateKnowledgeRecord,
   type ChatConversationSummary,
+  type ChatDocumentOption,
+  type ChatDocumentSource,
   type ChatKnowledgeSource,
   type ChatMessage,
   type ChatModel,
@@ -33,7 +36,13 @@ import {
 
 type DraftMessage = Pick<
   ChatMessage,
-  "id" | "role" | "content" | "model" | "knowledge_checked" | "sources"
+  | "id"
+  | "role"
+  | "content"
+  | "model"
+  | "knowledge_checked"
+  | "sources"
+  | "document_sources"
 >;
 
 const KNOWLEDGE_PROMPT_STARTERS: Record<string, string> = {
@@ -60,6 +69,8 @@ const KNOWLEDGE_PROMPT_STARTERS: Record<string, string> = {
 function ChatApp() {
   const [models, setModels] = useState<ChatModel[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
+  const [documents, setDocuments] = useState<ChatDocumentOption[]>([]);
+  const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<DraftMessage[]>([]);
@@ -128,6 +139,7 @@ function ChatApp() {
     const controller = new AbortController();
     Promise.allSettled([
       getChatModels(controller.signal),
+      getChatDocuments(controller.signal),
       getChatConversations(controller.signal),
       getKnowledgeCandidates("pending", controller.signal),
       getKnowledgeRecords(controller.signal),
@@ -136,6 +148,7 @@ function ChatApp() {
       .then(
         async ([
           modelResult,
+          documentResult,
           conversationResult,
           knowledgeResult,
           recordResult,
@@ -148,6 +161,11 @@ function ChatApp() {
           setSelectedModel(modelResult.value[0]?.name ?? "");
         } else {
           failures.push(errorMessage(modelResult.reason));
+        }
+        if (documentResult.status === "fulfilled") {
+          setDocuments(documentResult.value);
+        } else {
+          failures.push(errorMessage(documentResult.reason));
         }
         if (conversationResult.status === "fulfilled") {
           setConversations(conversationResult.value);
@@ -229,6 +247,7 @@ function ChatApp() {
     abortRef.current = controller;
     let conversationId: string | null = null;
     let knowledgeWarning: string | null = null;
+    const documentId = selectedDocumentId;
     draftIdRef.current += 1;
     const userId = `draft-user-${draftIdRef.current}`;
     const assistantId = `draft-assistant-${draftIdRef.current}`;
@@ -243,6 +262,7 @@ function ChatApp() {
           model: selectedModel,
           knowledge_checked: false,
           sources: [],
+          document_sources: [],
         },
         {
           id: assistantId,
@@ -251,6 +271,7 @@ function ChatApp() {
           model: selectedModel,
           knowledge_checked: false,
           sources: [],
+          document_sources: [],
         },
       ]);
       await streamChatMessage(
@@ -265,7 +286,9 @@ function ChatApp() {
           handleStreamEvent(streamEvent, assistantId);
         },
         controller.signal,
+        documentId || undefined,
       );
+      setSelectedDocumentId("");
       await Promise.all([
         openConversation(conversationId),
         refreshConversations(),
@@ -316,6 +339,18 @@ function ChatApp() {
                 ...message,
                 knowledge_checked: event.checked,
                 sources: event.sources,
+              }
+            : message,
+        ),
+      );
+    }
+    if (event.type === "document") {
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantId
+            ? {
+                ...message,
+                document_sources: [event.source],
               }
             : message,
         ),
@@ -499,7 +534,7 @@ function ChatApp() {
         <section className="chat-stage" aria-labelledby="chat-title">
           <header className="chat-heading">
             <div>
-              <p className="eyebrow">Milestone 59 · Guided Onboarding</p>
+              <p className="eyebrow">Milestone 63 · Explicit Document Context</p>
               <h2 id="chat-title">Talk with Nova.</h2>
             </div>
             <label>
@@ -554,6 +589,10 @@ function ChatApp() {
                     </p>
                     {message.role === "assistant" && message.knowledge_checked ? (
                       <KnowledgeSources sources={message.sources} />
+                    ) : null}
+                    {message.role === "assistant" &&
+                    message.document_sources?.length ? (
+                      <DocumentSources sources={message.document_sources} />
                     ) : null}
                   </div>
                 </article>
@@ -635,6 +674,22 @@ function ChatApp() {
           {notice ? <p className="chat-notice" role="status">{notice}</p> : null}
 
           <form className="chat-composer" onSubmit={handleSend}>
+            <label className="document-selector" htmlFor="chat-document">
+              <span>Local document for this turn</span>
+              <select
+                id="chat-document"
+                value={selectedDocumentId}
+                onChange={(event) => setSelectedDocumentId(event.target.value)}
+                disabled={generating}
+              >
+                <option value="">None selected</option>
+                {documents.map((document) => (
+                  <option key={document.file_id} value={document.file_id}>
+                    {document.original_name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="sr-only" htmlFor="chat-message">Message Nova</label>
             <textarea
               ref={composerRef}
@@ -669,10 +724,11 @@ function ChatApp() {
             )}
           </form>
           <p className="chat-boundary">
-            Retrieval uses active, approved local records only. Updates create
-            immutable revisions; retirement never deletes a knowledge file.
-            Tools, web access, autonomous actions, and general document search
-            remain disabled.
+            Retrieval uses active, approved local records only. Select at most
+            one indexed local document for one turn. Nova revalidates its
+            fingerprint before use and stores citation metadata, not a
+            browser-accessible copy. Automatic retrieval, tools, web access,
+            and autonomous actions remain disabled.
           </p>
         </section>
       </div>
@@ -871,6 +927,26 @@ function KnowledgeSources({ sources }: { sources: ChatKnowledgeSource[] }) {
             <div>
               <strong>{source.title}</strong>
               <small>{source.relative_path}</small>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function DocumentSources({ sources }: { sources: ChatDocumentSource[] }) {
+  return (
+    <section className="document-sources" aria-label="Selected local document source">
+      <span>Selected local document</span>
+      <ul>
+        {sources.map((source) => (
+          <li key={source.file_id}>
+            <code>[{source.citation_label}]</code>
+            <div>
+              <strong>{source.title}</strong>
+              <small>{source.relative_path}</small>
+              <small>SHA-256 {source.sha256.slice(0, 12)}…</small>
             </div>
           </li>
         ))}

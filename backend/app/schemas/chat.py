@@ -21,6 +21,28 @@ class ChatKnowledgeSource(BaseModel):
     score: float
 
 
+class ChatDocumentOption(BaseModel):
+    file_id: str
+    title: str
+    original_name: str
+    relative_path: str
+    sha256: str
+    document_type: str | None
+    character_count: int
+    understood_at: datetime
+
+
+class ChatDocumentSource(BaseModel):
+    file_id: str
+    citation_label: str
+    title: str
+    original_name: str
+    relative_path: str
+    sha256: str
+    document_type: str | None
+    character_count: int
+
+
 class ChatMessage(BaseModel):
     id: str
     conversation_id: str
@@ -30,6 +52,7 @@ class ChatMessage(BaseModel):
     created_at: datetime
     knowledge_checked: bool = False
     sources: list[ChatKnowledgeSource] = Field(default_factory=list)
+    document_sources: list[ChatDocumentSource] = Field(default_factory=list)
 
 
 class ChatConversationSummary(BaseModel):
@@ -52,3 +75,4 @@ class CreateConversationRequest(BaseModel):
 class SendChatMessageRequest(BaseModel):
     model: str = Field(min_length=1, max_length=200)
     content: str = Field(min_length=1, max_length=20_000)
+    document_id: str | None = Field(default=None, min_length=1, max_length=200)

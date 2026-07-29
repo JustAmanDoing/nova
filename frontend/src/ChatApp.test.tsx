@@ -23,6 +23,17 @@ const knowledgeSource = {
   score: 1,
 };
 
+const documentSource = {
+  file_id: "file-1",
+  citation_label: "D1",
+  title: "Delivery note",
+  original_name: "delivery.txt",
+  relative_path: "delivery.txt",
+  sha256: "d".repeat(64),
+  document_type: "text",
+  character_count: 31,
+};
+
 const knowledgeRecord = {
   id: "record-1",
   candidate_id: "candidate-1",
@@ -144,6 +155,16 @@ describe("ChatApp", () => {
             ]),
           );
         }
+        if (url.endsWith("/chat/documents")) {
+          return Promise.resolve(
+            jsonResponse([
+              {
+                ...documentSource,
+                understood_at: "2026-07-28T09:00:00Z",
+              },
+            ]),
+          );
+        }
         if (url.endsWith("/knowledge/quality")) {
           return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
@@ -154,7 +175,9 @@ describe("ChatApp", () => {
     render(<ChatApp />);
 
     expect(await screen.findByText("Local AI ready")).toBeInTheDocument();
-    expect(screen.getByRole("combobox")).toHaveValue("qwen3:8b");
+    expect(screen.getByRole("combobox", { name: "Local model" })).toHaveValue(
+      "qwen3:8b",
+    );
     expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
     expect(
       screen.getByText(/A suggestion is never permanent/),
@@ -182,6 +205,16 @@ describe("ChatApp", () => {
             ]),
           );
         }
+        if (url.endsWith("/chat/documents")) {
+          return Promise.resolve(
+            jsonResponse([
+              {
+                ...documentSource,
+                understood_at: "2026-07-28T09:00:00Z",
+              },
+            ]),
+          );
+        }
         if (url.endsWith("/knowledge/quality")) {
           return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
@@ -199,6 +232,9 @@ describe("ChatApp", () => {
           url.endsWith("/chat/conversations/conversation-1/messages") &&
           init?.method === "POST"
         ) {
+          expect(JSON.parse(String(init.body))).toMatchObject({
+            document_id: documentSource.file_id,
+          });
           turnCompleted = true;
           return Promise.resolve(
             new Response(
@@ -219,6 +255,10 @@ describe("ChatApp", () => {
                   checked: true,
                   sources: [knowledgeSource],
                 }),
+                JSON.stringify({
+                  type: "document",
+                  source: documentSource,
+                }),
                 JSON.stringify({ type: "delta", content: "Hello " }),
                 JSON.stringify({ type: "delta", content: "from Nova." }),
                 JSON.stringify({
@@ -232,6 +272,7 @@ describe("ChatApp", () => {
                     created_at: "2026-07-28T09:01:01Z",
                     knowledge_checked: true,
                     sources: [knowledgeSource],
+                    document_sources: [documentSource],
                   },
                 }),
                 "",
@@ -260,6 +301,7 @@ describe("ChatApp", () => {
                       created_at: "2026-07-28T09:01:00Z",
                       knowledge_checked: false,
                       sources: [],
+                      document_sources: [],
                     },
                     {
                       id: "assistant-1",
@@ -270,6 +312,7 @@ describe("ChatApp", () => {
                       created_at: "2026-07-28T09:01:01Z",
                       knowledge_checked: true,
                       sources: [knowledgeSource],
+                      document_sources: [documentSource],
                     },
                   ]
                 : [],
@@ -292,6 +335,12 @@ describe("ChatApp", () => {
 
     render(<ChatApp />);
 
+    const documentSelector = await screen.findByRole("combobox", {
+      name: "Local document for this turn",
+    });
+    fireEvent.change(documentSelector, {
+      target: { value: documentSource.file_id },
+    });
     const composer = await screen.findByRole("textbox", { name: "Message Nova" });
     fireEvent.change(composer, { target: { value: "Hello Nova" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
@@ -302,6 +351,9 @@ describe("ChatApp", () => {
     expect(screen.getByText("Approved knowledge")).toBeInTheDocument();
     expect(screen.getByText("[K1]")).toBeInTheDocument();
     expect(screen.getByText("Automated approval phrase")).toBeInTheDocument();
+    expect(screen.getByText("Selected local document")).toBeInTheDocument();
+    expect(screen.getByText("Delivery note")).toBeInTheDocument();
+    expect(screen.getByText("[D1]")).toBeInTheDocument();
     expect(
       screen.getByText("Facts/automated-approval-phrase.md"),
     ).toBeInTheDocument();

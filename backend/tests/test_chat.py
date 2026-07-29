@@ -50,6 +50,24 @@ class FailingProvider(FakeProvider):
         yield
 
 
+class DocumentProvider(FakeProvider):
+    def stream_chat(
+        self,
+        model: str,
+        messages: Sequence[dict[str, str]],
+    ) -> Iterator[str]:
+        assert model == "qwen3:8b"
+        assert messages[-1] == {"role": "user", "content": "What is the code?"}
+        context = next(
+            message["content"]
+            for message in messages
+            if "BEGIN UNTRUSTED LOCAL DOCUMENT D1" in message["content"]
+        )
+        assert "The delivery code is amber-42." in context
+        assert "Verified SHA-256:" in context
+        yield "The delivery code is amber-42 [D1]."
+
+
 def _application(tmp_path: Path):
     return create_app(
         Settings(
@@ -163,7 +181,101 @@ def test_provider_failure_is_streamed_without_inventing_reply(
             f"/api/v1/chat/conversations/{conversation_id}"
         ).json()
         assert conversation["message_count"] == 1
-        assert conversation["messages"][0]["role"] == "user"
+    assert conversation["messages"][0]["role"] == "user"
+
+
+def test_explicit_document_context_is_verified_used_and_cited(
+    tmp_path: Path,
+) -> None:
+    intake_path = tmp_path / "intake"
+    intake_path.mkdir()
+    document_path = intake_path / "delivery.txt"
+    document_path.write_text(
+        "The delivery code is amber-42.",
+        encoding="utf-8",
+    )
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = DocumentProvider()
+        documents = client.get("/api/v1/chat/documents")
+        assert documents.status_code == 200
+        assert len(documents.json()) == 1
+        document = documents.json()[0]
+        assert document["original_name"] == "delivery.txt"
+        assert "full_text" not in document
+        assert "content" not in document
+
+        created = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "New conversation"},
+        )
+        conversation_id = created.json()["id"]
+        response = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={
+                "model": "qwen3:8b",
+                "content": "What is the code?",
+                "document_id": document["file_id"],
+            },
+        )
+        assert response.status_code == 200
+        events = [json.loads(line) for line in response.text.splitlines()]
+        assert [event["type"] for event in events] == [
+            "user",
+            "knowledge",
+            "document",
+            "delta",
+            "done",
+        ]
+        source = events[2]["source"]
+        assert source["citation_label"] == "D1"
+        assert source["original_name"] == "delivery.txt"
+        assert "content" not in source
+
+        conversation = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}"
+        ).json()
+        assistant = conversation["messages"][-1]
+        assert assistant["content"].endswith("[D1].")
+        assert assistant["document_sources"] == [source]
+        assert "content" not in assistant["document_sources"][0]
+
+
+def test_document_change_is_rejected_before_user_message_is_saved(
+    tmp_path: Path,
+) -> None:
+    intake_path = tmp_path / "intake"
+    intake_path.mkdir()
+    document_path = intake_path / "mutable.txt"
+    document_path.write_text("Original verified text.", encoding="utf-8")
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        document_id = client.get("/api/v1/chat/documents").json()[0]["file_id"]
+        created = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "New conversation"},
+        )
+        conversation_id = created.json()["id"]
+        document_path.write_text("Changed after indexing.", encoding="utf-8")
+
+        response = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={
+                "model": "qwen3:8b",
+                "content": "Use this document",
+                "document_id": document_id,
+            },
+        )
+        assert response.status_code == 409
+        assert "changed after indexing" in response.json()["detail"]
+        conversation = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}"
+        ).json()
+        assert conversation["message_count"] == 0
 
 
 def test_ollama_provider_lists_models_and_streams_chunks(
