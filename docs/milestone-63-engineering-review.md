@@ -4,7 +4,7 @@
 
 **Release candidate:** 0.63.0
 
-**Decision:** Pass pending protected-main CI and Windows owner acceptance
+**Decision:** Pass; protected-main CI and Windows acceptance completed
 
 ## Implemented
 
@@ -29,8 +29,23 @@
   metadata survives conversation reload.
 - Repository whitespace validation passes.
 
-## Remaining release gate
+## Release evidence
 
-Protected pull-request checks, production-container verification, installation
-from the accepted merge, and owner confirmation on the Windows host remain
-required before the release is tagged.
+- Pull request 4 passed backend, frontend, Windows-control, and isolated
+  production-runtime checks on exact head
+  `10f64c8176c4ce159ea04cd67c028936a04fc67b`.
+- Pull request 4 was merged with merge commit
+  `618db48b8a655fdb054d9ff7bb34079814a1860a`.
+- The same four checks passed again on protected `main`.
+- A verified database backup and knowledge snapshot were created before
+  installation.
+- The Windows-host runtime reports release 0.63.0 and exposes only loopback
+  ports.
+- Live acceptance selected `ci-smoke-invoice.txt` for one turn, returned the
+  exact invoice number and total, cited `[D1]`, and retained the verified source
+  metadata after conversation reload.
+- The browser interface displayed the Milestone 63 selector, the response, and
+  the separate `[D1]` source card.
+
+No release blocker remains. Semantic search, automatic retrieval, uploads,
+tools, web access, autonomous actions, and external providers remain excluded.

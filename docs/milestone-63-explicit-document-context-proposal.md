@@ -4,8 +4,8 @@
 
 **Base release:** 0.59.0
 
-**Status:** Approved by the owner on 30 July 2026; implemented for release
-0.63.0
+**Status:** Complete on 30 July 2026; implemented, integrated through protected
+`main`, installed, and accepted as release 0.63.0
 
 ## User outcome
 

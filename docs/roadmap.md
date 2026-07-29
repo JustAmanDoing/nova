@@ -311,8 +311,8 @@ The selection and reviews are recorded in:
 
 ## Milestone 63 — Explicit Local Document Context
 
-**Status (30 July 2026): implemented and independently verified for release
-0.63.0; protected-main integration and owner acceptance pending.**
+**Status (30 July 2026): complete; release 0.63.0 integrated, installed, and
+accepted on the Windows host.**
 
 - Let the owner explicitly select one ready intake document for one chat turn
 - Revalidate current source path and SHA-256 before use
@@ -330,6 +330,19 @@ Completion evidence is recorded in:
 
 - `docs/milestone-63-architecture-review.md`
 - `docs/milestone-63-engineering-review.md`
+- `docs/milestone-63-release-report.md`
+
+## Milestone 64 — Evidence-Led Next Capability Selection
+
+**Status (30 July 2026): next; proposal and review only. Runtime scope is not
+approved.**
+
+- Review Milestone 63 evidence and current owner priorities
+- Rank bounded next-capability candidates
+- Preserve local-first, privacy, owner-control, and modular-monolith rules
+- Produce architecture and engineering reviews before requesting runtime
+  approval
+- Do not implement a new runtime capability without explicit owner approval
 
 ## Later capabilities
 
