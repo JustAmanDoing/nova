@@ -181,3 +181,17 @@ Knowledge snapshot:
 SHA-256:
 
 `c3bfc4e4dab9a981068caba7f93f0d76f80a25f1242640b912eadd39194a9942`
+
+## GitHub publication
+
+The verified cumulative branch was pushed to GitHub on 29 July 2026:
+
+`agent/milestone-59-guided-knowledge-onboarding`
+
+Draft pull request:
+
+`https://github.com/JustAmanDoing/nova/pull/1`
+
+Remote `main` remains unchanged at
+`210a39f88dc0acadb9ec2e12d0c4d4e8053cf687`. Review and merge remain separate
+from the accepted local installation.
