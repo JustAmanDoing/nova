@@ -28,12 +28,34 @@ import {
   type KnowledgeQualityReport,
   type KnowledgeRecord,
   type KnowledgeRecordLifecycleRequest,
+  type KnowledgeRequirementQuality,
 } from "./lib/api";
 
 type DraftMessage = Pick<
   ChatMessage,
   "id" | "role" | "content" | "model" | "knowledge_checked" | "sources"
 >;
+
+const KNOWLEDGE_PROMPT_STARTERS: Record<string, string> = {
+  "preferred-name": "Remember that my name is ",
+  "response-style": "Remember that I prefer responses that ",
+  "current-goals": "Remember that my current goal is ",
+  "active-projects": "Remember that my active project is ",
+  "timezone-location": "Remember that my timezone or general location is ",
+  "work-context": "Remember that my work context or schedule is ",
+  "technology-environment":
+    "Remember that my main technology environment is ",
+  "household-context":
+    "Remember that the household context useful for planning is ",
+  "vehicle-context": "Remember that my vehicle context is ",
+  "home-responsibilities":
+    "Remember that my current home responsibility is ",
+  "financial-goals": "Remember that my high-level financial goal is ",
+  "health-preferences":
+    "Remember that my health or dietary preference is ",
+  "emergency-plan":
+    "Remember that my emergency plan or contact process is ",
+};
 
 function ChatApp() {
   const [models, setModels] = useState<ChatModel[]>([]);
@@ -54,9 +76,15 @@ function ChatApp() {
   const [knowledgeQualityError, setKnowledgeQualityError] =
     useState<string | null>(null);
   const [snapshotting, setSnapshotting] = useState(false);
+  const [reviewRequest, setReviewRequest] = useState<{
+    recordId: string;
+    requestId: number;
+  } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const draftIdRef = useRef(0);
+  const reviewRequestIdRef = useRef(0);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
   const refreshConversations = useCallback(async () => {
     const records = await getChatConversations();
@@ -346,6 +374,7 @@ function ChatApp() {
         refreshKnowledgeRecords(),
         refreshKnowledgeQuality(),
       ]);
+      setReviewRequest(null);
       setNotice(
         record.status === "retired"
           ? `Retired ${record.title}. Its files and history were retained.`
@@ -354,6 +383,38 @@ function ChatApp() {
     } catch (error: unknown) {
       setNotice(errorMessage(error));
     }
+  }
+
+  function handlePrepareKnowledge(requirement: KnowledgeRequirementQuality) {
+    setDraft(
+      KNOWLEDGE_PROMPT_STARTERS[requirement.id] ??
+        `Remember that ${requirement.title.toLowerCase()} is `,
+    );
+    setNotice(
+      `Prepared an editable prompt for ${requirement.title}. ` +
+        "Nothing has been sent or saved.",
+    );
+    window.requestAnimationFrame(() => composerRef.current?.focus());
+  }
+
+  function handleReviewKnowledge(requirement: KnowledgeRequirementQuality) {
+    const recordId = requirement.matched_record_ids[0];
+    if (!recordId) {
+      setNotice(
+        `NOVA could not find the approved record for ${requirement.title}. ` +
+          "No change was made.",
+      );
+      return;
+    }
+    reviewRequestIdRef.current += 1;
+    setReviewRequest({
+      recordId,
+      requestId: reviewRequestIdRef.current,
+    });
+    setNotice(
+      `Opened the approved record for ${requirement.title}. ` +
+        "Review it before choosing whether to save a new revision.",
+    );
   }
 
   async function handleKnowledgeSnapshot() {
@@ -438,7 +499,7 @@ function ChatApp() {
         <section className="chat-stage" aria-labelledby="chat-title">
           <header className="chat-heading">
             <div>
-              <p className="eyebrow">Milestone 58 · Knowledge Quality</p>
+              <p className="eyebrow">Milestone 59 · Guided Onboarding</p>
               <h2 id="chat-title">Talk with Nova.</h2>
             </div>
             <label>
@@ -524,6 +585,9 @@ function ChatApp() {
           <KnowledgeHealth
             report={knowledgeQuality}
             error={knowledgeQualityError}
+            actionsDisabled={generating}
+            onPrepare={handlePrepareKnowledge}
+            onReview={handleReviewKnowledge}
           />
 
           <section className="knowledge-library" aria-labelledby="library-title">
@@ -553,6 +617,11 @@ function ChatApp() {
                     key={record.id}
                     record={record}
                     onLifecycle={handleKnowledgeLifecycle}
+                    reviewRequestId={
+                      reviewRequest?.recordId === record.id
+                        ? reviewRequest.requestId
+                        : null
+                    }
                   />
                 ))}
               </div>
@@ -568,6 +637,7 @@ function ChatApp() {
           <form className="chat-composer" onSubmit={handleSend}>
             <label className="sr-only" htmlFor="chat-message">Message Nova</label>
             <textarea
+              ref={composerRef}
               id="chat-message"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -615,9 +685,15 @@ export default ChatApp;
 function KnowledgeHealth({
   report,
   error,
+  actionsDisabled,
+  onPrepare,
+  onReview,
 }: {
   report: KnowledgeQualityReport | null;
   error: string | null;
+  actionsDisabled: boolean;
+  onPrepare: (requirement: KnowledgeRequirementQuality) => void;
+  onReview: (requirement: KnowledgeRequirementQuality) => void;
 }) {
   if (error) {
     return (
@@ -725,6 +801,12 @@ function KnowledgeHealth({
                   </span>
                 </div>
                 <p>{requirement.suggestion}</p>
+                {requirement.status === "stale" &&
+                requirement.matched_record_titles[0] ? (
+                  <p className="knowledge-gap-record">
+                    Approved record: {requirement.matched_record_titles[0]}
+                  </p>
+                ) : null}
                 <span
                   className="knowledge-gap-priority"
                   aria-label={`Priority ${requirement.priority} of 5`}
@@ -734,6 +816,29 @@ function KnowledgeHealth({
                     {"☆".repeat(5 - requirement.priority)}
                   </span>
                 </span>
+                <button
+                  type="button"
+                  className="knowledge-gap-action"
+                  aria-label={
+                    requirement.status === "stale"
+                      ? `Review ${requirement.title} record`
+                      : `Add ${requirement.title} through chat`
+                  }
+                  disabled={
+                    actionsDisabled ||
+                    (requirement.status === "stale" &&
+                      !requirement.matched_record_ids[0])
+                  }
+                  onClick={() =>
+                    requirement.status === "stale"
+                      ? onReview(requirement)
+                      : onPrepare(requirement)
+                  }
+                >
+                  {requirement.status === "stale"
+                    ? "Review record"
+                    : "Add through chat"}
+                </button>
               </li>
             ))}
           </ol>
@@ -931,12 +1036,14 @@ function KnowledgeCandidateCard({
 function KnowledgeRecordCard({
   record,
   onLifecycle,
+  reviewRequestId,
 }: {
   record: KnowledgeRecord;
   onLifecycle: (
     recordId: string,
     lifecycle: KnowledgeRecordLifecycleRequest,
   ) => Promise<void>;
+  reviewRequestId: number | null;
 }) {
   const [kind, setKind] = useState<KnowledgeKind>(record.kind);
   const [title, setTitle] = useState(record.title);
@@ -944,11 +1051,19 @@ function KnowledgeRecordCard({
   const [retireConfirmation, setRetireConfirmation] = useState("");
   const [separateConfirmed, setSeparateConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  const titleRef = useRef<HTMLInputElement | null>(null);
   const retirePhrase = `RETIRE ${record.id.slice(0, 8)}`;
   const changed =
     kind !== record.kind ||
     title.trim() !== record.title ||
     content.trim() !== record.content;
+
+  useEffect(() => {
+    if (reviewRequestId === null || !detailsRef.current) return;
+    detailsRef.current.open = true;
+    titleRef.current?.focus();
+  }, [reviewRequestId]);
 
   async function applyLifecycle(lifecycle: KnowledgeRecordLifecycleRequest) {
     setSaving(true);
@@ -960,7 +1075,10 @@ function KnowledgeRecordCard({
   }
 
   return (
-    <details className={`knowledge-record ${record.status}`}>
+    <details
+      className={`knowledge-record ${record.status}`}
+      ref={detailsRef}
+    >
       <summary>
         <span>
           <strong>{record.title}</strong>
@@ -992,6 +1110,7 @@ function KnowledgeRecordCard({
               <label>
                 <span>Title</span>
                 <input
+                  ref={titleRef}
                   value={title}
                   maxLength={120}
                   onChange={(event) => setTitle(event.target.value)}

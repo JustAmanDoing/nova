@@ -115,6 +115,10 @@ beforeEach(() => {
     configurable: true,
     value: vi.fn(),
   });
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  });
 });
 
 afterEach(() => {
@@ -928,5 +932,163 @@ describe("ChatApp", () => {
       screen.getByText(/Chat and approved knowledge remain usable/),
     ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message Nova" })).toBeEnabled();
+  });
+
+  it("prepares an editable missing-knowledge prompt without sending or saving", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/chat/models")) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              name: "qwen3:8b",
+              size_bytes: 5_200_000_000,
+              parameter_size: "8.2B",
+              quantization_level: "Q4_K_M",
+            },
+          ]),
+        );
+      }
+      if (url.endsWith("/chat/conversations")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.endsWith("/knowledge/candidates?status=pending")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.endsWith("/knowledge/records")) {
+        return Promise.resolve(jsonResponse([knowledgeRecord]));
+      }
+      if (url.endsWith("/knowledge/quality")) {
+        return Promise.resolve(jsonResponse(knowledgeQualityReport));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    const addButton = await screen.findByRole("button", {
+      name: "Add Current goals through chat",
+    });
+    const callsBeforeClick = fetchMock.mock.calls.length;
+    fireEvent.click(addButton);
+
+    const composer = screen.getByRole("textbox", { name: "Message Nova" });
+    expect(composer).toHaveValue("Remember that my current goal is ");
+    expect(composer).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Nothing has been sent or saved.",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(callsBeforeClick);
+  });
+
+  it("preserves optional status while preparing an optional prompt", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/chat/models")) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              name: "qwen3:8b",
+              size_bytes: 5_200_000_000,
+              parameter_size: "8.2B",
+              quantization_level: "Q4_K_M",
+            },
+          ]),
+        );
+      }
+      if (url.endsWith("/chat/conversations")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.endsWith("/knowledge/candidates?status=pending")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.endsWith("/knowledge/records")) {
+        return Promise.resolve(jsonResponse([knowledgeRecord]));
+      }
+      if (url.endsWith("/knowledge/quality")) {
+        return Promise.resolve(jsonResponse(knowledgeQualityReport));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    const addButton = await screen.findByRole("button", {
+      name: "Add Emergency plan through chat",
+    });
+    fireEvent.click(addButton);
+
+    expect(screen.getByText("Optional")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message Nova" })).toHaveValue(
+      "Remember that my emergency plan or contact process is ",
+    );
+  });
+
+  it("opens the exact approved record when a review is due", async () => {
+    const staleQualityReport = {
+      ...knowledgeQualityReport,
+      requirements: knowledgeQualityReport.requirements.map((requirement) =>
+        requirement.id === "current-goals"
+          ? {
+              ...requirement,
+              status: "stale",
+              last_reviewed: "2025-01-01T00:00:00Z",
+              matched_record_ids: [knowledgeRecord.id],
+              matched_record_titles: [knowledgeRecord.title],
+            }
+          : requirement,
+      ),
+    };
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = input.toString();
+      if (url.endsWith("/chat/models")) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              name: "qwen3:8b",
+              size_bytes: 5_200_000_000,
+              parameter_size: "8.2B",
+              quantization_level: "Q4_K_M",
+            },
+          ]),
+        );
+      }
+      if (url.endsWith("/chat/conversations")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.endsWith("/knowledge/candidates?status=pending")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.endsWith("/knowledge/records")) {
+        return Promise.resolve(jsonResponse([knowledgeRecord]));
+      }
+      if (url.endsWith("/knowledge/quality")) {
+        return Promise.resolve(jsonResponse(staleQualityReport));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    expect(
+      await screen.findByText(
+        `Approved record: ${knowledgeRecord.title}`,
+      ),
+    ).toBeInTheDocument();
+    const callsBeforeClick = fetchMock.mock.calls.length;
+    fireEvent.click(
+      screen.getByRole("button", { name: "Review Current goals record" }),
+    );
+
+    const titleInput = screen.getByDisplayValue(knowledgeRecord.title);
+    expect(titleInput.closest("details")).toHaveAttribute("open");
+    expect(titleInput).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Review it before choosing whether to save a new revision.",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(callsBeforeClick);
   });
 });

@@ -495,6 +495,10 @@
   line-height: 1.4;
 }
 
+.knowledge-gaps li .knowledge-gap-record {
+  color: #c3cec8;
+}
+
 .knowledge-gap-scope,
 .knowledge-gap-status {
   flex: none;
@@ -526,6 +530,29 @@
   color: #f0c66e;
   font-size: 0.76rem;
   letter-spacing: 1px;
+}
+
+.knowledge-gap-action {
+  grid-column: 2;
+  justify-self: end;
+  padding: 7px 10px;
+  color: #07110b;
+  border: 1px solid #8bf6b8;
+  border-radius: 999px;
+  background: #8bf6b8;
+  font-size: 0.68rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.knowledge-gap-action:hover:not(:disabled),
+.knowledge-gap-action:focus-visible {
+  background: #a7fac8;
+}
+
+.knowledge-gap-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .knowledge-health-complete {
@@ -929,6 +956,11 @@
   .knowledge-gap-priority {
     grid-row: auto;
     grid-column: 1;
+  }
+
+  .knowledge-gap-action {
+    grid-column: 1;
+    justify-self: start;
   }
 
   .knowledge-content {

@@ -155,6 +155,13 @@ matching rules are published in source. Optional opportunities never lower
 core coverage. The report scores NOVA's knowledge capability, not the owner,
 and it never saves, edits, retires, or uploads knowledge.
 
+Milestone 59 makes those suggestions actionable without adding another
+knowledge-writing path. **Add through chat** prepares a focused, editable
+starter in the composer but never sends or saves it. A review-due suggestion
+opens the exact approved record in the existing immutable lifecycle editor.
+Permanent knowledge still requires the owner to send the completed prompt and
+separately choose **Approve & save**.
+
 Chat still cannot browse the web, use tools, access intake documents, perform
 general document search, or take autonomous actions. Starting a conversation,
 sending a message, and reviewing a knowledge proposal require the same local
@@ -469,5 +476,8 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 58 architecture review](docs/milestone-58-architecture-review.md)
 - [Milestone 58 engineering review](docs/milestone-58-engineering-review.md)
 - [Milestone 59 guided knowledge onboarding proposal](docs/milestone-59-guided-knowledge-onboarding-proposal.md)
+- [Milestone 59 guided knowledge onboarding](docs/milestone-59-guided-knowledge-onboarding.md)
+- [Milestone 59 architecture review](docs/milestone-59-architecture-review.md)
+- [Milestone 59 engineering review](docs/milestone-59-engineering-review.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

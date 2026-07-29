@@ -4,7 +4,8 @@
 
 **Proposed base:** accepted Milestone 58 release 0.58.0
 
-**Status:** Awaiting explicit runtime approval
+**Status:** Approved by the owner on 29 July 2026; implemented on the protected
+Milestone 59 branch
 
 ## Purpose
 
@@ -105,7 +106,8 @@ expected.
 9. The complete automated and production verification matrix passes.
 10. Live Windows and owner acceptance pass before release completion.
 
-## Decision requested
+## Decision
 
-Approve or reject Milestone 59 runtime work as bounded above. Documentation and
-planning do not authorize implementation.
+The owner explicitly approved the bounded runtime work on 29 July 2026.
+Implementation remains subject to architecture, engineering, live Windows, and
+owner acceptance before the milestone is complete.

@@ -227,18 +227,24 @@ The method, evidence, and current decision are recorded in
 
 ## Milestone 59 — Guided Knowledge Onboarding
 
-**Status (29 July 2026): proposed; runtime work not approved or started.**
+**Status (29 July 2026): implemented; architecture and engineering review
+passed; owner acceptance pending.**
 
-- Turn a selected missing area into one focused, editable chat prompt
-- Never send a prompt or save knowledge from a suggestion click alone
-- Reuse the existing conversation, proposal, and approval workflow
-- Let review-due suggestions identify the matching approved record
-- Refresh Knowledge health after an approved update
-- Keep optional areas visibly optional
-- Preserve all local-only, owner-approval, and no-silent-memory boundaries
+- Turn a selected missing area into one focused, editable chat prompt —
+  implemented
+- Never send a prompt or save knowledge from a suggestion click alone —
+  verified
+- Reuse the existing conversation, proposal, and approval workflow —
+  implemented
+- Let review-due suggestions identify the matching approved record —
+  implemented
+- Refresh Knowledge health after an approved update — preserved
+- Keep optional areas visibly optional — verified
+- Preserve all local-only, owner-approval, and no-silent-memory boundaries —
+  verified
 
-The bounded proposal is recorded in
-`docs/milestone-59-guided-knowledge-onboarding-proposal.md`.
+The implementation and evidence are recorded in
+`docs/milestone-59-guided-knowledge-onboarding.md`.
 
 ## Later capabilities
 
