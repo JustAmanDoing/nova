@@ -141,6 +141,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  window.history.replaceState({}, "", "/chat.html");
 });
 
 describe("ChatApp", () => {
@@ -1154,5 +1155,99 @@ describe("ChatApp", () => {
       "Review it before choosing whether to save a new revision.",
     );
     expect(fetchMock).toHaveBeenCalledTimes(callsBeforeClick);
+  });
+
+  it("prepares a focus-page project prompt without sending or saving", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/chat.html?knowledge=active-projects",
+    );
+    let writeRequested = false;
+    const fetchMock = vi.fn((
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      if (init?.method === "POST") writeRequested = true;
+      const url = input.toString();
+      if (url.endsWith("/chat/models")) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              name: "qwen3:8b",
+              size_bytes: 5_200_000_000,
+              parameter_size: "8.2B",
+              quantization_level: "Q4_K_M",
+            },
+          ]),
+        );
+      }
+      if (url.endsWith("/knowledge/records")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.endsWith("/knowledge/quality")) {
+        return Promise.resolve(jsonResponse(knowledgeQualityReport));
+      }
+      return Promise.resolve(jsonResponse([]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    const composer = await screen.findByRole("textbox", {
+      name: "Message Nova",
+    });
+    await waitFor(() =>
+      expect(composer).toHaveValue("Remember that my active project is "),
+    );
+    expect(composer).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Nothing has been sent or saved.",
+    );
+    expect(writeRequested).toBe(false);
+  });
+
+  it("opens the exact approved record requested by the focus page", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      `/chat.html?record=${knowledgeRecord.id}`,
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) {
+          return Promise.resolve(
+            jsonResponse([
+              {
+                name: "qwen3:8b",
+                size_bytes: 5_200_000_000,
+                parameter_size: "8.2B",
+                quantization_level: "Q4_K_M",
+              },
+            ]),
+          );
+        }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([knowledgeRecord]));
+        }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
+        return Promise.resolve(jsonResponse([]));
+      }),
+    );
+
+    render(<ChatApp />);
+
+    const titleInput = await screen.findByDisplayValue(knowledgeRecord.title);
+    await waitFor(() =>
+      expect(titleInput.closest("details")).toHaveAttribute("open"),
+    );
+    expect(titleInput).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `Opened ${knowledgeRecord.title}.`,
+    );
   });
 });

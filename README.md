@@ -116,6 +116,7 @@ Open:
 
 - Nova: http://localhost:5173
 - Local chat: http://localhost:5173/chat.html
+- Projects and goals: http://localhost:5173/focus.html
 - API docs: http://localhost:8000/docs
 - API health: http://localhost:8000/api/v1/health
 
@@ -168,6 +169,19 @@ revalidates its intake boundary and SHA-256 before supplying at most 8,000
 UTF-8 bytes as untrusted `[D1]` reference data. Completed replies retain only
 source metadata for display; document text is not returned by selector or
 citation APIs. NOVA does not select documents automatically.
+
+Milestone 65 adds a separate read-only-first **Focus** page. It shows only
+active owner-approved `project` and `goal` knowledge whose local Markdown file
+still matches its recorded SHA-256. Projects and goals remain separate, and
+each card shows its revision, last update, and deterministic 90-day review
+state. An unverifiable record is excluded with a safe warning rather than
+displayed from stale database content.
+
+Empty sections link to the existing guided chat flow, which prepares an
+editable prompt without sending or saving it. Record review links open the
+existing immutable update and guarded retirement controls. The Focus page does
+not infer progress, priority, dates, deadlines, plans, tasks, or next actions,
+and it remains useful when Ollama is unavailable.
 
 Chat still cannot browse the web, use tools, perform semantic or general
 document search, or take autonomous actions. Starting a conversation,
@@ -504,5 +518,8 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 64 architecture review](docs/milestone-64-architecture-review.md)
 - [Milestone 64 engineering review](docs/milestone-64-engineering-review.md)
 - [Milestone 65 active projects and goals workspace proposal](docs/milestone-65-active-projects-goals-workspace-proposal.md)
+- [Milestone 65 implementation record](docs/milestone-65-implementation.md)
+- [Milestone 65 architecture review](docs/milestone-65-architecture-review.md)
+- [Milestone 65 engineering review](docs/milestone-65-engineering-review.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

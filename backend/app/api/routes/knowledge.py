@@ -11,6 +11,7 @@ from app.schemas.knowledge import (
     KnowledgeRecordLifecycleRequest,
     KnowledgeRecordResponse,
     KnowledgeSnapshotResponse,
+    PlanningOverviewResponse,
     ReviewKnowledgeCandidateRequest,
 )
 from app.services.knowledge import (
@@ -98,6 +99,12 @@ async def knowledge_quality(request: Request) -> KnowledgeQualityReportResponse:
     except KnowledgeRetrievalError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     return KnowledgeQualityReportResponse(**asdict(report))
+
+
+@router.get("/planning", response_model=PlanningOverviewResponse)
+async def planning_overview(request: Request) -> PlanningOverviewResponse:
+    overview = await asyncio.to_thread(_knowledge(request).planning_overview)
+    return PlanningOverviewResponse(**asdict(overview))
 
 
 @router.put(

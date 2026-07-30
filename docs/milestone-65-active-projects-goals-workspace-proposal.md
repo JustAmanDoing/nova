@@ -4,7 +4,8 @@
 
 **Base release:** 0.63.0
 
-**Status:** Proposed; runtime implementation requires explicit owner approval
+**Status:** Approved by the owner on 30 July 2026; implementation and
+acceptance are in progress on a protected feature branch
 
 ## User outcome
 
