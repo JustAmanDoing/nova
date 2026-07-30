@@ -94,6 +94,7 @@ function ChatApp() {
   const abortRef = useRef<AbortController | null>(null);
   const draftIdRef = useRef(0);
   const reviewRequestIdRef = useRef(0);
+  const guidedQueryHandledRef = useRef(false);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -214,6 +215,45 @@ function ChatApp() {
       behavior: generating ? "auto" : "smooth",
     });
   }, [messages, generating]);
+
+  useEffect(() => {
+    if (loading || guidedQueryHandledRef.current) return;
+    const timer = window.setTimeout(() => {
+      if (guidedQueryHandledRef.current) return;
+      guidedQueryHandledRef.current = true;
+      const parameters = new URLSearchParams(window.location.search);
+      const requirementId = parameters.get("knowledge");
+      const recordId = parameters.get("record");
+
+      if (requirementId && KNOWLEDGE_PROMPT_STARTERS[requirementId]) {
+        setDraft(KNOWLEDGE_PROMPT_STARTERS[requirementId]);
+        setNotice(
+          "Prepared an editable prompt. Nothing has been sent or saved.",
+        );
+        window.requestAnimationFrame(() => composerRef.current?.focus());
+        return;
+      }
+
+      if (recordId) {
+        const record = knowledgeRecords.find((item) => item.id === recordId);
+        if (!record) {
+          setNotice(
+            "NOVA could not find that approved record. No change was made.",
+          );
+          return;
+        }
+        reviewRequestIdRef.current += 1;
+        setReviewRequest({
+          recordId,
+          requestId: reviewRequestIdRef.current,
+        });
+        setNotice(
+          `Opened ${record.title}. Review it before choosing whether to save a new revision.`,
+        );
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [knowledgeRecords, loading]);
 
   async function handleNewConversation() {
     if (generating) return;
@@ -478,6 +518,7 @@ function ChatApp() {
           <a className="chat-nav-link active" href="/chat.html" aria-current="page">
             Chat
           </a>
+          <a className="chat-nav-link" href="/focus.html">Focus</a>
           <a className="chat-nav-link" href="/">Intake</a>
         </div>
         <span className={`chat-provider ${models.length ? "online" : "offline"}`}>
@@ -534,7 +575,7 @@ function ChatApp() {
         <section className="chat-stage" aria-labelledby="chat-title">
           <header className="chat-heading">
             <div>
-              <p className="eyebrow">Milestone 63 · Explicit Document Context</p>
+              <p className="eyebrow">Milestone 65 · Projects &amp; Goals</p>
               <h2 id="chat-title">Talk with Nova.</h2>
             </div>
             <label>

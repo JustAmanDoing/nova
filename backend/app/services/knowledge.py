@@ -396,6 +396,28 @@ class KnowledgeQualityReportRecord:
 
 
 @dataclass(frozen=True)
+class PlanningKnowledgeItemRecord:
+    id: str
+    kind: str
+    title: str
+    content: str
+    revision: int
+    updated_at: str
+    review_due_at: str
+    review_state: str
+
+
+@dataclass(frozen=True)
+class PlanningOverviewRecord:
+    generated_at: str
+    projects: tuple[PlanningKnowledgeItemRecord, ...]
+    goals: tuple[PlanningKnowledgeItemRecord, ...]
+    excluded_unverified_count: int
+    warning: str | None
+    limitation: str
+
+
+@dataclass(frozen=True)
 class CandidateDraft:
     kind: str
     title: str
@@ -527,6 +549,78 @@ class KnowledgeService:
                 """
             ).fetchall()
         return [_knowledge_record_from_row(row) for row in rows]
+
+    def planning_overview(self) -> PlanningOverviewRecord:
+        generated_at = datetime.now(UTC)
+        with closing(self._connection()) as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    record.id, record.candidate_id, record.kind, record.title,
+                    record.content, record.relative_path, record.sha256,
+                    record.created_at, record.status, record.revision,
+                    record.updated_at, record.retired_at
+                FROM knowledge_records AS record
+                JOIN knowledge_candidates AS candidate
+                  ON candidate.id = record.candidate_id
+                WHERE candidate.status = 'approved'
+                  AND record.status = 'active'
+                  AND record.kind IN ('project', 'goal')
+                ORDER BY record.updated_at DESC, record.id
+                """
+            ).fetchall()
+
+        projects: list[PlanningKnowledgeItemRecord] = []
+        goals: list[PlanningKnowledgeItemRecord] = []
+        excluded_unverified_count = 0
+        for row in rows:
+            record = _knowledge_record_from_row(row)
+            try:
+                self._verify_record_file(record.relative_path, record.sha256)
+            except KnowledgeRetrievalError:
+                excluded_unverified_count += 1
+                continue
+
+            updated_at = _parse_timestamp(record.updated_at)
+            review_due_at = updated_at + timedelta(days=90)
+            item = PlanningKnowledgeItemRecord(
+                id=record.id,
+                kind=record.kind,
+                title=record.title,
+                content=record.content,
+                revision=record.revision,
+                updated_at=updated_at.isoformat(),
+                review_due_at=review_due_at.isoformat(),
+                review_state=(
+                    "review_due" if generated_at > review_due_at else "current"
+                ),
+            )
+            if record.kind == "project":
+                projects.append(item)
+            else:
+                goals.append(item)
+
+        warning = None
+        if excluded_unverified_count:
+            noun = "record" if excluded_unverified_count == 1 else "records"
+            file_noun = "file" if excluded_unverified_count == 1 else "files"
+            warning = (
+                f"NOVA excluded {excluded_unverified_count} planning {noun} "
+                f"because the approved local {file_noun} could not be verified."
+            )
+
+        return PlanningOverviewRecord(
+            generated_at=generated_at.isoformat(),
+            projects=tuple(projects),
+            goals=tuple(goals),
+            excluded_unverified_count=excluded_unverified_count,
+            warning=warning,
+            limitation=(
+                "This view displays active owner-approved, integrity-verified "
+                "project and goal knowledge. NOVA does not infer progress, "
+                "priority, dates, deadlines, or next actions."
+            ),
+        )
 
     def quality_report(self) -> KnowledgeQualityReportRecord:
         generated_at = datetime.now(UTC)

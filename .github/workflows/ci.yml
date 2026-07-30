@@ -137,6 +137,19 @@ jobs:
           curl --fail --silent --show-error \
             http://127.0.0.1:5173/ \
             | grep --fixed-strings --quiet '<title>Nova</title>'
+          curl --fail --silent --show-error \
+            http://127.0.0.1:5173/focus.html \
+            | grep --fixed-strings --quiet '<title>Nova Focus</title>'
+          planning="$(
+            curl --fail --silent --show-error \
+              http://127.0.0.1:8000/api/v1/knowledge/planning
+          )"
+          test "$(printf '%s' "$planning" | jq '.projects')" = '[]'
+          test "$(printf '%s' "$planning" | jq '.goals')" = '[]'
+          printf '%s' "$planning" \
+            | jq --exit-status \
+                '.limitation | contains("does not infer progress")' \
+            > /dev/null
           response_headers="$(
             curl --fail --silent --show-error --head \
               http://127.0.0.1:5173/

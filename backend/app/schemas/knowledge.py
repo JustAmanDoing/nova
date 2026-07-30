@@ -15,6 +15,8 @@ KnowledgeKind = Literal[
 KnowledgeCandidateStatus = Literal["pending", "approved", "rejected"]
 KnowledgeRecordStatus = Literal["active", "retired"]
 KnowledgeRequirementStatus = Literal["covered", "stale", "missing"]
+PlanningKnowledgeKind = Literal["goal", "project"]
+PlanningReviewState = Literal["current", "review_due"]
 
 
 class KnowledgeCandidate(BaseModel):
@@ -140,4 +142,24 @@ class KnowledgeQualityReportResponse(BaseModel):
     requirements: list[KnowledgeRequirementStatusResponse]
     retrieval_failures: list[RetrievalQualityFailureResponse]
     methodology: str
+    limitation: str
+
+
+class PlanningKnowledgeItemResponse(BaseModel):
+    id: str
+    kind: PlanningKnowledgeKind
+    title: str
+    content: str
+    revision: int = Field(ge=1)
+    updated_at: datetime
+    review_due_at: datetime
+    review_state: PlanningReviewState
+
+
+class PlanningOverviewResponse(BaseModel):
+    generated_at: datetime
+    projects: list[PlanningKnowledgeItemResponse]
+    goals: list[PlanningKnowledgeItemResponse]
+    excluded_unverified_count: int = Field(ge=0)
+    warning: str | None
     limitation: str

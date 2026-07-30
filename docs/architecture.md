@@ -92,6 +92,12 @@ Local data/intake folder
   self-checks, and highest-value knowledge gaps without scoring the owner.
 - Lets the owner prepare an editable chat prompt for a missing or review-due
   area; preparation alone sends nothing and stores nothing.
+- Provides a separate read-only-first Focus page that projects only active,
+  owner-approved, checksum-verified `project` and `goal` records.
+- Shows deterministic 90-day review state without inferring progress,
+  priority, dates, deadlines, plans, tasks, or next actions.
+- Routes additions and record reviews back through the existing chat proposal
+  and immutable knowledge lifecycle rather than creating another write path.
 - States that tools, web access, general document search, and autonomous
   actions remain unavailable.
 - Displays service health, intake totals, file metadata, duplicate status, and
@@ -144,6 +150,10 @@ Local data/intake folder
   submission, and proposal review.
 - Rejects duplicate permanent knowledge unless the owner explicitly chooses to
   keep a separate record.
+- Builds the Focus projection from the existing knowledge source of truth,
+  verifies each current Markdown path and SHA-256, excludes verification
+  failures with a safe aggregate warning, and marks verified records older than
+  90 days as review due.
 - Updates approved knowledge through immutable revisions with checksum-bound,
   no-overwrite Markdown files.
 - Retires knowledge without deleting any approved revision or audit event and
@@ -213,6 +223,8 @@ Local data/intake folder
   from new retrieval.
 - Verified knowledge snapshots are written beneath the local backup root and
   never modify the live knowledge store.
+- The Focus workspace introduces no second project store, task database, or
+  generated planning data; it reads the existing verified knowledge records.
 - Historical chat citations are stored in SQLite; every new retrieval verifies
   the current Markdown path and checksum before use.
 - Docker mounts the local `data` root so the guarded action boundary can move

@@ -8,6 +8,7 @@ export default defineConfig({
       input: {
         intake: "index.html",
         chat: "chat.html",
+        focus: "focus.html",
       },
     },
   },

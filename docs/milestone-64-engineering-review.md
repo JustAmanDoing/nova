@@ -32,8 +32,9 @@ migration.
 - Reuse current path-containment and live SHA-256 verification.
 - Include last-updated and deterministic review-state metadata.
 - Return a truthful empty section when no qualifying record exists.
-- Keep failed or stale records out of the active overview and surface a safe
-  warning rather than silently trusting them.
+- Keep verification failures out of the active overview and surface a safe
+  warning rather than silently trusting them. Show stale but still verified
+  records with a deterministic **Review due** state.
 
 ### Frontend
 

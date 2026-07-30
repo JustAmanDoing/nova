@@ -211,6 +211,29 @@ export interface KnowledgeQualityReport {
   limitation: string;
 }
 
+export type PlanningKnowledgeKind = "goal" | "project";
+export type PlanningReviewState = "current" | "review_due";
+
+export interface PlanningKnowledgeItem {
+  id: string;
+  kind: PlanningKnowledgeKind;
+  title: string;
+  content: string;
+  revision: number;
+  updated_at: string;
+  review_due_at: string;
+  review_state: PlanningReviewState;
+}
+
+export interface PlanningOverview {
+  generated_at: string;
+  projects: PlanningKnowledgeItem[];
+  goals: PlanningKnowledgeItem[];
+  excluded_unverified_count: number;
+  warning: string | null;
+  limitation: string;
+}
+
 export interface OperationalStatus {
   status: "healthy" | "attention";
   uptime_seconds: number;
@@ -514,6 +537,12 @@ export async function getKnowledgeQuality(
   return request<KnowledgeQualityReport>("/api/v1/knowledge/quality", {
     signal,
   });
+}
+
+export async function getPlanningOverview(
+  signal?: AbortSignal,
+): Promise<PlanningOverview> {
+  return request<PlanningOverview>("/api/v1/knowledge/planning", { signal });
 }
 
 export async function updateKnowledgeRecord(

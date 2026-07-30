@@ -335,14 +335,15 @@ Completion evidence is recorded in:
 ## Milestone 64 — Evidence-Led Next Capability Selection
 
 **Status (30 July 2026): complete; Active Projects and Goals Workspace
-selected. Runtime scope is not approved.**
+selected and subsequently approved by the owner.**
 
 - Milestone 63 evidence and current knowledge gaps reviewed — complete
 - Candidates ranked with owner impact and direct evidence weighted highest —
   complete
 - Milestone 65 Active Projects and Goals Workspace selected — complete
 - Architecture and engineering proposal reviews passed — complete
-- Runtime implementation remains gated by explicit owner approval — preserved
+- Runtime implementation remained gated until explicit owner approval —
+  complete
 
 The selection and reviews are recorded in:
 
@@ -353,8 +354,8 @@ The selection and reviews are recorded in:
 
 ## Milestone 65 — Active Projects and Goals Workspace
 
-**Status (30 July 2026): proposed; runtime implementation requires explicit
-owner approval.**
+**Status (30 July 2026): approved and implemented on
+`agent/milestone-65-active-projects-goals`; release acceptance is pending.**
 
 - Show verified active project and goal knowledge in a focused local view
 - Reuse guided chat capture and the existing immutable knowledge lifecycle
@@ -362,6 +363,13 @@ owner approval.**
 - Keep the first slice read-only-first and useful without Ollama
 - Exclude tasks, calendars, reminders, automation, semantic retrieval, voice,
   remote access, plugins, agents, tools, web access, and external providers
+
+Implementation and review evidence:
+
+- `docs/milestone-65-active-projects-goals-workspace-proposal.md`
+- `docs/milestone-65-implementation.md`
+- `docs/milestone-65-architecture-review.md`
+- `docs/milestone-65-engineering-review.md`
 
 ## Later capabilities
 
