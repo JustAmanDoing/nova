@@ -8,8 +8,8 @@
 
 **Branch:** `agent/milestone-65-active-projects-goals`
 
-**Status:** Implemented; protected pull-request and Windows-host acceptance
-remain pending
+**Status:** Complete; integrated through protected PR #7 and accepted on the
+Windows host
 
 ## Outcome
 
@@ -74,8 +74,11 @@ Backend and frontend versions are aligned at `0.65.0`.
 - focused tests for projection filtering, integrity failure, freshness,
   truthful empty states, unavailable state, and guarded chat handoff.
 
-The exact test counts and Windows-host result will be recorded in the final
-release report after protected integration and local acceptance.
+Exact automated, protected-integration, production-runtime, and Windows-host
+evidence is recorded in:
+
+- `docs/milestone-65-acceptance.md`
+- `docs/milestone-65-release-report.md`
 
 ## Explicit exclusions
 

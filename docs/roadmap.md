@@ -354,8 +354,8 @@ The selection and reviews are recorded in:
 
 ## Milestone 65 — Active Projects and Goals Workspace
 
-**Status (30 July 2026): approved and implemented on
-`agent/milestone-65-active-projects-goals`; release acceptance is pending.**
+**Status (30 July 2026): complete; release 0.65.0 integrated, installed, and
+accepted on the Windows host.**
 
 - Show verified active project and goal knowledge in a focused local view
 - Reuse guided chat capture and the existing immutable knowledge lifecycle
@@ -363,6 +363,10 @@ The selection and reviews are recorded in:
 - Keep the first slice read-only-first and useful without Ollama
 - Exclude tasks, calendars, reminders, automation, semantic retrieval, voice,
   remote access, plugins, agents, tools, web access, and external providers
+- Protected PR #7 and post-merge `main` passed the complete verification
+  matrix
+- Installed Windows release, Focus browser workflow, backup, database
+  integrity, privacy boundaries, and responsive layout passed
 
 Implementation and review evidence:
 
@@ -370,6 +374,21 @@ Implementation and review evidence:
 - `docs/milestone-65-implementation.md`
 - `docs/milestone-65-architecture-review.md`
 - `docs/milestone-65-engineering-review.md`
+- `docs/milestone-65-acceptance.md`
+- `docs/milestone-65-release-report.md`
+
+## Milestone 66 — Focus Workspace Daily-Use Validation
+
+**Status (30 July 2026): proposed; no new runtime feature is approved.**
+
+- Add one genuine active project and one genuine current goal through the
+  existing owner-review workflow
+- Confirm both appear in the correct Focus sections
+- Exercise one approved correction and confirm immutable revision behavior
+- Exercise retirement only if the owner has a real record they want retired
+- Record owner usefulness, clarity, and non-intrusiveness feedback
+- Use the evidence to select the next capability by impact rather than adding
+  unsupported complexity
 
 ## Later capabilities
 

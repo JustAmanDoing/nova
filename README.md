@@ -521,5 +521,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 65 implementation record](docs/milestone-65-implementation.md)
 - [Milestone 65 architecture review](docs/milestone-65-architecture-review.md)
 - [Milestone 65 engineering review](docs/milestone-65-engineering-review.md)
+- [Milestone 65 Windows acceptance](docs/milestone-65-acceptance.md)
+- [Milestone 65 release report](docs/milestone-65-release-report.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
