@@ -4,8 +4,7 @@
 
 **Review scope:** Implemented Active Projects and Goals Workspace
 
-**Decision:** Pass for protected integration; production and Windows-host
-acceptance remain required before release
+**Decision:** Pass; release 0.65.0 is installed and accepted
 
 ## Implementation review
 
@@ -61,9 +60,14 @@ Automated coverage includes:
 11. no inferred planning fields; and
 12. production multi-page build.
 
-The complete existing backend and frontend suites remain green. Exact counts,
-coverage, protected checks, production-runtime checks, and Windows evidence
-will be recorded in the final release report.
+The complete existing backend and frontend suites remain green:
+
+- 135 backend tests passed with 93.08% coverage;
+- 41 frontend tests passed;
+- backend lint and typing passed;
+- frontend lint, typing, and multi-entry production build passed;
+- Windows controller validation passed; and
+- Compose configuration passed.
 
 ## Repository hygiene review
 
@@ -72,18 +76,24 @@ and version metadata. Generated builds, caches, runtime data, knowledge
 records, secrets, credentials, personal content, and temporary evidence must
 remain untracked and will be checked again before commit and merge.
 
-## Remaining acceptance
+## Acceptance completed
 
-- exact-head protected CI;
-- production Compose build and runtime;
-- loopback endpoint and version checks;
-- Windows browser keyboard, zoom, and narrow-window checks;
-- empty-state guided handoff on the installed release;
-- post-merge `main` verification; and
-- final evidence-backed release decision.
+- PR-head and post-merge protected CI passed all four required jobs.
+- Production Compose build and representative runtime passed.
+- Installed version, health, database integrity, loopback binding, private
+  cache policy, HTTP security headers, and unexpected-Host rejection passed.
+- Desktop and 390-pixel responsive browser rendering passed without horizontal
+  overflow or console errors.
+- Native links and buttons were keyboard-focusable; the connected in-app test
+  browser did not synthesize Enter navigation, so activation was additionally
+  covered by native HTML semantics, automated tests, and successful guarded
+  click navigation.
+- The empty-state handoff prepared editable chat text and explicitly reported
+  that nothing was sent or saved.
+- `main`, the N-drive working copy, and the installed version aligned.
 
 ## Engineering judgement
 
 The implementation is bounded, testable, dependency-neutral, and reuses
-existing safety controls. It is ready for a protected pull request. It is not
-yet a release until production and Windows-host acceptance pass.
+existing safety controls. Production and Windows-host acceptance passed. The
+implementation is accepted as release 0.65.0.

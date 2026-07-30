@@ -4,8 +4,8 @@
 
 **Base release:** 0.63.0
 
-**Status:** Approved by the owner on 30 July 2026; implementation and
-acceptance are in progress on a protected feature branch
+**Status:** Approved, implemented, integrated, and accepted as release 0.65.0
+on 30 July 2026
 
 ## User outcome
 

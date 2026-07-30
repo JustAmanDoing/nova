@@ -4,8 +4,7 @@
 
 **Review scope:** Implemented Active Projects and Goals Workspace
 
-**Decision:** Pass for protected integration; Windows-host acceptance remains
-required before release
+**Decision:** Pass; architecture preserved in accepted release 0.65.0
 
 ## Source-of-truth review
 
@@ -84,9 +83,17 @@ or external providers.
 | Interface overstates planning intelligence | Explicit no-inference language and no generated planning fields |
 | Local personal direction leaks | Existing loopback-only HTTP and private API boundaries remain |
 
+## Acceptance confirmation
+
+- Protected PR #7 and merged `main` both passed the complete CI matrix.
+- The Windows host installed version 0.65.0 from verified `main`.
+- Runtime API, database integrity, loopback boundaries, privacy headers,
+  responsive layout, and guarded chat handoff passed.
+- The Focus projection contained no generated planning data and introduced no
+  second store.
+
 ## Architecture judgement
 
 The implementation preserves the approved local-first, privacy-first,
-owner-controlled modular monolith. Architecture approval is granted for
-protected integration. Final release approval remains conditional on the
-complete automated matrix and Windows-host acceptance.
+owner-controlled modular monolith. Architecture approval is final for release
+0.65.0.
