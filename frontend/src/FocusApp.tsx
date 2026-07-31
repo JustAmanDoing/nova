@@ -1,51 +1,107 @@
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 import {
+  completeNextAction,
+  createNextAction,
+  getNextActions,
   getPlanningOverview,
+  reopenNextAction,
+  type NextAction,
+  type NextActionOverview,
   type PlanningKnowledgeItem,
   type PlanningOverview,
 } from "./lib/api";
 
 function FocusApp() {
   const [overview, setOverview] = useState<PlanningOverview | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [actions, setActions] = useState<NextActionOverview | null>(null);
+  const [planningLoading, setPlanningLoading] = useState(true);
+  const [actionsLoading, setActionsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [planningError, setPlanningError] = useState<string | null>(null);
+  const [actionsError, setActionsError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    getPlanningOverview(controller.signal)
-      .then((result) => {
-        if (controller.signal.aborted) return;
-        setOverview(result);
-        setError(null);
-      })
-      .catch((caught: unknown) => {
-        if (caught instanceof DOMException && caught.name === "AbortError") return;
-        setError(errorMessage(caught));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
+    void loadPlanning(controller.signal);
+    void loadActions(controller.signal);
     return () => controller.abort();
+
+    async function loadPlanning(signal: AbortSignal) {
+      try {
+        const result = await getPlanningOverview(signal);
+        if (signal.aborted) return;
+        setOverview(result);
+        setPlanningError(null);
+      } catch (caught: unknown) {
+        if (!isAbort(caught)) setPlanningError(errorMessage(caught));
+      } finally {
+        if (!signal.aborted) setPlanningLoading(false);
+      }
+    }
+
+    async function loadActions(signal: AbortSignal) {
+      try {
+        const result = await getNextActions(signal);
+        if (signal.aborted) return;
+        setActions(result);
+        setActionsError(null);
+      } catch (caught: unknown) {
+        if (!isAbort(caught)) setActionsError(errorMessage(caught));
+      } finally {
+        if (!signal.aborted) setActionsLoading(false);
+      }
+    }
   }, []);
 
   async function refresh() {
     setRefreshing(true);
-    try {
-      const result = await getPlanningOverview();
-      setOverview(result);
-      setError(null);
-    } catch (caught: unknown) {
-      setError(errorMessage(caught));
-    } finally {
-      setRefreshing(false);
+    const [planningResult, actionResult] = await Promise.allSettled([
+      getPlanningOverview(),
+      getNextActions(),
+    ]);
+    if (planningResult.status === "fulfilled") {
+      setOverview(planningResult.value);
+      setPlanningError(null);
+    } else {
+      setPlanningError(errorMessage(planningResult.reason));
     }
+    if (actionResult.status === "fulfilled") {
+      setActions(actionResult.value);
+      setActionsError(null);
+    } else {
+      setActionsError(errorMessage(actionResult.reason));
+    }
+    setRefreshing(false);
+  }
+
+  function applyActionChange(action: NextAction) {
+    setActions((current) => {
+      if (!current) return current;
+      const withoutChanged = [...current.open, ...current.completed].filter(
+        (item) => item.id !== action.id,
+      );
+      const open = withoutChanged
+        .filter((item) => item.status === "open")
+        .concat(action.status === "open" ? [action] : [])
+        .sort(compareOpenActions);
+      const completed = withoutChanged
+        .filter((item) => item.status === "completed")
+        .concat(action.status === "completed" ? [action] : [])
+        .sort(compareCompletedActions);
+      return {
+        ...current,
+        generated_at: new Date().toISOString(),
+        open,
+        completed,
+      };
+    });
+    setActionsError(null);
   }
 
   const visibleCount =
     (overview?.projects.length ?? 0) + (overview?.goals.length ?? 0);
-  const unavailable = Boolean(error && !overview);
+  const planningUnavailable = Boolean(planningError && !overview);
 
   return (
     <main className="focus-shell">
@@ -67,29 +123,27 @@ function FocusApp() {
         </div>
         <span className="focus-local-status">
           <span aria-hidden="true" />
-          Verified local knowledge
+          Local and owner controlled
         </span>
       </nav>
 
       <header className="focus-hero">
         <div>
-          <p className="eyebrow">Milestone 65 · Active Projects &amp; Goals</p>
+          <p className="eyebrow">Milestone 68 · Owner-Approved Next Actions</p>
           <h1>Keep direction visible.</h1>
           <p>
-            One calm view of the projects and goals you explicitly approved.
-            NOVA displays verified knowledge; it does not invent priorities,
-            progress, deadlines, or next actions.
+            One calm view of the direction you approved and the next actions
+            you explicitly entered. NOVA does not invent priorities, progress,
+            deadlines, reminders, or additional work.
           </p>
         </div>
         <div className="focus-summary" aria-label="Focus overview">
-          <span>Verified active</span>
-          <strong>{loading || unavailable ? "—" : visibleCount}</strong>
+          <span>Verified direction</span>
+          <strong>{planningLoading || planningUnavailable ? "—" : visibleCount}</strong>
           <small>
-            {unavailable
+            {planningUnavailable
               ? "Verification unavailable"
-              : overview?.excluded_unverified_count
-              ? `${overview.excluded_unverified_count} safely excluded`
-              : "No unverified records shown"}
+              : `${actions?.open.length ?? 0} open next actions`}
           </small>
           <button
             type="button"
@@ -101,10 +155,10 @@ function FocusApp() {
         </div>
       </header>
 
-      {error ? (
+      {planningError ? (
         <p className="focus-alert" role="alert">
           Projects and goals are unavailable. Existing knowledge was not
-          changed. {error}
+          changed. {planningError}
         </p>
       ) : null}
 
@@ -112,14 +166,14 @@ function FocusApp() {
         <p className="focus-warning" role="status">{overview.warning}</p>
       ) : null}
 
-      <div className="focus-grid" aria-busy={loading}>
+      <div className="focus-grid" aria-busy={planningLoading}>
         <PlanningSection
           id="projects-title"
           eyebrow="Owner-approved direction"
           title="Active projects"
           items={overview?.projects ?? []}
-          loading={loading}
-          unavailable={unavailable}
+          loading={planningLoading}
+          unavailable={planningUnavailable}
           emptyMessage="No verified active project has been approved yet."
           addRequirement="active-projects"
         />
@@ -128,18 +182,27 @@ function FocusApp() {
           eyebrow="Owner-approved outcomes"
           title="Current goals"
           items={overview?.goals ?? []}
-          loading={loading}
-          unavailable={unavailable}
+          loading={planningLoading}
+          unavailable={planningUnavailable}
           emptyMessage="No verified current goal has been approved yet."
           addRequirement="current-goals"
         />
       </div>
 
+      <NextActionsSection
+        actions={actions}
+        projects={overview?.projects ?? []}
+        loading={actionsLoading}
+        error={actionsError}
+        onActionChanged={applyActionChange}
+      />
+
       <footer className="focus-boundary">
-        <strong>Read-only focus view.</strong>
+        <strong>Owner-controlled local focus view.</strong>
         <span>
-          Adding, correcting, and retiring knowledge continues through NOVA’s
-          existing owner-review controls. {overview?.limitation}
+          Knowledge changes still use NOVA’s review controls. Next actions are
+          saved only when you submit the local form, and completion history is
+          retained. {overview?.limitation} {actions?.limitation}
         </span>
       </footer>
     </main>
@@ -225,6 +288,216 @@ function PlanningCard({ item }: { item: PlanningKnowledgeItem }) {
   );
 }
 
+function NextActionsSection({
+  actions,
+  projects,
+  loading,
+  error,
+  onActionChanged,
+}: {
+  actions: NextActionOverview | null;
+  projects: PlanningKnowledgeItem[];
+  loading: boolean;
+  error: string | null;
+  onActionChanged: (action: NextAction) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [projectRecordId, setProjectRecordId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [changingId, setChangingId] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalized = title.trim();
+    if (!normalized) {
+      setMutationError("Enter a next action before saving.");
+      return;
+    }
+    setSaving(true);
+    setMutationError(null);
+    setNotice(null);
+    try {
+      const created = await createNextAction({
+        title: normalized,
+        project_record_id: projectRecordId || null,
+      });
+      onActionChanged(created);
+      setTitle("");
+      setProjectRecordId("");
+      setNotice("Next action added locally.");
+    } catch (caught: unknown) {
+      setMutationError(errorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function transition(action: NextAction, target: "complete" | "reopen") {
+    setChangingId(action.id);
+    setMutationError(null);
+    setNotice(null);
+    try {
+      const changed = target === "complete"
+        ? await completeNextAction(action.id)
+        : await reopenNextAction(action.id);
+      onActionChanged(changed);
+      setNotice(
+        target === "complete"
+          ? "Next action marked complete. Its history was retained."
+          : "Next action reopened.",
+      );
+    } catch (caught: unknown) {
+      setMutationError(errorMessage(caught));
+    } finally {
+      setChangingId(null);
+    }
+  }
+
+  const unavailable = Boolean(error && !actions);
+
+  return (
+    <section className="next-actions" aria-labelledby="next-actions-title">
+      <div className="next-actions-heading">
+        <div>
+          <p className="section-number">Owner-entered work</p>
+          <h2 id="next-actions-title">Next actions</h2>
+        </div>
+        <span>{actions?.open.length ?? 0} open</span>
+      </div>
+
+      <form className="next-action-form" onSubmit={(event) => void submit(event)}>
+        <label>
+          Next action
+          <input
+            type="text"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            maxLength={200}
+            placeholder="Enter one concrete next action"
+            disabled={saving}
+          />
+        </label>
+        <label>
+          Active project (optional)
+          <select
+            value={projectRecordId}
+            onChange={(event) => setProjectRecordId(event.target.value)}
+            disabled={saving || projects.length === 0}
+          >
+            <option value="">No project association</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.title} · revision {project.revision}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" disabled={saving}>
+          {saving ? "Adding…" : "Add next action"}
+        </button>
+        <small>
+          This saves only what you enter. NOVA will not add, rank, or schedule
+          other actions.
+        </small>
+      </form>
+
+      {mutationError ? (
+        <p className="focus-alert" role="alert">{mutationError}</p>
+      ) : null}
+      {notice ? <p className="focus-notice" role="status">{notice}</p> : null}
+      {error ? (
+        <p className="focus-alert" role="alert">
+          Next actions are unavailable. Existing actions were not changed. {error}
+        </p>
+      ) : null}
+
+      {loading ? (
+        <p className="next-actions-empty">Checking local next actions…</p>
+      ) : unavailable ? (
+        <p className="next-actions-empty">
+          Unable to verify next actions right now. No actions were changed.
+        </p>
+      ) : actions?.open.length ? (
+        <div className="next-action-list">
+          {actions.open.map((action) => (
+            <NextActionCard
+              key={action.id}
+              action={action}
+              changing={changingId === action.id}
+              onTransition={transition}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="next-actions-empty">
+          No open next actions. Add one only when it is genuinely useful.
+        </p>
+      )}
+
+      {actions?.completed.length ? (
+        <details className="completed-actions">
+          <summary>Completed history ({actions.completed.length})</summary>
+          <div className="next-action-list">
+            {actions.completed.map((action) => (
+              <NextActionCard
+                key={action.id}
+                action={action}
+                changing={changingId === action.id}
+                onTransition={transition}
+              />
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </section>
+  );
+}
+
+function NextActionCard({
+  action,
+  changing,
+  onTransition,
+}: {
+  action: NextAction;
+  changing: boolean;
+  onTransition: (
+    action: NextAction,
+    target: "complete" | "reopen",
+  ) => Promise<void>;
+}) {
+  const target = action.status === "open" ? "complete" : "reopen";
+  return (
+    <article className={`next-action-card ${action.status}`}>
+      <div>
+        <span>{action.status === "open" ? "Open" : "Completed"}</span>
+        <h3>{action.title}</h3>
+        {action.project_title ? (
+          <p>
+            Project: {action.project_title} · revision {action.project_revision}
+          </p>
+        ) : action.project_unavailable ? (
+          <p>Project association unavailable; stale content is hidden.</p>
+        ) : (
+          <p>No project association</p>
+        )}
+      </div>
+      <button
+        type="button"
+        disabled={changing}
+        onClick={() => void onTransition(action, target)}
+      >
+        {changing
+          ? "Saving…"
+          : target === "complete"
+            ? "Mark complete"
+            : "Reopen"}
+      </button>
+    </article>
+  );
+}
+
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Date unavailable";
@@ -233,6 +506,21 @@ function formatDate(value: string): string {
     month: "short",
     year: "numeric",
   }).format(date);
+}
+
+function compareOpenActions(left: NextAction, right: NextAction): number {
+  return left.created_at.localeCompare(right.created_at) || left.id.localeCompare(right.id);
+}
+
+function compareCompletedActions(left: NextAction, right: NextAction): number {
+  return (
+    (right.completed_at ?? "").localeCompare(left.completed_at ?? "")
+    || left.id.localeCompare(right.id)
+  );
+}
+
+function isAbort(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function errorMessage(error: unknown): string {

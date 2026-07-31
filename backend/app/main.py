@@ -14,6 +14,7 @@ from app.services.backup import BackupService
 from app.services.chat import ChatService, OllamaProvider
 from app.services.intake import IntakeService
 from app.services.knowledge import KnowledgeService
+from app.services.next_actions import NextActionService
 from app.services.ocr import LocalOcrService
 
 logger = logging.getLogger(__name__)
@@ -74,10 +75,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             operation_lock=operation_lock,
         )
         await asyncio.to_thread(knowledge.initialize)
+        next_actions = NextActionService(
+            database_path=str(resolved_settings.database_path),
+            knowledge=knowledge,
+            operation_lock=operation_lock,
+        )
         application.state.intake = intake
         application.state.backups = backups
         application.state.chat = chat
         application.state.knowledge = knowledge
+        application.state.next_actions = next_actions
         watcher = asyncio.create_task(
             watch_intake(intake, resolved_settings.intake_scan_seconds)
         )

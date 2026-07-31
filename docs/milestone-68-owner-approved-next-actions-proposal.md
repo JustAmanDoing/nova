@@ -4,7 +4,8 @@
 
 **Base release:** 0.65.0
 
-**Status:** Proposed; runtime implementation requires explicit owner approval
+**Status:** Approved by the owner on 31 July 2026; bounded runtime
+implementation in progress
 
 ## User outcome
 

@@ -402,15 +402,16 @@ Completion evidence:
 
 ## Milestone 67 — Evidence-Led Next Capability Selection
 
-**Status (31 July 2026): complete; Owner-Approved Next Actions selected.
-Runtime implementation awaits explicit owner approval.**
+**Status (31 July 2026): complete; Owner-Approved Next Actions selected and
+subsequently approved by the owner.**
 
 - Milestone 66 evidence and the owner's current priorities reviewed — complete
 - Candidates ranked by impact, urgency, privacy, complexity, reuse, and
   maintenance cost — complete
 - Milestone 68 Owner-Approved Next Actions selected — complete
 - Architecture and engineering proposal reviews — passed
-- Runtime implementation remains gated by explicit owner approval
+- Runtime implementation remained gated until explicit owner approval —
+  complete
 
 Decision and proposal evidence:
 
@@ -421,7 +422,8 @@ Decision and proposal evidence:
 
 ## Milestone 68 — Owner-Approved Next Actions
 
-**Status (31 July 2026): proposed; no runtime implementation is approved.**
+**Status (31 July 2026): approved and implemented on a feature branch;
+protected integration and Windows acceptance remain pending.**
 
 - Add one bounded local Next actions section to Focus
 - Accept only explicit owner-entered actions
@@ -431,6 +433,13 @@ Decision and proposal evidence:
   extraction, model-generated plans, and autonomous execution
 - Preserve local-first, privacy-first, AI-optional, recovery, and
   modular-monolith boundaries
+
+Implementation and review evidence:
+
+- `docs/milestone-68-owner-approved-next-actions-proposal.md`
+- `docs/milestone-68-implementation.md`
+- `docs/milestone-68-architecture-review.md`
+- `docs/milestone-68-engineering-review.md`
 
 ## Later capabilities
 
