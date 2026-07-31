@@ -534,6 +534,59 @@ def _owner_approved_next_actions(connection: sqlite3.Connection) -> None:
     _execute_all(connection, statements)
 
 
+def _conversation_organisation(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        "ALTER TABLE chat_conversations ADD COLUMN archived_at TEXT"
+    )
+    connection.execute(
+        "ALTER TABLE chat_conversations ADD COLUMN trashed_at TEXT"
+    )
+    statements = (
+        """
+        CREATE TABLE chat_conversation_events (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            id TEXT NOT NULL UNIQUE,
+            conversation_id TEXT NOT NULL
+                REFERENCES chat_conversations(id) ON DELETE RESTRICT,
+            event_type TEXT NOT NULL CHECK (
+                event_type IN (
+                    'created', 'renamed', 'archived', 'restored',
+                    'trashed', 'restored_from_trash'
+                )
+            ),
+            previous_title TEXT,
+            new_title TEXT,
+            previous_status TEXT,
+            new_status TEXT,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX ix_chat_conversation_events_conversation
+        ON chat_conversation_events (conversation_id, sequence)
+        """,
+        """
+        CREATE INDEX ix_chat_conversations_lifecycle_updated
+        ON chat_conversations (trashed_at, archived_at, updated_at DESC)
+        """,
+        """
+        INSERT INTO chat_conversation_events (
+            id, conversation_id, event_type, previous_status, new_status,
+            created_at
+        )
+        SELECT
+            'migration-created-' || id,
+            id,
+            'created',
+            NULL,
+            'active',
+            created_at
+        FROM chat_conversations
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -562,6 +615,11 @@ MIGRATIONS: tuple[Migration, ...] = (
         16,
         "owner-approved-next-actions",
         _owner_approved_next_actions,
+    ),
+    Migration(
+        17,
+        "conversation-organisation",
+        _conversation_organisation,
     ),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version

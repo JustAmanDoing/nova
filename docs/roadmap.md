@@ -516,7 +516,7 @@ Acceptance and review evidence:
 ## Milestone 71 - Evidence-Led Next Capability Selection
 
 **Status (1 August 2026): complete; Milestone 72 Conversation Organisation
-selected, runtime implementation not yet approved.**
+selected and owner-approved.**
 
 - Review measured daily-use evidence and current owner priorities
 - Rank candidate improvements by impact, urgency, privacy, complexity, reuse,
@@ -535,9 +535,9 @@ Decision and proposal evidence:
 
 ## Milestone 72 - Conversation Organisation
 
-**Status (1 August 2026): proposed; architecture and engineering reviews
-passed with conditions; runtime implementation requires explicit owner
-approval.**
+**Status (1 August 2026): implemented as release candidate 0.72.0; automated,
+installed-runtime, recovery, and simulated-phone checks passed; physical-phone
+owner acceptance remains before protected integration.**
 
 - Let the owner rename a local conversation explicitly
 - Let the owner archive and restore a conversation without deleting messages
@@ -546,8 +546,24 @@ approval.**
 - Record created, renamed, archived, and restored lifecycle events locally
 - Guard every mutation with the existing local-intent boundary
 - Prevent sending into an archived conversation until the owner restores it
-- Add no deletion, automatic retention, AI-generated organisation, external
-  sync, sharing, semantic search, or background action
+- Add no permanent deletion, automatic retention, AI-generated organisation,
+  external sync, sharing, semantic search, or background action
+
+Implementation and acceptance evidence:
+
+- `docs/milestone-72-implementation.md`
+- `docs/milestone-72-acceptance.md`
+
+## Milestone 73 - Conversation Organisation Daily-Use Validation
+
+**Status:** Not started; begins only after release 0.72.0 is accepted and
+published.
+
+- Use normal phone and PC chat for several days.
+- Record friction, failed recovery expectations, and conversation-list growth.
+- Confirm Rename, Archive, Trash, Restore, latest-message navigation, and New
+  chat remain understandable in daily use.
+- Make no new runtime feature from this validation milestone.
 
 ## Later capabilities
 

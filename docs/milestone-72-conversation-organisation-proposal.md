@@ -4,13 +4,30 @@
 
 **Proposed base:** accepted release 0.70.0
 
-**Status:** Awaiting explicit owner approval
+**Status:** Approved for bounded runtime implementation
+
+**Owner approval:** 1 August 2026, including phone-first ease-of-use work
 
 ## Goal
 
-Keep NOVA's growing local chat history useful on phone and PC by letting the
-owner rename, archive, review, and restore conversations without deleting or
-rewriting any message.
+Keep NOVA's growing local chat history useful on phone and PC by opening at the
+latest exchange, keeping the newest conversations first, making **New chat**
+easy to reach, and letting the owner rename, archive, review, restore, or move
+old conversations to recoverable Trash without rewriting any message.
+
+## Daily-use navigation
+
+- Opening Chat selects the most recently active conversation.
+- Opening or switching conversations positions the transcript at its latest
+  exchange instead of making the owner scroll past the complete history.
+- Messages remain chronological inside a conversation; NOVA does not reverse
+  the conversation and make replies harder to follow.
+- A visible **Jump to latest** control appears after the owner scrolls upward.
+- **New chat** remains a clear 44-pixel action on phone and PC.
+- A phone **Chats** drawer keeps conversation selection, Rename, Archive,
+  recoverable Trash, and Restore reachable without scrolling away from the
+  composer.
+- Conversation pickers remain ordered by most recent activity.
 
 ## Owner experience
 
@@ -38,13 +55,27 @@ rewriting any message.
 3. The owner chooses **Restore** to return the same conversation to the active
    list.
 
+### Remove from daily view
+
+1. The owner chooses **Move to Trash**.
+2. NOVA explains that the conversation will leave active and archived views but
+   remains recoverable.
+3. The owner confirms.
+4. The owner can inspect Trash and restore the complete conversation.
+
+Trash is NOVA's safe deletion experience for this milestone. Permanent purge
+is deliberately deferred until verified backup, recovery semantics, and an
+appropriate high-friction confirmation have separate evidence.
+
 ## Required behavior
 
 - Active conversations remain the default desktop list and phone picker.
 - Archived conversations are hidden from that default list but not deleted.
 - The owner can deliberately list and review archived conversations.
 - Archived conversations cannot accept a new message until restored.
-- Rename, archive, and restore require the existing local-intent guard.
+- Trashed conversations cannot accept a new message until restored.
+- Rename, archive, restore, move-to-Trash, and restore-from-Trash require the
+  existing local-intent guard.
 - Lifecycle state and audit event commit atomically.
 - The complete message history, model metadata, timestamps, knowledge sources,
   and document citations remain unchanged.
@@ -53,7 +84,7 @@ rewriting any message.
 
 ## Data and API boundary
 
-- Extend the existing local conversation table with archived state.
+- Extend the existing local conversation table with archived and trashed state.
 - Add one local append-only lifecycle-event table.
 - Keep the current chat service as the only conversation writer.
 - Extend the existing same-origin local API; add no listener or service.
@@ -61,7 +92,7 @@ rewriting any message.
 
 ## Explicit exclusions
 
-- deletion or bulk deletion;
+- permanent deletion or bulk actions;
 - automatic archiving, cleanup, or retention;
 - AI-generated folders, categories, labels, or archive choices;
 - folders, tags, pinning, merging, or splitting conversations;
@@ -83,12 +114,17 @@ rewriting any message.
    metadata to the active list.
 7. Invalid and repeated lifecycle actions are clear and transactionally safe.
 8. Missing local intent rejects each lifecycle mutation.
-9. Desktop keyboard and physical-phone journeys pass.
-10. Backend, frontend, Windows, production-container, database-integrity,
+9. Desktop keyboard and physical-phone journeys pass, including opening and
+   closing the phone Chats drawer.
+10. A long physical-phone conversation opens at its latest exchange, can jump
+    back to latest after review, and keeps New chat reachable.
+11. Move to Trash removes a conversation from daily views without deleting its
+    messages, and Restore returns the same identifier and history.
+12. Backend, frontend, Windows, production-container, database-integrity,
     backup, restore, private HTTPS, and Funnel-off checks pass.
-11. Changed-file review finds no secret, personal fixture, generated artifact,
+13. Changed-file review finds no secret, personal fixture, generated artifact,
     debug code, or unrelated change.
-12. Owner acceptance passes before release.
+14. Owner acceptance passes before release.
 
 ## Release boundary
 
@@ -99,5 +135,6 @@ desktop, and physical-phone acceptance all pass.
 
 ## Approval requested
 
-Approve Milestone 72 to implement explicit local conversation rename, archive,
-review, restore, and lifecycle audit with no deletion or automation.
+Approved: implement explicit local conversation navigation, rename, archive,
+review, restore, recoverable Trash, and lifecycle audit with no permanent
+deletion or automation.

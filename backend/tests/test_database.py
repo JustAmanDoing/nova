@@ -6,6 +6,7 @@ import pytest
 
 from app.services.database import (
     LATEST_SCHEMA_VERSION,
+    MIGRATIONS,
     DatabaseMigrationError,
     Migration,
     migrate_database,
@@ -173,6 +174,69 @@ def test_database_from_newer_nova_version_is_refused(tmp_path: Path) -> None:
 
     with pytest.raises(DatabaseMigrationError, match="newer Nova version"):
         service.initialize()
+
+
+def test_conversation_organisation_migration_preserves_existing_history(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "nova.db"
+    with closing(sqlite3.connect(database_path)) as connection:
+        migrate_database(connection, MIGRATIONS[:-1])
+        connection.execute(
+            """
+            INSERT INTO chat_conversations (
+                id, title, model, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                "existing-conversation",
+                "Existing history",
+                "qwen3:8b",
+                "2026-07-31T00:00:00+00:00",
+                "2026-07-31T00:01:00+00:00",
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO chat_messages (
+                id, conversation_id, role, content, model, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "existing-message",
+                "existing-conversation",
+                "user",
+                "Existing private message",
+                "qwen3:8b",
+                "2026-07-31T00:01:00+00:00",
+            ),
+        )
+        connection.commit()
+
+    IntakeService(tmp_path / "intake", database_path).initialize()
+
+    with closing(sqlite3.connect(database_path)) as connection:
+        conversation = connection.execute(
+            """
+            SELECT title, model, archived_at, trashed_at
+            FROM chat_conversations
+            WHERE id = 'existing-conversation'
+            """
+        ).fetchone()
+        message = connection.execute(
+            "SELECT content FROM chat_messages WHERE id = 'existing-message'"
+        ).fetchone()
+        events = connection.execute(
+            """
+            SELECT event_type, new_status, created_at
+            FROM chat_conversation_events
+            WHERE conversation_id = 'existing-conversation'
+            """
+        ).fetchall()
+
+    assert conversation == ("Existing history", "qwen3:8b", None, None)
+    assert message == ("Existing private message",)
+    assert events == [("created", "active", "2026-07-31T00:00:00+00:00")]
 
 
 def test_unreadable_database_is_refused_before_migration(tmp_path: Path) -> None:

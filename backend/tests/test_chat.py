@@ -184,6 +184,153 @@ def test_provider_failure_is_streamed_without_inventing_reply(
     assert conversation["messages"][0]["role"] == "user"
 
 
+def test_conversation_lifecycle_is_guarded_audited_and_recoverable(
+    tmp_path: Path,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = FakeProvider()
+        created = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "History"},
+        ).json()
+        conversation_id = created["id"]
+        sent = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={"model": "qwen3:8b", "content": "Hello Nova"},
+        )
+        assert sent.status_code == 200
+
+        denied = client.patch(
+            f"/api/v1/chat/conversations/{conversation_id}",
+            json={"title": "Private history"},
+        )
+        assert denied.status_code == 403
+        renamed = client.patch(
+            f"/api/v1/chat/conversations/{conversation_id}",
+            headers=INTENT,
+            json={"title": "Private history"},
+        )
+        assert renamed.status_code == 200
+        assert renamed.json()["title"] == "Private history"
+
+        archived = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/archive",
+            headers=INTENT,
+        )
+        assert archived.status_code == 200
+        assert archived.json()["archived_at"] is not None
+        assert client.get("/api/v1/chat/conversations").json() == []
+        assert [item["id"] for item in client.get(
+            "/api/v1/chat/conversations?status=archived"
+        ).json()] == [conversation_id]
+
+        blocked = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={"model": "qwen3:8b", "content": "Hello Nova"},
+        )
+        assert blocked.status_code == 409
+        restored = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/restore",
+            headers=INTENT,
+        )
+        assert restored.status_code == 200
+
+        trashed = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/trash",
+            headers=INTENT,
+        )
+        assert trashed.status_code == 200
+        assert trashed.json()["trashed_at"] is not None
+        assert client.get("/api/v1/chat/conversations").json() == []
+        assert [item["id"] for item in client.get(
+            "/api/v1/chat/conversations?status=trash"
+        ).json()] == [conversation_id]
+
+        restored_from_trash = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/trash/restore",
+            headers=INTENT,
+        )
+        assert restored_from_trash.status_code == 200
+        body = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}"
+        ).json()
+        assert body["message_count"] == 2
+        assert [message["content"] for message in body["messages"]] == [
+            "Hello Nova",
+            "Hello Example Owner.",
+        ]
+        events = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}/events"
+        ).json()
+        assert [event["event_type"] for event in events] == [
+            "created",
+            "renamed",
+            "archived",
+            "restored",
+            "trashed",
+            "restored_from_trash",
+        ]
+
+
+def test_invalid_conversation_lifecycle_transitions_do_not_write_events(
+    tmp_path: Path,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Lifecycle"},
+        ).json()["id"]
+        conflict = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/restore",
+            headers=INTENT,
+        )
+        assert conflict.status_code == 409
+        events = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}/events"
+        ).json()
+        assert [event["event_type"] for event in events] == ["created"]
+
+
+def test_unexpected_prestream_failure_releases_conversation_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Recovery"},
+        ).json()["id"]
+
+        def fail_retrieval(_query: str) -> None:
+            raise RuntimeError("unexpected retrieval failure")
+
+        monkeypatch.setattr(
+            application.state.knowledge,
+            "retrieve_approved",
+            fail_retrieval,
+        )
+        with pytest.raises(RuntimeError, match="unexpected retrieval failure"):
+            client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": "qwen3:8b", "content": "Hello Nova"},
+            )
+
+        archived = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/archive",
+            headers=INTENT,
+        )
+        assert archived.status_code == 200
+
+
 def test_explicit_document_context_is_verified_used_and_cited(
     tmp_path: Path,
 ) -> None:

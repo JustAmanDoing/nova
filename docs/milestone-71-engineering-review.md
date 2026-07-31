@@ -4,7 +4,7 @@
 
 **Reviewed proposal:** Milestone 72 Conversation Organisation
 
-**Decision:** Passed with conditions; feasible after explicit owner approval
+**Decision:** Passed with conditions; owner-approved implementation may proceed
 
 ## Existing components to reuse
 
@@ -24,7 +24,8 @@ No external dependency or open-source package is required for this slice.
 
 ### Database
 
-- Schema migration 17 adds `archived_at` to `chat_conversations`.
+- Schema migration 17 adds `archived_at` and `trashed_at` to
+  `chat_conversations`.
 - Add `chat_conversation_events` with an immutable identifier, conversation
   identifier, event type, previous title when applicable, new title when
   applicable, and UTC creation time.
@@ -36,7 +37,8 @@ No external dependency or open-source package is required for this slice.
 
 ### Domain service
 
-- Add explicit `rename`, `archive`, `restore`, and `list_events` operations.
+- Add explicit `rename`, `archive`, `restore`, `trash`, `restore_from_trash`,
+  and `list_events` operations.
 - Perform each state update and lifecycle insert in one database transaction.
 - Reject blank or over-length titles with the existing 120-character limit.
 - Reject archive of an already archived conversation and restore of an active
@@ -46,19 +48,25 @@ No external dependency or open-source package is required for this slice.
 
 ### API
 
-- Extend list conversations with an explicit `status=active|archived|all`
-  query, defaulting to active.
-- Add guarded rename, archive, and restore endpoints under the current
-  conversation resource.
+- Extend list conversations with an explicit
+  `status=active|archived|trash|all` query, defaulting to active.
+- Add guarded rename, archive, restore, move-to-Trash, and restore-from-Trash
+  endpoints under the current conversation resource.
 - Add a read-only lifecycle-events endpoint.
 - Keep existing response fields compatible and add archived state explicitly.
 
 ### Frontend
 
 - Keep active conversations in the accepted desktop list and phone picker.
+- Keep newest activity first and open each conversation at its latest exchange.
+- Add an always-visible phone **New chat** action and a **Jump to latest**
+  control when the owner reviews older messages.
+- Add a phone **Chats** drawer so selection and reversible lifecycle controls
+  remain reachable without lengthening the primary chat journey.
 - Add one unobtrusive owner menu for Rename and Archive on an active
   conversation.
 - Add a collapsed Archived conversations view with Restore.
+- Add a collapsed Trash view with Restore; do not add permanent purge.
 - Show an archived conversation as read-only and prevent message submission.
 - If the selected conversation is archived, move the active selection to the
   next available record or an empty new-conversation state.
@@ -80,9 +88,14 @@ No external dependency or open-source package is required for this slice.
 10. The active phone picker excludes archived records.
 11. Archived review and Restore work at desktop and 390-pixel layouts.
 12. Lifecycle controls are disabled during streaming generation.
-13. Backend lint, strict typing, tests, and coverage remain green.
-14. Frontend lint, tests, static typing, and production build remain green.
-15. Windows controls, Compose validation, production build, runtime health,
+13. A 79-message phone transcript remains bounded, opens at the latest
+    exchange, and exposes Jump to latest after scrolling upward.
+14. Move-to-Trash and restore preserve every message and lifecycle event.
+15. The phone Chats drawer exposes selection and lifecycle controls without
+    horizontal page overflow.
+16. Backend lint, strict typing, tests, and coverage remain green.
+17. Frontend lint, tests, static typing, and production build remain green.
+18. Windows controls, Compose validation, production build, runtime health,
     database integrity, backup, restore, private HTTPS, and Funnel-off checks
     remain green.
 
@@ -105,11 +118,13 @@ No external dependency or open-source package is required for this slice.
 | Archive occurs while a reply is streaming | Disable the control and enforce service state checks. |
 | Existing clients unexpectedly lose records | Default only the list endpoint to active and test explicit archived/all access. |
 | Migration fabricates historical events | Backfill only deterministic creation facts; document unavailable history. |
-| UI becomes crowded again on phone | Use one compact owner menu and a collapsed archive view; validate 390 pixels and physical phone. |
+| UI becomes crowded again on phone | Use one compact owner menu plus collapsed archive and Trash views; validate 390 pixels and physical phone. |
+| A long transcript expands the entire page | Give the chat workspace a bounded viewport, keep transcript scrolling internal, and test a 79-message fixture. |
+| Delete wording implies irreversible erasure | Label the action Move to Trash, explain recovery, and defer permanent purge. |
 
 ## Review conclusion
 
-The proposal is small, testable, and implementable inside the current
-architecture. It should reduce measured chat-list friction without adding a
-destructive action or external dependency. Runtime work remains blocked until
-the owner explicitly approves Milestone 72.
+The revised proposal is bounded, testable, and implementable inside the current
+architecture. It should remove the measured phone transcript defect and reduce
+chat-list friction without permanent deletion or an external dependency. The
+owner has approved this bounded implementation.

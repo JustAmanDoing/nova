@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import {
+  archiveChatConversation,
   createKnowledgeSnapshot,
   createChatConversation,
   getChatConversation,
@@ -16,8 +17,12 @@ import {
   getKnowledgeCandidates,
   getKnowledgeQuality,
   getKnowledgeRecords,
+  renameChatConversation,
+  restoreChatConversation,
+  restoreChatConversationFromTrash,
   reviewKnowledgeCandidate,
   streamChatMessage,
+  trashChatConversation,
   updateKnowledgeRecord,
   type ChatConversationSummary,
   type ChatDocumentOption,
@@ -72,6 +77,12 @@ function ChatApp() {
   const [documents, setDocuments] = useState<ChatDocumentOption[]>([]);
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
+  const [archivedConversations, setArchivedConversations] = useState<
+    ChatConversationSummary[]
+  >([]);
+  const [trashedConversations, setTrashedConversations] = useState<
+    ChatConversationSummary[]
+  >([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<DraftMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -87,6 +98,13 @@ function ChatApp() {
   const [knowledgeQualityError, setKnowledgeQualityError] =
     useState<string | null>(null);
   const [snapshotting, setSnapshotting] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [pendingConversationAction, setPendingConversationAction] = useState<
+    "archive" | "trash" | null
+  >(null);
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [reviewRequest, setReviewRequest] = useState<{
     recordId: string;
     requestId: number;
@@ -102,6 +120,20 @@ function ChatApp() {
     const records = await getChatConversations();
     setConversations(records);
     return records;
+  }, []);
+
+  const refreshOrganizedConversations = useCallback(async () => {
+    const [archived, trash] = await Promise.all([
+      getChatConversations(undefined, "archived"),
+      getChatConversations(undefined, "trash"),
+    ]);
+    const verifiedArchived = archived.filter(
+      (conversation) => conversation.archived_at && !conversation.trashed_at,
+    );
+    const verifiedTrash = trash.filter((conversation) => conversation.trashed_at);
+    setArchivedConversations(verifiedArchived);
+    setTrashedConversations(verifiedTrash);
+    return { archived: verifiedArchived, trash: verifiedTrash };
   }, []);
 
   const refreshKnowledgeCandidates = useCallback(async () => {
@@ -134,6 +166,10 @@ function ChatApp() {
     setMessages(conversation.messages);
     if (conversation.model) setSelectedModel(conversation.model);
     setNotice(null);
+    setRenaming(false);
+    setPendingConversationAction(null);
+    setMobileHistoryOpen(false);
+    setShowJumpToLatest(false);
   }, []);
 
   useEffect(() => {
@@ -142,6 +178,8 @@ function ChatApp() {
       getChatModels(controller.signal),
       getChatDocuments(controller.signal),
       getChatConversations(controller.signal),
+      getChatConversations(controller.signal, "archived"),
+      getChatConversations(controller.signal, "trash"),
       getKnowledgeCandidates("pending", controller.signal),
       getKnowledgeRecords(controller.signal),
       getKnowledgeQuality(controller.signal),
@@ -151,6 +189,8 @@ function ChatApp() {
           modelResult,
           documentResult,
           conversationResult,
+          archivedResult,
+          trashResult,
           knowledgeResult,
           recordResult,
           qualityResult,
@@ -179,6 +219,22 @@ function ChatApp() {
           }
         } else {
           failures.push(errorMessage(conversationResult.reason));
+        }
+        if (archivedResult.status === "fulfilled") {
+          setArchivedConversations(
+            archivedResult.value.filter(
+              (conversation) => conversation.archived_at && !conversation.trashed_at,
+            ),
+          );
+        } else {
+          failures.push(errorMessage(archivedResult.reason));
+        }
+        if (trashResult.status === "fulfilled") {
+          setTrashedConversations(
+            trashResult.value.filter((conversation) => conversation.trashed_at),
+          );
+        } else {
+          failures.push(errorMessage(trashResult.reason));
         }
         if (knowledgeResult.status === "fulfilled") {
           setKnowledgeCandidates(knowledgeResult.value);
@@ -209,12 +265,16 @@ function ChatApp() {
     return () => controller.abort();
   }, [openConversation]);
 
-  useEffect(() => {
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = "auto") => {
     transcriptRef.current?.scrollTo({
       top: transcriptRef.current.scrollHeight,
-      behavior: generating ? "auto" : "smooth",
+      behavior,
     });
-  }, [messages, generating]);
+  }, []);
+
+  useEffect(() => {
+    scrollToLatest(generating ? "auto" : "smooth");
+  }, [messages, generating, scrollToLatest]);
 
   useEffect(() => {
     if (loading || guidedQueryHandledRef.current) return;
@@ -263,8 +323,97 @@ function ChatApp() {
       setSelectedId(conversation.id);
       setMessages([]);
       setNotice(null);
+      setRenaming(false);
+      setPendingConversationAction(null);
+      setMobileHistoryOpen(false);
+      window.requestAnimationFrame(() => composerRef.current?.focus());
     } catch (error: unknown) {
       setNotice(error instanceof Error ? error.message : "Unable to start a chat.");
+    }
+  }
+
+  const selectedConversation = [
+    ...conversations,
+    ...archivedConversations,
+    ...trashedConversations,
+  ].find((conversation) => conversation.id === selectedId);
+  const selectedConversationStatus = selectedConversation?.trashed_at
+    ? "trash"
+    : selectedConversation?.archived_at
+      ? "archived"
+      : "active";
+
+  function handleTranscriptScroll() {
+    const transcript = transcriptRef.current;
+    if (!transcript) return;
+    const distanceFromLatest =
+      transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight;
+    setShowJumpToLatest(distanceFromLatest > 96);
+  }
+
+  async function refreshConversationLists() {
+    const [active] = await Promise.all([
+      refreshConversations(),
+      refreshOrganizedConversations(),
+    ]);
+    return active;
+  }
+
+  async function handleRenameConversation(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedId || generating) return;
+    try {
+      await renameChatConversation(selectedId, renameDraft);
+      await refreshConversationLists();
+      await openConversation(selectedId);
+      setNotice("Conversation renamed. The previous title remains in local history.");
+    } catch (error: unknown) {
+      setNotice(errorMessage(error));
+    }
+  }
+
+  async function handleConversationAction(action: "archive" | "trash") {
+    if (!selectedId || generating) return;
+    try {
+      if (action === "archive") {
+        await archiveChatConversation(selectedId);
+      } else {
+        await trashChatConversation(selectedId);
+      }
+      const active = await refreshConversationLists();
+      setPendingConversationAction(null);
+      if (active[0]) {
+        await openConversation(active[0].id);
+      } else {
+        setSelectedId(null);
+        setMessages([]);
+      }
+      setNotice(
+        action === "archive"
+          ? "Conversation archived. Every message is preserved."
+          : "Conversation moved to Trash. It can still be restored.",
+      );
+    } catch (error: unknown) {
+      setNotice(errorMessage(error));
+    }
+  }
+
+  async function handleRestoreConversation(
+    conversation: ChatConversationSummary,
+    fromTrash: boolean,
+  ) {
+    if (generating) return;
+    try {
+      if (fromTrash) {
+        await restoreChatConversationFromTrash(conversation.id);
+      } else {
+        await restoreChatConversation(conversation.id);
+      }
+      await refreshConversationLists();
+      await openConversation(conversation.id);
+      setNotice("Conversation restored with its complete message history.");
+    } catch (error: unknown) {
+      setNotice(errorMessage(error));
     }
   }
 
@@ -521,14 +670,44 @@ function ChatApp() {
           <a className="chat-nav-link" href="/focus.html">Focus</a>
           <a className="chat-nav-link" href="/">Intake</a>
         </div>
+        <button
+          type="button"
+          className="mobile-chat-history-toggle"
+          aria-expanded={mobileHistoryOpen}
+          aria-controls="conversation-history"
+          onClick={() => setMobileHistoryOpen((current) => !current)}
+        >
+          Chats
+        </button>
+        <button
+          type="button"
+          className="mobile-new-chat"
+          onClick={handleNewConversation}
+          disabled={generating}
+        >
+          New chat
+        </button>
         <span className={`chat-provider ${models.length ? "online" : "offline"}`}>
           <span aria-hidden="true" />
           {models.length ? "Local AI ready" : "Local AI unavailable"}
         </span>
       </nav>
 
+      {mobileHistoryOpen ? (
+        <button
+          type="button"
+          className="mobile-history-backdrop"
+          aria-label="Close conversation history"
+          onClick={() => setMobileHistoryOpen(false)}
+        />
+      ) : null}
+
       <div className="chat-layout">
-        <aside className="conversation-sidebar" aria-label="Conversation history">
+        <aside
+          id="conversation-history"
+          className={`conversation-sidebar ${mobileHistoryOpen ? "mobile-open" : ""}`}
+          aria-label="Conversation history"
+        >
           <div className="sidebar-heading">
             <div>
               <p className="section-number">Local history</p>
@@ -540,7 +719,14 @@ function ChatApp() {
               onClick={handleNewConversation}
               disabled={generating}
             >
-              New
+              New chat
+            </button>
+            <button
+              type="button"
+              className="mobile-history-close"
+              onClick={() => setMobileHistoryOpen(false)}
+            >
+              Close
             </button>
           </div>
           <label className="conversation-picker">
@@ -553,6 +739,11 @@ function ChatApp() {
               {conversations.length === 0 ? (
                 <option value="">No conversations yet</option>
               ) : null}
+              {selectedConversation && selectedConversationStatus !== "active" ? (
+                <option value={selectedConversation.id}>
+                  {selectedConversation.title} · {selectedConversationStatus}
+                </option>
+              ) : null}
               {conversations.map((conversation) => (
                 <option key={conversation.id} value={conversation.id}>
                   {conversation.title} · {conversation.message_count} message
@@ -561,6 +752,88 @@ function ChatApp() {
               ))}
             </select>
           </label>
+          {selectedConversation ? (
+            <section className="conversation-management" aria-label="Conversation actions">
+              {renaming ? (
+                <form onSubmit={handleRenameConversation}>
+                  <label htmlFor="conversation-title">Conversation title</label>
+                  <input
+                    id="conversation-title"
+                    value={renameDraft}
+                    maxLength={120}
+                    onChange={(event) => setRenameDraft(event.target.value)}
+                    autoFocus
+                  />
+                  <div>
+                    <button type="submit" disabled={!renameDraft.trim() || generating}>
+                      Save title
+                    </button>
+                    <button type="button" onClick={() => setRenaming(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : selectedConversationStatus === "active" ? (
+                <div className="conversation-action-row">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRenameDraft(selectedConversation.title);
+                      setRenaming(true);
+                    }}
+                    disabled={generating}
+                  >
+                    Rename
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingConversationAction("archive")}
+                    disabled={generating}
+                  >
+                    Archive
+                  </button>
+                  <button
+                    type="button"
+                    className="conversation-trash-button"
+                    onClick={() => setPendingConversationAction("trash")}
+                    disabled={generating}
+                  >
+                    Move to Trash
+                  </button>
+                </div>
+              ) : (
+                <p className="conversation-read-only">
+                  This conversation is {selectedConversationStatus} and read-only.
+                </p>
+              )}
+              {pendingConversationAction ? (
+                <div className="conversation-confirmation" role="alertdialog" aria-modal="true">
+                  <strong>
+                    {pendingConversationAction === "archive"
+                      ? "Archive this conversation?"
+                      : "Move this conversation to Trash?"}
+                  </strong>
+                  <p>
+                    Every message stays on this PC and the conversation can be restored.
+                  </p>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => void handleConversationAction(pendingConversationAction)}
+                    >
+                      {pendingConversationAction === "archive" ? "Archive" : "Move to Trash"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingConversationAction(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
           <div className="conversation-list">
             {conversations.length ? (
               conversations.map((conversation) => (
@@ -584,13 +857,30 @@ function ChatApp() {
               </p>
             )}
           </div>
+          <ConversationCollection
+            title="Archived conversations"
+            conversations={archivedConversations}
+            selectedId={selectedId}
+            generating={generating}
+            onOpen={openConversation}
+            onRestore={(conversation) => handleRestoreConversation(conversation, false)}
+          />
+          <ConversationCollection
+            title="Trash"
+            conversations={trashedConversations}
+            selectedId={selectedId}
+            generating={generating}
+            onOpen={openConversation}
+            onRestore={(conversation) => handleRestoreConversation(conversation, true)}
+          />
           <p className="privacy-note">
             Chat history and approved knowledge stay local. A suggestion is never
             permanent until you choose Approve &amp; save.
           </p>
         </aside>
 
-        <section className="chat-stage" aria-labelledby="chat-title">
+        <section className="chat-stage">
+          <section className="chat-workspace" aria-labelledby="chat-title">
           <header className="chat-heading">
             <div>
               <p className="eyebrow">Milestone 65 · Projects &amp; Goals</p>
@@ -616,6 +906,9 @@ function ChatApp() {
           <div
             className="chat-transcript"
             ref={transcriptRef}
+            onScroll={handleTranscriptScroll}
+            tabIndex={0}
+            aria-label="Conversation messages"
             aria-live="polite"
             aria-busy={generating}
           >
@@ -658,6 +951,18 @@ function ChatApp() {
               ))
             )}
           </div>
+          {showJumpToLatest ? (
+            <button
+              type="button"
+              className="jump-to-latest"
+              onClick={() => {
+                scrollToLatest("smooth");
+                setShowJumpToLatest(false);
+              }}
+            >
+              Jump to latest
+            </button>
+          ) : null}
 
           {notice ? <p className="chat-notice" role="status">{notice}</p> : null}
 
@@ -668,7 +973,7 @@ function ChatApp() {
                 id="chat-document"
                 value={selectedDocumentId}
                 onChange={(event) => setSelectedDocumentId(event.target.value)}
-                disabled={generating}
+                disabled={generating || selectedConversationStatus !== "active"}
               >
                 <option value="">None selected</option>
                 {documents.map((document) => (
@@ -696,7 +1001,11 @@ function ChatApp() {
                   : "Start Ollama to chat with Nova"
               }
               rows={2}
-              disabled={models.length === 0 || generating}
+              disabled={
+                models.length === 0 ||
+                generating ||
+                selectedConversationStatus !== "active"
+              }
             />
             {generating ? (
               <button type="button" className="stop-button" onClick={stopGeneration}>
@@ -705,7 +1014,11 @@ function ChatApp() {
             ) : (
               <button
                 type="submit"
-                disabled={!draft.trim() || !selectedModel}
+                disabled={
+                  !draft.trim() ||
+                  !selectedModel ||
+                  selectedConversationStatus !== "active"
+                }
               >
                 Send
               </button>
@@ -721,6 +1034,7 @@ function ChatApp() {
               and autonomous actions remain disabled.
             </p>
           </details>
+          </section>
 
           {knowledgeCandidates.length ? (
             <section className="knowledge-review" aria-labelledby="knowledge-title">
@@ -800,6 +1114,61 @@ function ChatApp() {
 }
 
 export default ChatApp;
+
+function ConversationCollection({
+  title,
+  conversations,
+  selectedId,
+  generating,
+  onOpen,
+  onRestore,
+}: {
+  title: string;
+  conversations: ChatConversationSummary[];
+  selectedId: string | null;
+  generating: boolean;
+  onOpen: (conversationId: string) => Promise<void>;
+  onRestore: (conversation: ChatConversationSummary) => Promise<void>;
+}) {
+  if (!conversations.length) return null;
+  return (
+    <details className="conversation-collection">
+      <summary>
+        {title} <span>{conversations.length}</span>
+      </summary>
+      <div>
+        {conversations.map((conversation) => (
+          <article
+            key={conversation.id}
+            className={conversation.id === selectedId ? "selected" : ""}
+          >
+            <strong>{conversation.title}</strong>
+            <span>
+              {conversation.message_count} message
+              {conversation.message_count === 1 ? "" : "s"}
+            </span>
+            <div>
+              <button
+                type="button"
+                onClick={() => void onOpen(conversation.id)}
+                disabled={generating}
+              >
+                Review
+              </button>
+              <button
+                type="button"
+                onClick={() => void onRestore(conversation)}
+                disabled={generating}
+              >
+                Restore
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </details>
+  );
+}
 
 function KnowledgeHealth({
   report,
