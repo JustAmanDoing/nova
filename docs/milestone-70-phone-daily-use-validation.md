@@ -4,7 +4,7 @@
 
 **Release candidate:** 0.70.0
 
-**Status:** Owner acceptance passed; protected repository integration pending
+**Status:** Complete; release 0.70.0 accepted, protected, and released
 
 ## Objective
 
@@ -71,10 +71,13 @@ post-acceptance backup was created as
 
 ## Release gate
 
-Owner acceptance is satisfied. Merge, tag, and publish 0.70.0 only after the
-complete changed-file review and protected GitHub checks pass. A failed check
-returns the candidate to correction; it does not weaken an existing privacy or
-safety boundary.
+Owner acceptance is satisfied. Protected PR #15 passed Backend quality,
+Frontend quality, Windows controls, and Production runtime before merge commit
+`4053f5b6a5a23efccf94e781fe2c8c3889d7ada0` entered `main`. The exact merged
+`main` was then rebuilt and revalidated locally. Tag and publish 0.70.0 only
+after the evidence-only release review passes. A failed check returns the
+release to correction; it does not weaken an existing privacy or safety
+boundary.
 
 ## Exact next milestone
 
