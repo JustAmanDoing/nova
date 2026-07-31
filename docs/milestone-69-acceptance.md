@@ -6,8 +6,9 @@
 
 **Branch:** `agent/milestone-69-secure-phone-access`
 
-**Current decision:** Not release-ready; external certificate provisioning is
-blocking phone-browser acceptance.
+**Current decision:** Not release-ready; private phone use is accepted, but the
+controlled disable-and-re-enable recovery check and protected release
+integration are still required.
 
 ## Checks passed
 
@@ -26,6 +27,15 @@ blocking phone-browser acceptance.
   quality, production runtime, and Windows controls.
 - Private Serve/Funnel classification tests cover empty, private false-flag,
   public true-flag, and foreground public configurations.
+- The private HTTPS certificate is valid for `nova.tail1d0293.ts.net` and the
+  HTTPS Chat, Focus, and same-origin API routes return successfully.
+- The owner verified Chat, Focus, approved knowledge, and a genuine reversible
+  next-action workflow from the phone.
+- The owner verified that the mobile chat composer stays within reach while
+  the conversation scrolls, then stops at the end of the chat section instead
+  of covering the Knowledge panels.
+- The mobile-composer correction passes frontend lint, type checking, all 46
+  frontend tests, and the production build.
 
 ## Acceptance defects corrected
 
@@ -36,30 +46,31 @@ blocking phone-browser acceptance.
 2. Tailscale 1.98 returns the shared Serve configuration from both `serve
    status --json` and `funnel status --json`. NOVA now detects public exposure
    from true `AllowFunnel` flags rather than from a non-empty document.
+3. Long knowledge panels initially separated phone conversations from the
+   message composer. The composer now follows the transcript in document order
+   and remains anchored within reach while the chat section scrolls. A
+   regression test preserves that ordering.
 
-## External blocker
+## Resolved external blocker
 
-TLS handshakes currently fail because the Tailscale control plane returns HTTP
-500 while creating the ACME DNS challenge record for this node. A single
-bounded retry produced the same result. Tailscale's public status page reported
-the certificate service operational at the time, so no further automated
-certificate retries were made.
+Tailscale certificate provisioning previously returned HTTP 500 while creating
+the ACME DNS challenge record for this node. Provisioning later completed
+without weakening NOVA's private-only boundary.
 
-The private Serve configuration is preserved so Tailscale can finish
-certificate issuance later. Local desktop NOVA remains healthy and unchanged.
+The installed certificate is valid for the exact private DNS name. Private
+HTTPS health, Chat, Focus, and the same-origin API now pass. No router port,
+public Funnel, or broader Docker listener was opened.
 
 ## Remaining acceptance
 
-- Successful HTTPS health through the private Tailscale address
 - Controlled disable and re-enable recovery
-- Phone Chat, Focus, knowledge, and one reversible guarded-action workflow
-- Owner acceptance
 - Protected merge, installed-main rebuild, verified final backup, tag, and
   release
 
 ## Exact next action
 
-After a cooling-off period, perform one certificate-status check. If the
-certificate remains unavailable, capture a Tailscale bug report only with the
-owner's approval and contact Tailscale support. Do not merge or release 0.69.0
-until private HTTPS and phone acceptance pass.
+Run `Phone Access Off.cmd` as administrator, prove that the private phone route
+stops while desktop NOVA remains healthy, then run `Phone Access On.cmd` as
+administrator and prove the same private address recovers. Do not merge or
+release 0.69.0 until that recovery evidence and the protected integration
+sequence pass.

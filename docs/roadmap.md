@@ -450,8 +450,8 @@ Implementation and review evidence:
 
 ## Milestone 69 - Secure Tailnet Phone Access
 
-**Status (31 July 2026): implementation complete; acceptance is blocked by
-external Tailscale certificate provisioning.**
+**Status (31 July 2026): implementation and owner phone workflows accepted;
+controlled recovery and protected release integration remain.**
 
 The owner reprioritized secure phone access as a prerequisite for the planned
 daily-use validation.
@@ -464,6 +464,8 @@ daily-use validation.
 - Accept only localhost and the exact configured Tailscale DNS Host at Nginx
 - Provide guarded, auditable, reversible Windows controls
 - Validate chat, Focus, knowledge, and one reversible guarded action on phone
+- Keep the phone message composer within reach while chat scrolls, without
+  covering the Knowledge panels
 - Target release `0.69.0`
 
 Proposal and review evidence:

@@ -4,7 +4,8 @@
 
 **Target release:** 0.69.0
 
-**Status:** Implemented on feature branch; runtime and owner acceptance pending
+**Status:** Implemented and installed on the feature branch; owner phone
+workflows accepted, with recovery and protected release integration pending
 
 ## Implemented
 
@@ -31,6 +32,9 @@
 - Disable refuses to remove Serve when its live configuration differs from
   the exact configuration NOVA recorded.
 - Backend and frontend versions are aligned at `0.69.0`.
+- On narrow phone screens, the message composer follows the transcript and
+  remains anchored within reach while the chat section scrolls. It stops at
+  the chat boundary so it does not cover the Knowledge panels.
 
 ## Source changes
 
@@ -44,6 +48,9 @@
 - `Phone Access On.cmd`
 - `Phone Access Off.cmd`
 - `Check Phone Access.cmd`
+- `frontend/src/ChatApp.tsx`
+- `frontend/src/ChatApp.test.tsx`
+- `frontend/src/chat.css`
 - version, CI, contract-test, README, architecture, and roadmap records
 
 ## Safety behavior
@@ -77,16 +84,14 @@ configuration still matches that record.
 - Unexpected backend Host: rejected
 - Windows Docker listeners: loopback-only
 - Tailscale Funnel: empty
+- Valid private HTTPS certificate for `nova.tail1d0293.ts.net`: passed
+- Private phone Chat, Focus, approved knowledge, and one genuine reversible
+  next-action workflow: owner passed
+- Mobile chat-composer reachability and chat-boundary behavior: owner passed
 
 ## Pending acceptance
 
-- One-time owner authorization of Tailscale Serve HTTPS - complete
-- Exact private Serve configuration with Funnel disabled - complete
-- Private HTTPS health through Tailscale - blocked by a Tailscale ACME DNS
-  record HTTP 500; see `docs/milestone-69-acceptance.md`
 - Disable and re-enable recovery
-- Phone chat, Focus, knowledge, and guarded action workflow
-- Owner acceptance
 - Protected pull request, merged-main verification, installed-main rebuild,
   final backup, tag, and release
 
