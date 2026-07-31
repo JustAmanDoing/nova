@@ -4,8 +4,7 @@
 
 **Release candidate:** 0.70.0
 
-**Status:** Owner acceptance and protected implementation integration passed;
-release evidence integration is pending
+**Status:** Complete; release 0.70.0 accepted, protected, and released
 
 ## Objective
 

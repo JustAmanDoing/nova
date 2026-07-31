@@ -478,10 +478,12 @@ Proposal and review evidence:
 
 ## Milestone 70 - Phone Daily-Use Validation
 
-**Status (31 July 2026):** Release 0.70.0 implementation merged through
-protected PR #15 and rebuilt from exact `main`; automated, runtime, desktop,
-phone-sized browser, and physical-phone owner checks passed. Evidence-only
-release integration and tag remain pending.
+**Status (31 July 2026): complete; release 0.70.0 integrated, installed,
+privately accessible, and accepted by the owner.**
+
+The implementation merged through protected PR #15 and was rebuilt from exact
+`main`. Automated, runtime, desktop, phone-sized browser, physical-phone owner,
+and evidence-only protected release checks passed.
 
 - Use the accepted phone route naturally rather than adding synthetic features
 - Measure connection reliability, responsiveness, usability, and approval
