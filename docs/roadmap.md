@@ -402,15 +402,35 @@ Completion evidence:
 
 ## Milestone 67 — Evidence-Led Next Capability Selection
 
-**Status (31 July 2026): next; proposal and review work only. No runtime
-feature is approved.**
+**Status (31 July 2026): complete; Owner-Approved Next Actions selected.
+Runtime implementation awaits explicit owner approval.**
 
-- Review Milestone 66 evidence and the owner's current priorities
-- Rank bounded candidates by impact, urgency, privacy, complexity, reuse, and
-  maintenance cost
-- Select one capability slice
-- Complete architecture and engineering proposal reviews
-- Obtain explicit owner approval before runtime implementation
+- Milestone 66 evidence and the owner's current priorities reviewed — complete
+- Candidates ranked by impact, urgency, privacy, complexity, reuse, and
+  maintenance cost — complete
+- Milestone 68 Owner-Approved Next Actions selected — complete
+- Architecture and engineering proposal reviews — passed
+- Runtime implementation remains gated by explicit owner approval
+
+Decision and proposal evidence:
+
+- `docs/milestone-67-next-capability-selection.md`
+- `docs/milestone-67-architecture-review.md`
+- `docs/milestone-67-engineering-review.md`
+- `docs/milestone-68-owner-approved-next-actions-proposal.md`
+
+## Milestone 68 — Owner-Approved Next Actions
+
+**Status (31 July 2026): proposed; no runtime implementation is approved.**
+
+- Add one bounded local Next actions section to Focus
+- Accept only explicit owner-entered actions
+- Support open, complete, and reopen with append-only local history
+- Allow an optional verified active-project association
+- Exclude priorities, dates, reminders, recurrence, notifications, automatic
+  extraction, model-generated plans, and autonomous execution
+- Preserve local-first, privacy-first, AI-optional, recovery, and
+  modular-monolith boundaries
 
 ## Later capabilities
 
