@@ -515,8 +515,8 @@ Acceptance and review evidence:
 
 ## Milestone 71 - Evidence-Led Next Capability Selection
 
-**Status (31 July 2026): approved as the exact next milestone after release
-0.70.0; proposal and review work only.**
+**Status (1 August 2026): complete; Milestone 72 Conversation Organisation
+selected, runtime implementation not yet approved.**
 
 - Review measured daily-use evidence and current owner priorities
 - Rank candidate improvements by impact, urgency, privacy, complexity, reuse,
@@ -525,6 +525,29 @@ Acceptance and review evidence:
 - Require architecture and engineering review before requesting runtime
   approval
 - Do not start another runtime feature from this roadmap entry
+
+Decision and proposal evidence:
+
+- `docs/milestone-71-next-capability-selection.md`
+- `docs/milestone-71-architecture-review.md`
+- `docs/milestone-71-engineering-review.md`
+- `docs/milestone-72-conversation-organisation-proposal.md`
+
+## Milestone 72 - Conversation Organisation
+
+**Status (1 August 2026): proposed; architecture and engineering reviews
+passed with conditions; runtime implementation requires explicit owner
+approval.**
+
+- Let the owner rename a local conversation explicitly
+- Let the owner archive and restore a conversation without deleting messages
+- Keep archived conversations outside the default active picker while making
+  them deliberately reviewable
+- Record created, renamed, archived, and restored lifecycle events locally
+- Guard every mutation with the existing local-intent boundary
+- Prevent sending into an archived conversation until the owner restores it
+- Add no deletion, automatic retention, AI-generated organisation, external
+  sync, sharing, semantic search, or background action
 
 ## Later capabilities
 

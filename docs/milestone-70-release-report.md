@@ -4,8 +4,7 @@
 
 **Release:** 0.70.0
 
-**Status:** Release approved; evidence-only protected integration and tag
-pending
+**Status:** Complete; protected release 0.70.0 published
 
 ## Decision
 
@@ -13,10 +12,11 @@ Milestone 70 is safe to release. The implementation, automated verification,
 installed-runtime checks, responsive-browser checks, and physical-phone owner
 acceptance all passed. No release-blocking defect remains.
 
-This report is the final evidence-only repository change. After its protected
-checks pass, merge it with a merge commit, preserve both Milestone 70 branches,
-tag that exact `main` commit as `v0.70.0`, publish the GitHub release, and
-verify the installed health endpoint still reports `0.70.0`.
+Protected evidence PR #16 passed all required checks and merged as
+`dc80b791feddc09c962c986dc3844a875ec58717`. Both Milestone 70 branches were
+preserved. Annotated tag `v0.70.0` identifies that exact merge commit, GitHub
+release **Release 0.70.0** is published, and the installed health endpoint
+reports `0.70.0`.
 
 ## Findings closed
 
@@ -110,11 +110,11 @@ action order, and optional details.
 - Daily-use feedback may reveal further usability improvements. Those belong in
   evidence-led selection, not an unreviewed expansion of this release.
 
-## Release recommendation
+## Release result
 
-Approve release 0.70.0 after this evidence-only change passes the protected
-repository checks. Use a merge commit, preserve the branch, tag the resulting
-`main` commit as `v0.70.0`, and publish a GitHub release from that tag.
+Completed. Protected implementation PR #15 and evidence PR #16 both passed the
+required matrix and used merge commits. Release tag `v0.70.0`, GitHub `main`,
+the local checkout, and the installed runtime identify release 0.70.0.
 
 ## Exact next milestone
 
