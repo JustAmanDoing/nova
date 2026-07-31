@@ -574,6 +574,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 70 phone daily-use validation](docs/milestone-70-phone-daily-use-validation.md)
 - [Milestone 70 architecture review](docs/milestone-70-architecture-review.md)
 - [Milestone 70 engineering review](docs/milestone-70-engineering-review.md)
+- [Milestone 70 release report](docs/milestone-70-release-report.md)
 - [Milestone 69 implementation record](docs/milestone-69-implementation.md)
 - [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)
 - [Milestone 69 engineering review](docs/milestone-69-engineering-review.md)

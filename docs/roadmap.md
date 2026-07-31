@@ -478,9 +478,10 @@ Proposal and review evidence:
 
 ## Milestone 70 - Phone Daily-Use Validation
 
-**Status (31 July 2026):** Release candidate 0.70.0 installed and owner
-accepted; automated, runtime, desktop, phone-sized browser, and physical-phone
-checks passed. Protected repository integration remains pending.
+**Status (31 July 2026):** Release 0.70.0 implementation merged through
+protected PR #15 and rebuilt from exact `main`; automated, runtime, desktop,
+phone-sized browser, and physical-phone owner checks passed. Evidence-only
+release integration and tag remain pending.
 
 - Use the accepted phone route naturally rather than adding synthetic features
 - Measure connection reliability, responsiveness, usability, and approval
@@ -508,6 +509,20 @@ Acceptance and review evidence:
 - `docs/milestone-70-phone-daily-use-validation.md`
 - `docs/milestone-70-architecture-review.md`
 - `docs/milestone-70-engineering-review.md`
+- `docs/milestone-70-release-report.md`
+
+## Milestone 71 - Evidence-Led Next Capability Selection
+
+**Status (31 July 2026): approved as the exact next milestone after release
+0.70.0; proposal and review work only.**
+
+- Review measured daily-use evidence and current owner priorities
+- Rank candidate improvements by impact, urgency, privacy, complexity, reuse,
+  and maintenance cost
+- Recommend one bounded next capability or recommend no runtime change
+- Require architecture and engineering review before requesting runtime
+  approval
+- Do not start another runtime feature from this roadmap entry
 
 ## Later capabilities
 
