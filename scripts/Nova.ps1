@@ -1,7 +1,15 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("start", "stop", "status", "update")]
+    [ValidateSet(
+        "start",
+        "stop",
+        "status",
+        "update",
+        "phone-enable",
+        "phone-disable",
+        "phone-status"
+    )]
     [string]$Action = "start",
 
     [switch]$NoBrowser
@@ -18,6 +26,12 @@ $SystemStatusUrl = "http://127.0.0.1:8000/api/v1/system/status"
 $DatabaseIntegrityUrl = "http://127.0.0.1:8000/api/v1/system/integrity"
 $BackupUrl = "http://127.0.0.1:8000/api/v1/backups"
 $BackendProjectFile = Join-Path $ProjectRoot "backend\pyproject.toml"
+$EnvironmentFile = Join-Path $ProjectRoot ".env"
+$PhoneAccessStateDirectory = Join-Path $ProjectRoot "data\phone-access"
+$PhoneAccessStateFile = Join-Path (
+    $PhoneAccessStateDirectory
+) "tailscale-serve.json"
+$PhoneProxyTarget = "http://127.0.0.1:5173"
 
 function Write-Step {
     param([string]$Message)
@@ -45,6 +59,291 @@ function Assert-Docker {
     if ($LASTEXITCODE -ne 0) {
         throw "Docker Desktop is installed but not running. Start it, then try again."
     }
+}
+
+function Get-TailscaleExecutable {
+    $command = Get-Command "tailscale.exe" -ErrorAction SilentlyContinue
+    if ($null -ne $command) {
+        return $command.Source
+    }
+
+    $installedPath = Join-Path $env:ProgramFiles "Tailscale\tailscale.exe"
+    if (Test-Path -LiteralPath $installedPath -PathType Leaf) {
+        return $installedPath
+    }
+
+    throw "Tailscale is not installed. Install and connect Tailscale, then try again."
+}
+
+function Invoke-Tailscale {
+    param(
+        [string]$Executable,
+        [string[]]$Arguments
+    )
+
+    $output = & $Executable @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Tailscale could not complete: tailscale $($Arguments -join ' ')"
+    }
+    return ($output -join [Environment]::NewLine)
+}
+
+function ConvertTo-NovaCanonicalJson {
+    param([string]$Json)
+
+    if ([string]::IsNullOrWhiteSpace($Json)) {
+        throw "Tailscale returned an empty configuration response."
+    }
+    return (
+        $Json |
+            ConvertFrom-Json |
+            ConvertTo-Json -Depth 20 -Compress
+    )
+}
+
+function Get-NovaTailscaleState {
+    param([string]$Executable)
+
+    $statusJson = Invoke-Tailscale -Executable $Executable -Arguments @(
+        "status",
+        "--json"
+    )
+    $status = $statusJson | ConvertFrom-Json
+    if (-not $status.Self.Online) {
+        throw "Tailscale is installed but this PC is not connected."
+    }
+
+    $dnsName = ([string]$status.Self.DNSName).TrimEnd(".")
+    if ([string]::IsNullOrWhiteSpace($dnsName)) {
+        throw "Tailscale did not provide a private DNS name for this PC."
+    }
+    if ($dnsName -notmatch '^[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net$') {
+        throw "Tailscale returned an unexpected private DNS name. Phone access stopped before changing NOVA."
+    }
+
+    return [PSCustomObject]@{
+        DnsName = $dnsName
+        ServeJson = ConvertTo-NovaCanonicalJson (
+            Invoke-Tailscale -Executable $Executable -Arguments @(
+                "serve",
+                "status",
+                "--json"
+            )
+        )
+        FunnelJson = ConvertTo-NovaCanonicalJson (
+            Invoke-Tailscale -Executable $Executable -Arguments @(
+                "funnel",
+                "status",
+                "--json"
+            )
+        )
+    }
+}
+
+function Set-NovaEnvironmentValue {
+    param(
+        [string]$Name,
+        [string]$Value
+    )
+
+    $lines = @()
+    if (Test-Path -LiteralPath $EnvironmentFile -PathType Leaf) {
+        $lines = @(Get-Content -LiteralPath $EnvironmentFile)
+    }
+
+    $replacement = "$Name=$Value"
+    $matched = $false
+    for ($index = 0; $index -lt $lines.Count; $index += 1) {
+        if ($lines[$index] -match "^$([regex]::Escape($Name))=") {
+            $lines[$index] = $replacement
+            $matched = $true
+        }
+    }
+    if (-not $matched) {
+        $lines += $replacement
+    }
+
+    $temporaryPath = "$EnvironmentFile.tmp"
+    $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllLines(
+        $temporaryPath,
+        [string[]]$lines,
+        $utf8WithoutBom
+    )
+    Move-Item -LiteralPath $temporaryPath -Destination $EnvironmentFile -Force
+}
+
+function Test-NovaPhoneEndpoint {
+    param(
+        [string]$DnsName,
+        [int]$TimeoutSeconds = 45
+    )
+
+    $phoneHealthUrl = "https://$DnsName/api/v1/health"
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastFailure = "No HTTPS response was received."
+    do {
+        try {
+            $health = Invoke-RestMethod -Uri $phoneHealthUrl -TimeoutSec 5
+            if ($health.status -eq "ok") {
+                return $health
+            }
+            $lastFailure = "The private endpoint returned '$($health.status)'."
+        }
+        catch {
+            $lastFailure = $_.Exception.Message
+        }
+        Start-Sleep -Seconds 2
+    } while ((Get-Date) -lt $deadline)
+
+    throw "NOVA's private HTTPS endpoint did not become ready. $lastFailure"
+}
+
+function Enable-NovaPhoneAccess {
+    Assert-Docker
+    $tailscale = Get-TailscaleExecutable
+    $state = Get-NovaTailscaleState -Executable $tailscale
+
+    if ($state.FunnelJson -ne "{}") {
+        throw "Tailscale Funnel is configured. NOVA will not enable phone access while a public Funnel exists."
+    }
+
+    if ($state.ServeJson -ne "{}") {
+        if (-not (Test-Path -LiteralPath $PhoneAccessStateFile -PathType Leaf)) {
+            throw "A Tailscale Serve configuration already exists and was not created by NOVA. Phone access stopped without changing it."
+        }
+        $recorded = ConvertTo-NovaCanonicalJson (
+            Get-Content -Raw -LiteralPath $PhoneAccessStateFile
+        )
+        if ($recorded -ne $state.ServeJson) {
+            throw "Tailscale Serve changed after NOVA recorded it. Phone access stopped without replacing another service."
+        }
+        $health = Test-NovaPhoneEndpoint -DnsName $state.DnsName
+        Write-Host ""
+        Write-Host "NOVA $($health.version) phone access is already on." -ForegroundColor Green
+        Write-Host "Private address: https://$($state.DnsName)"
+        return
+    }
+
+    Write-Step "Configuring NOVA's exact private phone address"
+    Set-NovaEnvironmentValue `
+        -Name "NOVA_TAILSCALE_DNS_NAME" `
+        -Value $state.DnsName
+
+    Write-Step "Applying the same-origin private gateway"
+    try {
+        Invoke-Compose @("up", "--build", "-d", "frontend")
+    }
+    catch {
+        Show-ContainerDiagnostics
+        throw
+    }
+    $null = Wait-ForNova
+
+    Write-Step "Enabling private Tailscale HTTPS"
+    $null = Invoke-Tailscale -Executable $tailscale -Arguments @(
+        "serve",
+        "--bg",
+        "--yes",
+        $PhoneProxyTarget
+    )
+
+    $enabledState = Get-NovaTailscaleState -Executable $tailscale
+    if ($enabledState.FunnelJson -ne "{}") {
+        $null = Invoke-Tailscale -Executable $tailscale -Arguments @(
+            "serve",
+            "reset"
+        )
+        throw "A public Funnel appeared while phone access was enabled. NOVA removed its Serve configuration and stopped."
+    }
+    if (
+        $enabledState.ServeJson -eq "{}" `
+        -or $enabledState.ServeJson -notmatch [regex]::Escape($PhoneProxyTarget)
+    ) {
+        throw "Tailscale did not confirm NOVA's expected private proxy."
+    }
+
+    New-Item -ItemType Directory -Force -Path (
+        $PhoneAccessStateDirectory
+    ) | Out-Null
+    $enabledState.ServeJson | Set-Content `
+        -LiteralPath $PhoneAccessStateFile `
+        -Encoding UTF8
+
+    $health = Test-NovaPhoneEndpoint -DnsName $enabledState.DnsName
+    Write-Host ""
+    Write-Host "NOVA $($health.version) is ready on your private Tailscale network." -ForegroundColor Green
+    Write-Host "Phone address: https://$($enabledState.DnsName)"
+    Write-Host "No router port or public Funnel was opened."
+}
+
+function Disable-NovaPhoneAccess {
+    $tailscale = Get-TailscaleExecutable
+    $state = Get-NovaTailscaleState -Executable $tailscale
+
+    if ($state.ServeJson -eq "{}") {
+        Write-Host "NOVA phone access is already off." -ForegroundColor Green
+        return
+    }
+    if (-not (Test-Path -LiteralPath $PhoneAccessStateFile -PathType Leaf)) {
+        throw "The active Tailscale Serve configuration was not recorded by NOVA. Disable stopped without changing it."
+    }
+
+    $recorded = ConvertTo-NovaCanonicalJson (
+        Get-Content -Raw -LiteralPath $PhoneAccessStateFile
+    )
+    if ($recorded -ne $state.ServeJson) {
+        throw "Tailscale Serve changed after NOVA recorded it. Disable stopped so another service is not removed."
+    }
+
+    Write-Step "Disabling NOVA's private phone address"
+    $null = Invoke-Tailscale -Executable $tailscale -Arguments @(
+        "serve",
+        "reset"
+    )
+    $disabledState = Get-NovaTailscaleState -Executable $tailscale
+    if ($disabledState.ServeJson -ne "{}") {
+        throw "Tailscale still reports an active Serve configuration."
+    }
+
+    Remove-Item -LiteralPath $PhoneAccessStateFile -Force
+    Write-Host ""
+    Write-Host "NOVA phone access is off. Local desktop access is unchanged." -ForegroundColor Green
+}
+
+function Show-NovaPhoneAccessStatus {
+    $tailscale = Get-TailscaleExecutable
+    $state = Get-NovaTailscaleState -Executable $tailscale
+
+    Write-Host ""
+    Write-Host "Private device name: $($state.DnsName)"
+    if ($state.FunnelJson -ne "{}") {
+        Write-Host "Warning: a public Tailscale Funnel is configured." -ForegroundColor Red
+    }
+    else {
+        Write-Host "Public Funnel: off" -ForegroundColor Green
+    }
+
+    if ($state.ServeJson -eq "{}") {
+        Write-Host "NOVA phone access: off" -ForegroundColor Yellow
+        return
+    }
+    if (-not (Test-Path -LiteralPath $PhoneAccessStateFile -PathType Leaf)) {
+        Write-Host "NOVA phone access: unknown Serve configuration" -ForegroundColor Yellow
+        return
+    }
+
+    $recorded = ConvertTo-NovaCanonicalJson (
+        Get-Content -Raw -LiteralPath $PhoneAccessStateFile
+    )
+    if ($recorded -ne $state.ServeJson) {
+        Write-Host "NOVA phone access: configuration changed; no automatic action taken" -ForegroundColor Yellow
+        return
+    }
+
+    $health = Test-NovaPhoneEndpoint -DnsName $state.DnsName -TimeoutSeconds 10
+    Write-Host "NOVA phone access: on and healthy (version $($health.version))" -ForegroundColor Green
+    Write-Host "Private address: https://$($state.DnsName)"
 }
 
 function Get-ExpectedNovaVersion {
@@ -295,6 +594,9 @@ try {
         "stop" { Stop-Nova }
         "status" { Show-NovaStatus }
         "update" { Update-Nova }
+        "phone-enable" { Enable-NovaPhoneAccess }
+        "phone-disable" { Disable-NovaPhoneAccess }
+        "phone-status" { Show-NovaPhoneAccessStatus }
     }
 }
 catch {

@@ -144,6 +144,9 @@ $launchers = @{
     "Stop Nova.cmd" = "stop"
     "Check Nova.cmd" = "status"
     "Update Nova.cmd" = "update"
+    "Phone Access On.cmd" = "phone-enable"
+    "Phone Access Off.cmd" = "phone-disable"
+    "Check Phone Access.cmd" = "phone-status"
 }
 
 foreach ($launcher in $launchers.GetEnumerator()) {
@@ -157,6 +160,28 @@ foreach ($launcher in $launchers.GetEnumerator()) {
     }
     if ($content -notmatch "\s$($launcher.Value)(\s|$)") {
         throw "$($launcher.Key) does not request the $($launcher.Value) action."
+    }
+}
+
+foreach ($requiredPhoneControl in @(
+    "Enable-NovaPhoneAccess",
+    "Disable-NovaPhoneAccess",
+    "Show-NovaPhoneAccessStatus",
+    "NOVA_TAILSCALE_DNS_NAME",
+    "unexpected private DNS name",
+    "http://127.0.0.1:5173",
+    "funnel",
+    "serve",
+    "--bg",
+    "--yes",
+    "serve",
+    "reset",
+    "tailscale-serve.json",
+    "another service",
+    "No router port or public Funnel was opened."
+)) {
+    if ($controllerContent -notmatch [regex]::Escape($requiredPhoneControl)) {
+        throw "Nova.ps1 does not preserve the private phone-access control: $requiredPhoneControl"
     }
 }
 

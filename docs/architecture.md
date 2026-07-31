@@ -63,14 +63,23 @@ Local data/intake folder
 - Is a browser request-integrity boundary, not remote access or user
   authentication.
 - Rejects unexpected Host values before a request reaches the API routes.
+- Remains unchanged when the owner uses the approved private phone route;
+  Nginx supplies the already-allowed `localhost` Host value to the backend.
 
-### Local dashboard HTTP boundary
+### Local and private dashboard HTTP boundary
 
-- Serves the production dashboard only for `localhost` and `127.0.0.1`.
+- Serves the production dashboard for `localhost`, `127.0.0.1`, and at most
+  one exact Tailscale DNS name recorded by the guarded Windows control.
 - Closes requests carrying an unexpected Host value.
 - Uses a restrictive Content Security Policy and disables framing,
   content-type guessing, referrer leakage, and unused device permissions.
-- Retains local HTTP because Docker publishes only to the loopback interface.
+- Retains local HTTP behind Docker's loopback-only publication.
+- Uses Tailscale Serve to terminate HTTPS only for authenticated tailnet
+  devices; Tailscale Funnel and router port forwarding are prohibited.
+- Proxies `/api/` inside the existing frontend container so the phone uses one
+  browser origin and backend CORS or Host trust does not expand.
+- Keeps private phone access optional and explicitly reversible; desktop use
+  does not depend on Tailscale.
 
 ### Frontend
 

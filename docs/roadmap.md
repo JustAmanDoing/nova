@@ -448,19 +448,40 @@ Implementation and review evidence:
 - `docs/milestone-68-acceptance.md`
 - `docs/milestone-68-release-report.md`
 
-## Milestone 69 - Owner-Approved Next Actions Daily-Use Validation
+## Milestone 69 - Secure Tailnet Phone Access
 
-**Status:** Next; validation only, with no new runtime capability approved.
+**Status (31 July 2026): approved; implementation and acceptance in progress.**
 
-- Use the accepted lifecycle naturally rather than adding synthetic personal
-  actions
-- Measure whether explicit next actions improve daily planning without
-  approval fatigue
-- Confirm project association remains useful and fails closed if a genuine
-  project lifecycle change makes that test appropriate
-- Review owner feedback before expanding tasks, scheduling, reminders,
-  notifications, or another capability
-- Preserve the accepted 0.68.0 runtime while evidence is collected
+The owner reprioritized secure phone access as a prerequisite for the planned
+daily-use validation.
+
+- Reuse the owner's existing authenticated Tailscale network
+- Keep frontend and backend Docker publications on Windows loopback
+- Use private Tailscale Serve and explicitly prohibit public Funnel
+- Route the browser interface and API through one same-origin HTTPS address
+- Keep the backend Host allowlist and CORS policy local-only
+- Accept only localhost and the exact configured Tailscale DNS Host at Nginx
+- Provide guarded, auditable, reversible Windows controls
+- Validate chat, Focus, knowledge, and one reversible guarded action on phone
+- Target release `0.69.0`
+
+Proposal and review evidence:
+
+- `docs/milestone-69-secure-phone-access-proposal.md`
+- `docs/milestone-69-implementation.md`
+- `docs/milestone-69-architecture-review.md`
+- `docs/milestone-69-engineering-review.md`
+
+## Milestone 70 - Phone Daily-Use Validation
+
+**Status:** Planned; validation only after release 0.69.0 acceptance.
+
+- Use the accepted phone route naturally rather than adding synthetic features
+- Measure connection reliability, responsiveness, usability, and approval
+  friction
+- Exercise owner-approved next actions in genuine daily planning
+- Record defects and owner feedback before selecting another capability
+- Preserve the accepted 0.69.0 runtime while evidence is collected
 
 ## Later capabilities
 

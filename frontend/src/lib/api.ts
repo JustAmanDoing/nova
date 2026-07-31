@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "";
 const LOCAL_ACTION_HEADER = "X-Nova-Intent";
 const LOCAL_ACTION_VALUE = "local-user-action";
 
