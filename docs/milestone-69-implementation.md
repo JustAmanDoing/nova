@@ -4,8 +4,8 @@
 
 **Target release:** 0.69.0
 
-**Status:** Implemented and installed on the feature branch; owner phone
-workflows accepted, with recovery and protected release integration pending
+**Status:** Complete and accepted on the feature branch; protected release
+integration pending
 
 ## Implemented
 
@@ -94,10 +94,12 @@ configuration still matches that record.
 - Controlled disable: passed; the private route stopped while desktop NOVA,
   both containers, and database integrity remained healthy
 - Corrected PowerShell parser and Windows structural validation: passed
+- Corrected re-enable: passed; the owner confirmed phone recovery and private
+  HTTPS independently returned healthy `0.69.0`
+- Verified pre-merge backup: passed
 
-## Pending acceptance
+## Pending release integration
 
-- Corrected re-enable recovery
 - Protected pull request, merged-main verification, installed-main rebuild,
   final backup, tag, and release
 

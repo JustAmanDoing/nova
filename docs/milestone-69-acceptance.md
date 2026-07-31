@@ -6,9 +6,9 @@
 
 **Branch:** `agent/milestone-69-secure-phone-access`
 
-**Current decision:** Not release-ready; private phone use and controlled
-disable are accepted, but re-enable recovery and protected release integration
-are still required.
+**Current decision:** Release-ready for protected merge; all runtime acceptance
+checks pass. Installed-main verification, final release evidence, tag, and
+GitHub release remain part of the controlled integration sequence.
 
 ## Checks passed
 
@@ -40,6 +40,15 @@ are still required.
   ownership record. The private HTTPS address stopped accepting connections,
   while desktop NOVA remained healthy at `0.69.0`, both containers remained
   healthy, and the database read-only integrity check passed.
+- The corrected `Phone Access On.cmd` restored the exact NOVA-owned private
+  Serve configuration. The owner confirmed phone recovery, and an independent
+  health request returned `ok` for `0.69.0` through the private HTTPS address.
+- After recovery, Funnel remains off, the live Serve configuration matches the
+  ignored ownership record, both Docker publications remain loopback-only, and
+  desktop health and database integrity still pass.
+- Verified pre-merge backup
+  `nova-20260731T110735.375682Z.db` was created with SHA-256
+  `955d583ff0239c52cf5fcc97b626fe958fe40ced9c019dd766fe9a64a395c3a0`.
 
 ## Acceptance defects corrected
 
@@ -59,7 +68,8 @@ are still required.
    channel. The controller now explicitly enables TLS 1.2 for that bounded
    check, restores the prior process setting afterward, and allows 120 seconds
    for private Serve readiness instead of 45. Parser and Windows structural
-   validation pass; the corrected re-enable path still requires host evidence.
+   validation pass. The corrected re-enable path then passed on the Windows
+   host and the owner confirmed phone recovery.
 
 ## Resolved external blocker
 
@@ -71,14 +81,14 @@ The installed certificate is valid for the exact private DNS name. Private
 HTTPS health, Chat, Focus, and the same-origin API now pass. No router port,
 public Funnel, or broader Docker listener was opened.
 
-## Remaining acceptance
+## Remaining release integration
 
-- Controlled re-enable recovery with the corrected Windows TLS health check
 - Protected merge, installed-main rebuild, verified final backup, tag, and
   release
 
 ## Exact next action
 
-Run the corrected `Phone Access On.cmd` as administrator and prove the same
-private address recovers on the phone. Do not merge or release 0.69.0 until
-that evidence and the protected integration sequence pass.
+Mark PR #13 ready, merge it with a merge commit while preserving the feature
+branch, wait for protected `main` checks, rebuild the Windows installation from
+that exact `main`, create the final verified backup, and record release
+evidence before tagging and publishing 0.69.0.

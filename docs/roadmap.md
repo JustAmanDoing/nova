@@ -450,9 +450,8 @@ Implementation and review evidence:
 
 ## Milestone 69 - Secure Tailnet Phone Access
 
-**Status (31 July 2026): implementation, owner phone workflows, and controlled
-disable accepted; corrected re-enable recovery and protected release
-integration remain.**
+**Status (31 July 2026): implementation and runtime acceptance complete;
+protected release integration is in progress.**
 
 The owner reprioritized secure phone access as a prerequisite for the planned
 daily-use validation.
