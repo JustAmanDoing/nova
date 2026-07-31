@@ -523,5 +523,8 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 65 engineering review](docs/milestone-65-engineering-review.md)
 - [Milestone 65 Windows acceptance](docs/milestone-65-acceptance.md)
 - [Milestone 65 release report](docs/milestone-65-release-report.md)
+- [Milestone 66 Focus workspace daily-use validation](docs/milestone-66-focus-workspace-daily-use-validation.md)
+- [Milestone 66 architecture review](docs/milestone-66-architecture-review.md)
+- [Milestone 66 engineering review](docs/milestone-66-engineering-review.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)
