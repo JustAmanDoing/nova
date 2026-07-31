@@ -6,9 +6,14 @@
 
 **Branch:** `agent/milestone-69-secure-phone-access`
 
-**Current decision:** Release-ready for protected merge; all runtime acceptance
-checks pass. Installed-main verification, final release evidence, tag, and
-GitHub release remain part of the controlled integration sequence.
+**Implementation PR:** #13
+
+**Implementation merge commit:**
+`cfa2cbd881a1520b0d05bba1ae30003077b7885f`
+
+**Current decision:** Release approved. Runtime, recovery, protected merge,
+merged-main checks, installed-main rebuild, private phone health, and final
+backup verification all pass.
 
 ## Checks passed
 
@@ -49,6 +54,19 @@ GitHub release remain part of the controlled integration sequence.
 - Verified pre-merge backup
   `nova-20260731T110735.375682Z.db` was created with SHA-256
   `955d583ff0239c52cf5fcc97b626fe958fe40ced9c019dd766fe9a64a395c3a0`.
+- PR #13 was marked ready only after all four required checks passed, then
+  merged with merge commit `cfa2cbd881a1520b0d05bba1ae30003077b7885f`.
+  The implementation branch remains on GitHub for traceability.
+- Protected `main` repeated backend quality, frontend quality, production
+  runtime, and Windows-control checks successfully.
+- The authoritative Windows checkout and `origin/main` both resolve to
+  `cfa2cbd881a1520b0d05bba1ae30003077b7885f`.
+- The installed Windows release was rebuilt from that exact `main`. Local and
+  private HTTPS health report `0.69.0`, Funnel remains off, Docker remains
+  loopback-only, and database integrity passes.
+- Verified final backup `nova-20260731T111156.769809Z.db` was created after the
+  installed-main rebuild with SHA-256
+  `955d583ff0239c52cf5fcc97b626fe958fe40ced9c019dd766fe9a64a395c3a0`.
 
 ## Acceptance defects corrected
 
@@ -81,14 +99,13 @@ The installed certificate is valid for the exact private DNS name. Private
 HTTPS health, Chat, Focus, and the same-origin API now pass. No router port,
 public Funnel, or broader Docker listener was opened.
 
-## Remaining release integration
+## Remaining publication
 
-- Protected merge, installed-main rebuild, verified final backup, tag, and
-  release
+- Merge this final evidence through the protected release-evidence pull
+  request, then tag that evidence merge as `v0.69.0` and publish GitHub release
+  **Release 0.69.0**.
 
 ## Exact next action
 
-Mark PR #13 ready, merge it with a merge commit while preserving the feature
-branch, wait for protected `main` checks, rebuild the Windows installation from
-that exact `main`, create the final verified backup, and record release
-evidence before tagging and publishing 0.69.0.
+Publish the accepted release, then begin **Milestone 70 - Phone Daily-Use
+Validation** without adding runtime authority.

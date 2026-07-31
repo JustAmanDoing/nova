@@ -4,8 +4,8 @@
 
 **Target release:** 0.69.0
 
-**Status:** Complete and accepted on the feature branch; protected release
-integration pending
+**Status:** Complete, accepted, integrated into protected `main`, and installed
+as release 0.69.0
 
 ## Implemented
 
@@ -97,11 +97,11 @@ configuration still matches that record.
 - Corrected re-enable: passed; the owner confirmed phone recovery and private
   HTTPS independently returned healthy `0.69.0`
 - Verified pre-merge backup: passed
-
-## Pending release integration
-
-- Protected pull request, merged-main verification, installed-main rebuild,
-  final backup, tag, and release
+- PR #13 feature-branch and merged-main required checks: passed
+- Installed-main rebuild from merge commit `cfa2cbd`: passed
+- Post-rebuild local and private phone health, Funnel-off state, loopback-only
+  listeners, and database integrity: passed
+- Verified final backup: passed
 
 ## Exact next milestone
 
