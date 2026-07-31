@@ -24,6 +24,10 @@
 - Enable now stops before rebuilding when tailnet HTTPS consent is missing,
   reports the exact owner-approval URL, and explains the Windows administrator
   requirement instead of waiting silently in the Tailscale command.
+- Funnel detection inspects Tailscale's `AllowFunnel` flags rather than treating
+  the shared Serve/Funnel status document as public merely because it is
+  non-empty. Private Serve configurations with false flags remain allowed;
+  any true flag still triggers the fail-closed reset.
 - Disable refuses to remove Serve when its live configuration differs from
   the exact configuration NOVA recorded.
 - Backend and frontend versions are aligned at `0.69.0`.

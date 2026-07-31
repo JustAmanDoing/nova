@@ -9,11 +9,11 @@ $Controller = Join-Path $PSScriptRoot "Nova.ps1"
 $tokens = $null
 $parseErrors = $null
 
-[System.Management.Automation.Language.Parser]::ParseFile(
+$controllerAst = [System.Management.Automation.Language.Parser]::ParseFile(
     $Controller,
     [ref]$tokens,
     [ref]$parseErrors
-) | Out-Null
+)
 
 if ($parseErrors.Count -gt 0) {
     $messages = $parseErrors | ForEach-Object { $_.Message }
@@ -149,6 +149,41 @@ $launchers = @{
     "Check Phone Access.cmd" = "phone-status"
 }
 
+$funnelFunction = $controllerAst.Find(
+    {
+        param($ast)
+        $ast -is [System.Management.Automation.Language.FunctionDefinitionAst] `
+            -and $ast.Name -eq "Test-NovaFunnelEnabled"
+    },
+    $true
+)
+if ($null -eq $funnelFunction) {
+    throw "Nova.ps1 does not define its Funnel configuration check."
+}
+Invoke-Expression $funnelFunction.Extent.Text
+
+$privateServeJson = @'
+{"TCP":{"443":{"HTTPS":true}},"AllowFunnel":{"nova.example.ts.net:443":false}}
+'@
+$publicFunnelJson = @'
+{"TCP":{"443":{"HTTPS":true}},"AllowFunnel":{"nova.example.ts.net:443":true}}
+'@
+$foregroundFunnelJson = @'
+{"Foreground":{"session":{"AllowFunnel":{"nova.example.ts.net:443":true}}}}
+'@
+if (Test-NovaFunnelEnabled -Json "{}") {
+    throw "An empty Tailscale configuration was incorrectly classified as public."
+}
+if (Test-NovaFunnelEnabled -Json $privateServeJson) {
+    throw "A private Serve configuration was incorrectly classified as public."
+}
+if (-not (Test-NovaFunnelEnabled -Json $publicFunnelJson)) {
+    throw "A public Funnel configuration was not detected."
+}
+if (-not (Test-NovaFunnelEnabled -Json $foregroundFunnelJson)) {
+    throw "A foreground public Funnel configuration was not detected."
+}
+
 foreach ($launcher in $launchers.GetEnumerator()) {
     $path = Join-Path $ProjectRoot $launcher.Key
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -178,6 +213,7 @@ foreach ($requiredPhoneControl in @(
     "reset",
     "tailscale-serve.json",
     "another service",
+    "FunnelEnabled",
     "CertDomains",
     "HTTPS certificates are not enabled",
     "/f/serve?node=",

@@ -101,6 +101,45 @@ function ConvertTo-NovaCanonicalJson {
     )
 }
 
+function Test-NovaFunnelEnabled {
+    param([string]$Json)
+
+    $config = $Json | ConvertFrom-Json
+
+    function Test-Value {
+        param([object]$Value)
+
+        if ($null -eq $Value) {
+            return $false
+        }
+        if ($Value -is [System.Management.Automation.PSCustomObject]) {
+            foreach ($property in $Value.PSObject.Properties) {
+                if ($property.Name -eq "AllowFunnel") {
+                    foreach ($flag in @($property.Value.PSObject.Properties)) {
+                        if ($flag.Value -eq $true) {
+                            return $true
+                        }
+                    }
+                }
+                if (Test-Value -Value $property.Value) {
+                    return $true
+                }
+            }
+            return $false
+        }
+        if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [string]) {
+            foreach ($item in $Value) {
+                if (Test-Value -Value $item) {
+                    return $true
+                }
+            }
+        }
+        return $false
+    }
+
+    return Test-Value -Value $config
+}
+
 function Get-NovaTailscaleState {
     param([string]$Executable)
 
@@ -130,24 +169,28 @@ function Get-NovaTailscaleState {
             Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
     )
 
+    $serveJson = ConvertTo-NovaCanonicalJson (
+        Invoke-Tailscale -Executable $Executable -Arguments @(
+            "serve",
+            "status",
+            "--json"
+        )
+    )
+    $funnelJson = ConvertTo-NovaCanonicalJson (
+        Invoke-Tailscale -Executable $Executable -Arguments @(
+            "funnel",
+            "status",
+            "--json"
+        )
+    )
+
     return [PSCustomObject]@{
         DnsName = $dnsName
         NodeId = $nodeId
         CertDomains = $certDomains
-        ServeJson = ConvertTo-NovaCanonicalJson (
-            Invoke-Tailscale -Executable $Executable -Arguments @(
-                "serve",
-                "status",
-                "--json"
-            )
-        )
-        FunnelJson = ConvertTo-NovaCanonicalJson (
-            Invoke-Tailscale -Executable $Executable -Arguments @(
-                "funnel",
-                "status",
-                "--json"
-            )
-        )
+        ServeJson = $serveJson
+        FunnelJson = $funnelJson
+        FunnelEnabled = Test-NovaFunnelEnabled -Json $funnelJson
     }
 }
 
@@ -215,7 +258,7 @@ function Enable-NovaPhoneAccess {
     $tailscale = Get-TailscaleExecutable
     $state = Get-NovaTailscaleState -Executable $tailscale
 
-    if ($state.FunnelJson -ne "{}") {
+    if ($state.FunnelEnabled) {
         throw "Tailscale Funnel is configured. NOVA will not enable phone access while a public Funnel exists."
     }
 
@@ -281,7 +324,7 @@ function Enable-NovaPhoneAccess {
     )
 
     $enabledState = Get-NovaTailscaleState -Executable $tailscale
-    if ($enabledState.FunnelJson -ne "{}") {
+    if ($enabledState.FunnelEnabled) {
         $null = Invoke-Tailscale -Executable $tailscale -Arguments @(
             "serve",
             "reset"
@@ -349,7 +392,7 @@ function Show-NovaPhoneAccessStatus {
 
     Write-Host ""
     Write-Host "Private device name: $($state.DnsName)"
-    if ($state.FunnelJson -ne "{}") {
+    if ($state.FunnelEnabled) {
         Write-Host "Warning: a public Tailscale Funnel is configured." -ForegroundColor Red
     }
     else {
