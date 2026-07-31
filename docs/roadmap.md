@@ -379,16 +379,38 @@ Implementation and review evidence:
 
 ## Milestone 66 — Focus Workspace Daily-Use Validation
 
-**Status (30 July 2026): proposed; no new runtime feature is approved.**
+**Status (31 July 2026): complete; genuine owner-approved records, immutable
+correction behavior, integrity filtering, and owner usefulness were
+validated.**
 
-- Add one genuine active project and one genuine current goal through the
-  existing owner-review workflow
-- Confirm both appear in the correct Focus sections
-- Exercise one approved correction and confirm immutable revision behavior
-- Exercise retirement only if the owner has a real record they want retired
-- Record owner usefulness, clarity, and non-intrusiveness feedback
-- Use the evidence to select the next capability by impact rather than adding
-  unsupported complexity
+- One genuine active project and one genuine current goal added through the
+  existing owner-review workflow — complete
+- Both records displayed in the correct Focus sections with current review
+  state — complete
+- One approved correction created revision 2 while preserving revision 1 —
+  complete
+- Retirement not exercised because the owner had no genuine record to retire
+- Owner usefulness, clarity, and non-intrusiveness acceptance — passed
+- Runtime health, database integrity, knowledge integrity, and retrieval
+  self-checks — passed
+
+Completion evidence:
+
+- `docs/milestone-66-focus-workspace-daily-use-validation.md`
+- `docs/milestone-66-architecture-review.md`
+- `docs/milestone-66-engineering-review.md`
+
+## Milestone 67 — Evidence-Led Next Capability Selection
+
+**Status (31 July 2026): next; proposal and review work only. No runtime
+feature is approved.**
+
+- Review Milestone 66 evidence and the owner's current priorities
+- Rank bounded candidates by impact, urgency, privacy, complexity, reuse, and
+  maintenance cost
+- Select one capability slice
+- Complete architecture and engineering proposal reviews
+- Obtain explicit owner approval before runtime implementation
 
 ## Later capabilities
 
