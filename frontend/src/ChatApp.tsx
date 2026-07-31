@@ -641,6 +641,66 @@ function ChatApp() {
             )}
           </div>
 
+          {notice ? <p className="chat-notice" role="status">{notice}</p> : null}
+
+          <form className="chat-composer" onSubmit={handleSend}>
+            <label className="document-selector" htmlFor="chat-document">
+              <span>Local document for this turn</span>
+              <select
+                id="chat-document"
+                value={selectedDocumentId}
+                onChange={(event) => setSelectedDocumentId(event.target.value)}
+                disabled={generating}
+              >
+                <option value="">None selected</option>
+                {documents.map((document) => (
+                  <option key={document.file_id} value={document.file_id}>
+                    {document.original_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="sr-only" htmlFor="chat-message">Message Nova</label>
+            <textarea
+              ref={composerRef}
+              id="chat-message"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
+              placeholder={
+                models.length
+                  ? "Message Nova…"
+                  : "Start Ollama to chat with Nova"
+              }
+              rows={2}
+              disabled={models.length === 0 || generating}
+            />
+            {generating ? (
+              <button type="button" className="stop-button" onClick={stopGeneration}>
+                Stop
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!draft.trim() || !selectedModel}
+              >
+                Send
+              </button>
+            )}
+          </form>
+          <p className="chat-boundary">
+            Retrieval uses active, approved local records only. Select at most
+            one indexed local document for one turn. Nova revalidates its
+            fingerprint before use and stores citation metadata, not a
+            browser-accessible copy. Automatic retrieval, tools, web access,
+            and autonomous actions remain disabled.
+          </p>
+
           {knowledgeCandidates.length ? (
             <section className="knowledge-review" aria-labelledby="knowledge-title">
               <div className="knowledge-review-heading">
@@ -712,65 +772,6 @@ function ChatApp() {
             )}
           </section>
 
-          {notice ? <p className="chat-notice" role="status">{notice}</p> : null}
-
-          <form className="chat-composer" onSubmit={handleSend}>
-            <label className="document-selector" htmlFor="chat-document">
-              <span>Local document for this turn</span>
-              <select
-                id="chat-document"
-                value={selectedDocumentId}
-                onChange={(event) => setSelectedDocumentId(event.target.value)}
-                disabled={generating}
-              >
-                <option value="">None selected</option>
-                {documents.map((document) => (
-                  <option key={document.file_id} value={document.file_id}>
-                    {document.original_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="sr-only" htmlFor="chat-message">Message Nova</label>
-            <textarea
-              ref={composerRef}
-              id="chat-message"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
-                }
-              }}
-              placeholder={
-                models.length
-                  ? "Message Nova…"
-                  : "Start Ollama to chat with Nova"
-              }
-              rows={2}
-              disabled={models.length === 0 || generating}
-            />
-            {generating ? (
-              <button type="button" className="stop-button" onClick={stopGeneration}>
-                Stop
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={!draft.trim() || !selectedModel}
-              >
-                Send
-              </button>
-            )}
-          </form>
-          <p className="chat-boundary">
-            Retrieval uses active, approved local records only. Select at most
-            one indexed local document for one turn. Nova revalidates its
-            fingerprint before use and stores citation metadata, not a
-            browser-accessible copy. Automatic retrieval, tools, web access,
-            and autonomous actions remain disabled.
-          </p>
         </section>
       </div>
     </main>

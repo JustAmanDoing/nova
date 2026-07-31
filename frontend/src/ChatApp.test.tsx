@@ -192,6 +192,14 @@ describe("ChatApp", () => {
     expect(
       screen.getByText(/Retrieval uses active, approved local records only/),
     ).toBeInTheDocument();
+    const composer = screen.getByRole("textbox", { name: "Message Nova" });
+    const knowledgeHealth = screen.getByRole("region", {
+      name: "Knowledge health",
+    });
+    expect(
+      composer.compareDocumentPosition(knowledgeHealth) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("creates a local conversation, streams a reply, and reloads saved history", async () => {
