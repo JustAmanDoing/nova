@@ -35,7 +35,44 @@ def test_compose_uses_the_directories_initialized_by_the_container() -> None:
 
 
 def test_dashboard_entry_page_revalidates_after_updates() -> None:
-    nginx = (REPOSITORY_ROOT / "frontend" / "nginx.conf").read_text()
+    nginx = (
+        REPOSITORY_ROOT / "frontend" / "default.conf.template"
+    ).read_text()
 
     assert "location = /index.html" in nginx
+    assert "location = /chat.html" in nginx
+    assert "location = /focus.html" in nginx
     assert "expires -1;" in nginx
+
+
+def test_frontend_uses_a_strict_same_origin_api_gateway() -> None:
+    compose = (REPOSITORY_ROOT / "docker-compose.yml").read_text()
+    dockerfile = (REPOSITORY_ROOT / "frontend" / "Dockerfile").read_text()
+    nginx = (
+        REPOSITORY_ROOT / "frontend" / "default.conf.template"
+    ).read_text()
+    api = (
+        REPOSITORY_ROOT / "frontend" / "src" / "lib" / "api.ts"
+    ).read_text()
+
+    assert 'const API_URL = import.meta.env.VITE_API_URL || "";' in api
+    assert "VITE_API_URL: ${VITE_API_URL:-}" in compose
+    assert (
+        "NOVA_TAILSCALE_DNS_NAME: "
+        "${NOVA_TAILSCALE_DNS_NAME:-nova.invalid}"
+    ) in compose
+    assert "ARG VITE_API_URL=" in dockerfile
+    assert (
+        "COPY default.conf.template "
+        "/etc/nginx/templates/default.conf.template"
+    ) in dockerfile
+    assert (
+        "server_name localhost 127.0.0.1 "
+        "${NOVA_TAILSCALE_DNS_NAME};"
+    ) in nginx
+    assert "location /api/" in nginx
+    assert "proxy_pass http://backend:8000;" in nginx
+    assert "proxy_set_header Host localhost;" in nginx
+    assert "proxy_buffering off;" in nginx
+    assert "connect-src 'self';" in nginx
+    assert "http://localhost:8000" not in nginx

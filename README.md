@@ -73,6 +73,8 @@ The current MVP can:
   exposing paths or document content
 - Recheck the active database with SQLite's read-only quick check from the
   one-click Windows status control
+- Use NOVA from the owner's authenticated Tailscale phone through a private
+  same-origin HTTPS gateway without publishing either Docker service
 
 Nova never moves a file automatically and never overwrites an existing file.
 It does not upload, share, or permanently delete documents.
@@ -97,14 +99,25 @@ healthy, and opens the local dashboard.
   update, rebuilds Nova, and opens it. When Nova is already running, it first
   creates and verifies a local database backup; a failed backup stops the update
   before source changes are downloaded.
+- **Phone Access On.cmd** records this PC's exact private Tailscale DNS name,
+  applies the same-origin gateway, and enables Tailscale Serve only after
+  refusing any existing unowned Serve configuration or public Funnel.
+- **Check Phone Access.cmd** reports the private address, Funnel state, saved
+  configuration ownership, and HTTPS health without changing anything.
+- **Phone Access Off.cmd** removes phone access only when the live Serve
+  configuration still matches the one NOVA recorded. Desktop access remains
+  unchanged.
 
 Each launcher uses the shared, reviewable `scripts/Nova.ps1` controller. It
-does not install software, delete Docker volumes, or expose Nova beyond this
-PC. If a build fails or Nova does not become ready, the controller prints the
-container state, the most recent 80 log lines, and the last readiness error so
-the cause is visible without searching through Docker Desktop. Readiness probes
-use the exact IPv4 loopback addresses exposed by Compose and allow slower
-first-time Windows container starts up to three minutes.
+does not install software or delete Docker volumes. The standard launchers
+keep NOVA on this PC. The separately approved phone-access launcher can publish
+the loopback frontend only to authenticated devices on the owner's Tailscale
+network; it never enables public Funnel access or opens a router port. If a
+build fails or Nova does not become ready, the controller prints the container
+state, the most recent 80 log lines, and the last readiness error so the cause
+is visible without searching through Docker Desktop. Readiness probes use the
+exact IPv4 loopback addresses exposed by Compose and allow slower first-time
+Windows container starts up to three minutes.
 
 ### Command line
 
@@ -196,6 +209,14 @@ approved Markdown records. NOVA does not generate actions from chat,
 documents, projects, or model output, and this slice adds no priorities,
 dates, deadlines, reminders, recurrence, notifications, scheduling, or
 autonomous execution. The view and lifecycle remain useful without Ollama.
+
+Milestone 69 adds private phone access through the owner's existing Tailscale
+network. The production frontend uses one browser origin and proxies `/api/`
+to the unchanged backend service inside Docker. Both Windows-published ports
+remain bound to loopback, the backend trust and CORS rules do not expand, and
+the frontend accepts only localhost plus the exact private Tailscale DNS name
+recorded by the guarded Windows control. Tailscale Funnel and router port
+forwarding are explicitly excluded.
 
 Chat still cannot browse the web, use tools, perform semantic or general
 document search, or take autonomous actions. Starting a conversation,
@@ -549,5 +570,9 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 68 engineering review](docs/milestone-68-engineering-review.md)
 - [Milestone 68 Windows acceptance](docs/milestone-68-acceptance.md)
 - [Milestone 68 release report](docs/milestone-68-release-report.md)
+- [Milestone 69 secure phone access proposal](docs/milestone-69-secure-phone-access-proposal.md)
+- [Milestone 69 implementation record](docs/milestone-69-implementation.md)
+- [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)
+- [Milestone 69 engineering review](docs/milestone-69-engineering-review.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

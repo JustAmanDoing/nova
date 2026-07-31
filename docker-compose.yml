@@ -45,7 +45,9 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_API_URL: ${VITE_API_URL:-}
+    environment:
+      NOVA_TAILSCALE_DNS_NAME: ${NOVA_TAILSCALE_DNS_NAME:-nova.invalid}
     ports:
       - "127.0.0.1:5173:80"
     depends_on:

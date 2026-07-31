@@ -1259,7 +1259,7 @@ describe("App", () => {
       }),
     ).toHaveAttribute(
       "href",
-      "http://localhost:8000/api/v1/backups/nova-20260725T090000.000000Z.db",
+      "/api/v1/backups/nova-20260725T090000.000000Z.db",
     );
     expect(
       screen.getByRole("link", {
@@ -1267,7 +1267,7 @@ describe("App", () => {
       }),
     ).toHaveAttribute(
       "href",
-      "http://localhost:8000/api/v1/backups/nova-20260725T090000.000000Z.db/checksum",
+      "/api/v1/backups/nova-20260725T090000.000000Z.db/checksum",
     );
     expect(
       fetchMock.mock.calls.some(

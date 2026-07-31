@@ -140,6 +140,13 @@ jobs:
           curl --fail --silent --show-error \
             http://127.0.0.1:5173/focus.html \
             | grep --fixed-strings --quiet '<title>Nova Focus</title>'
+          curl --fail --silent --show-error \
+            http://127.0.0.1:5173/api/v1/health \
+            | grep --fixed-strings --quiet '"status":"ok"'
+          curl --fail --silent --show-error \
+            --header 'Host: nova.invalid' \
+            http://127.0.0.1:5173/api/v1/health \
+            | grep --fixed-strings --quiet '"status":"ok"'
           planning="$(
             curl --fail --silent --show-error \
               http://127.0.0.1:8000/api/v1/knowledge/planning
@@ -201,7 +208,7 @@ jobs:
           test "$indexed" = true
       - name: Verify representative understanding and search
         run: |
-          api='http://127.0.0.1:8000/api/v1'
+          api='http://127.0.0.1:5173/api/v1'
           accepted=false
           for attempt in $(seq 1 30); do
             files="$(curl --fail --silent --show-error "$api/intake/files")"
