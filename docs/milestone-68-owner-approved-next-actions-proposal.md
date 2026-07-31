@@ -4,8 +4,8 @@
 
 **Base release:** 0.65.0
 
-**Status:** Approved by the owner on 31 July 2026; bounded runtime
-implementation in progress
+**Status:** Complete; bounded release 0.68.0 integrated, installed, and
+accepted on 31 July 2026
 
 ## User outcome
 

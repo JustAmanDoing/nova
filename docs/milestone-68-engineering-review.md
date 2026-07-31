@@ -4,8 +4,7 @@
 
 **Review scope:** Implemented Owner-Approved Next Actions
 
-**Decision:** Pass for protected integration; final engineering acceptance
-awaits protected CI, installed-runtime, recovery, and owner evidence
+**Decision:** Pass for release
 
 ## Implementation review
 
@@ -70,7 +69,8 @@ Local source evidence:
 - Compose configuration validation passed.
 
 Container evidence, commit identifiers, protected checks, installed-runtime
-results, and owner acceptance will be recorded only after those gates run.
+results, recovery evidence, and owner acceptance are recorded in
+`docs/milestone-68-acceptance.md`.
 
 ## Repository hygiene requirements before commit
 
@@ -81,14 +81,12 @@ results, and owner acceptance will be recorded only after those gates run.
   and
 - clean whitespace and intentional diff review.
 
-## Remaining risks
+## Final engineering judgement
 
-- The migration has not yet been applied to the owner's production database.
-- Exact pull-request and merged-main container checks have not yet run.
-- Windows keyboard, responsive layout, privacy headers, restore, and the
-  genuine owner workflow have not yet been accepted.
+Migration 16, protected PR #11, merged-main CI, the installed 0.68.0 runtime,
+database integrity, verified backup and restore, security boundaries,
+desktop and phone-sized layouts, and the genuine owner action lifecycle all
+passed.
 
-## Engineering judgement
-
-The source implementation is bounded, dependency-neutral, locally tested, and
-ready for the protected pull-request gate. It is not yet an accepted release.
+The implementation is bounded, dependency-neutral, recoverable, and accepted
+for release 0.68.0.
