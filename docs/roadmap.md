@@ -450,8 +450,8 @@ Implementation and review evidence:
 
 ## Milestone 69 - Secure Tailnet Phone Access
 
-**Status (31 July 2026): implementation and runtime acceptance complete;
-protected release integration is in progress.**
+**Status (31 July 2026): complete; release 0.69.0 integrated, installed,
+recovery-tested, and accepted.**
 
 The owner reprioritized secure phone access as a prerequisite for the planned
 daily-use validation.
@@ -478,13 +478,18 @@ Proposal and review evidence:
 
 ## Milestone 70 - Phone Daily-Use Validation
 
-**Status:** Planned; validation only after release 0.69.0 acceptance.
+**Status:** Next; validation and usability improvement only, with no new runtime
+authority approved.
 
 - Use the accepted phone route naturally rather than adding synthetic features
 - Measure connection reliability, responsiveness, usability, and approval
   friction
 - Exercise owner-approved next actions in genuine daily planning
 - Record defects and owner feedback before selecting another capability
+- Treat ease of use as a product requirement: keep important phone controls
+  within reach, show one clear primary action, use consistent navigation,
+  reduce technical wording, and place deeper details behind optional views
+- Correct evidence-backed usability defects before adding another capability
 - Preserve the accepted 0.69.0 runtime while evidence is collected
 
 ## Later capabilities
