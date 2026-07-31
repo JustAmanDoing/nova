@@ -417,13 +417,20 @@ function App() {
           </p>
           <h1>Turn incoming files into useful context.</h1>
           <p className="lede">
-            Add a TXT, Markdown, PDF, DOCX, or supported image file to{" "}
-            <code>data/intake</code>. Nova reads it locally, uses bounded local
-            OCR when needed, records what it understands, and applies
-            deterministic filing rules when evidence is strong enough. Review
-            decisions remain separate from execution. Only the explicit Move
-            file action can place an approved item into Nova’s library.
+            Add a document or image to <code>data/intake</code>. Nova reads it
+            locally and prepares a recommendation. Nothing moves until you
+            approve it.
           </p>
+          <details className="hero-details">
+            <summary>How Intake protects your files</summary>
+            <p>
+              Nova uses bounded local OCR when needed, records what it
+              understands, and applies deterministic filing rules only when the
+              evidence is strong enough. Review remains separate from execution.
+              Only the explicit Move file action can place an approved item in
+              Nova’s library.
+            </p>
+          </details>
         </div>
         <div className="safety-card">
           <span className="safety-icon" aria-hidden="true">✓</span>
@@ -1009,14 +1016,18 @@ function BackupPanel({
           {isBackingUp ? "Creating backup…" : "Create backup"}
         </button>
       </div>
-      <p className="backup-guidance">
-        Creates a verified SQLite snapshot in <code>data/backups</code>. Backups
-        can contain extracted document text, so keep them private. Download and
-        Checksum both recheck the backup before saving a copy. Keep both files
-        together on a different drive for recovery. Restore changes Nova&apos;s
-        database history and index only; it never restores, removes, or overwrites
-        document files. Nova creates a safety snapshot before every restore.
-      </p>
+      <details className="backup-guidance">
+        <summary>How backups protect your data</summary>
+        <p>
+          Nova creates a verified SQLite snapshot in <code>data/backups</code>.
+          Backups can contain extracted document text, so keep them private.
+          Download and Checksum both recheck the backup before saving a copy.
+          Keep both files together on a different drive for recovery. Restore
+          changes Nova&apos;s database history and index only; it never restores,
+          removes, or overwrites document files. Nova creates a safety snapshot
+          before every restore.
+        </p>
+      </details>
       {notice ? (
         <p className="backup-notice" role="status">
           {notice}

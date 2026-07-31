@@ -478,8 +478,9 @@ Proposal and review evidence:
 
 ## Milestone 70 - Phone Daily-Use Validation
 
-**Status:** Next; validation and usability improvement only, with no new runtime
-authority approved.
+**Status (31 July 2026):** Release candidate 0.70.0 installed and owner
+accepted; automated, runtime, desktop, phone-sized browser, and physical-phone
+checks passed. Protected repository integration remains pending.
 
 - Use the accepted phone route naturally rather than adding synthetic features
 - Measure connection reliability, responsiveness, usability, and approval
@@ -491,6 +492,22 @@ authority approved.
   reduce technical wording, and place deeper details behind optional views
 - Correct evidence-backed usability defects before adding another capability
 - Preserve the accepted 0.69.0 runtime while evidence is collected
+
+Evidence-backed candidate corrections:
+
+- Keep the same three primary destinations visible in a sticky phone header
+- Replace the sideways conversation history with one compact picker on phone
+- Put owner-entered next actions before project and goal reference cards
+- Make review links and primary navigation comfortable phone touch targets
+- Keep essential wording visible while placing deeper technical explanations
+  behind optional details
+- Remove the Intake page's phone-width horizontal drift
+
+Acceptance and review evidence:
+
+- `docs/milestone-70-phone-daily-use-validation.md`
+- `docs/milestone-70-architecture-review.md`
+- `docs/milestone-70-engineering-review.md`
 
 ## Later capabilities
 

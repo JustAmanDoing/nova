@@ -91,6 +91,47 @@ function healthyOperations() {
 }
 
 describe("App", () => {
+  it("keeps the main Intake guidance simple and deeper safeguards optional", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = input.toString();
+        if (url.endsWith("/health")) {
+          return response({
+            status: "ok",
+            service: "Nova API",
+            version: "0.70.0",
+            environment: "test",
+            timestamp: "2026-07-31T09:00:00Z",
+          });
+        }
+        if (url.endsWith("/summary")) {
+          return response({
+            files_observed: 0,
+            understood: 0,
+            ready_for_review: 0,
+            exact_duplicates: 0,
+          });
+        }
+        return response([]);
+      }),
+    );
+
+    render(<App />);
+
+    expect(
+      screen.getByText(/Nothing moves until you approve it/),
+    ).toBeInTheDocument();
+    const intakeDetails = screen
+      .getByText("How Intake protects your files")
+      .closest("details");
+    const backupDetails = screen
+      .getByText("How backups protect your data")
+      .closest("details");
+    expect(intakeDetails).not.toHaveAttribute("open");
+    expect(backupDetails).not.toHaveAttribute("open");
+  });
+
   it("refreshes service health and recovers without clearing valid dashboard data", async () => {
     vi.useFakeTimers();
     let healthRequests = 0;

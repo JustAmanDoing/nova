@@ -104,6 +104,20 @@ describe("FocusApp", () => {
     expect(
       screen.getAllByRole("link", { name: "Review approved record" })[0],
     ).toHaveAttribute("href", "/chat.html?record=project-1");
+    const nextActionsSection = screen.getByRole("region", {
+      name: "Next actions",
+    });
+    const projectsSection = screen.getByRole("region", {
+      name: "Active projects",
+    });
+    expect(
+      nextActionsSection.compareDocumentPosition(projectsSection) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const controlDetails = screen
+      .getByText("How Focus stays under your control")
+      .closest("details");
+    expect(controlDetails).not.toHaveAttribute("open");
   });
 
   it("offers guided chat for truthful empty planning sections", async () => {

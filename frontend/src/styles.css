@@ -126,6 +126,33 @@ h1 {
   line-height: 1.7;
 }
 
+.hero-details,
+.backup-guidance {
+  color: #91a79a;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.hero-details {
+  max-width: 730px;
+  margin-top: 18px;
+}
+
+.hero-details summary,
+.backup-guidance summary {
+  width: fit-content;
+  min-height: 44px;
+  cursor: pointer;
+  color: #b9f7d1;
+  font-weight: 750;
+  line-height: 44px;
+}
+
+.hero-details p,
+.backup-guidance p {
+  margin: 8px 0 0;
+}
+
 code {
   color: #b9f7d1;
   font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
@@ -580,9 +607,6 @@ h2 {
 
 .backup-guidance {
   margin: 16px 0 0;
-  color: #91a79a;
-  font-size: 0.8rem;
-  line-height: 1.5;
 }
 
 .backup-notice {
@@ -1107,6 +1131,36 @@ tbody tr:last-child td {
 @media (max-width: 560px) {
   .shell {
     width: min(100% - 24px, 1180px);
+  }
+
+  .nav {
+    position: sticky;
+    z-index: 50;
+    top: 0;
+    min-height: 64px;
+    gap: 12px;
+    padding: 10px 0;
+    background: rgba(9, 12, 11, 0.94);
+    backdrop-filter: blur(14px);
+  }
+
+  .brand {
+    min-height: 44px;
+  }
+
+  .chat-nav-links {
+    margin-left: auto;
+  }
+
+  .chat-nav-link {
+    display: grid;
+    min-height: 44px;
+    padding: 6px 10px;
+    place-items: center;
+  }
+
+  .nav-status {
+    display: none;
   }
 
   .workspace-heading {
