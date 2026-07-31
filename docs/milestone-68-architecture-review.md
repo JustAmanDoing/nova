@@ -4,8 +4,7 @@
 
 **Review scope:** Implemented Owner-Approved Next Actions
 
-**Decision:** Pass for protected integration; final release approval awaits
-Windows-host evidence and owner acceptance
+**Decision:** Pass for release
 
 ## Source-of-truth review
 
@@ -87,9 +86,12 @@ execution capability.
 | Task scope expands silently | Minimal API contract and published exclusions |
 | Ollama outage blocks planning | Action lifecycle contains no model dependency |
 
-## Architecture judgement
+## Final architecture judgement
 
-The implementation preserves NOVA's local-first, privacy-first,
-owner-controlled modular monolith. It is architecturally safe to enter
-protected integration, but release approval remains conditional on exact-head
-CI and Windows-host acceptance.
+Protected pull-request and merged-main checks passed. The installed Windows
+runtime, migration, loopback exposure, privacy controls, verified backup and
+restore, responsive interface, and genuine owner lifecycle also passed.
+
+The accepted release preserves NOVA's local-first, privacy-first,
+owner-controlled modular monolith. No architectural condition remains open for
+release 0.68.0.

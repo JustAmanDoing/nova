@@ -8,8 +8,8 @@
 
 **Branch:** `agent/milestone-68-owner-approved-next-actions`
 
-**Status:** Implemented and locally verified; protected integration, Windows
-installation, recovery verification, and owner acceptance remain pending
+**Status:** Complete; release 0.68.0 integrated, installed, recovery-tested,
+and accepted by the owner
 
 ## Outcome
 
@@ -80,12 +80,18 @@ calendar or email integration, voice, remote access, semantic retrieval,
 plugins, agents, tools, web access, autonomous execution, or deletion of
 action history.
 
-## Remaining release gates
+## Release evidence
 
-1. Full coverage and repository-hygiene verification.
-2. Protected pull-request checks.
-3. Merge-commit integration and post-merge protected checks.
-4. Verified pre-install database backup.
-5. Windows production build, migration, runtime, restore, privacy, responsive,
-   keyboard, and owner workflow acceptance.
-6. Evidence-backed release decision and exact next milestone.
+- Implementation commit:
+  `8888969a956c0c1bb4171aa977ac52c5be0b9a4c`
+- Implementation merge commit:
+  `d74d8ec0e31eaa1774239a6443f76c10f32d70df`
+- PR #11 protected verification: pass
+- Merged-main protected verification: pass
+- Windows production migration, runtime, privacy, responsive layout, guarded
+  backup and restore, and owner lifecycle acceptance: pass
+
+Detailed evidence is recorded in:
+
+- `docs/milestone-68-acceptance.md`
+- `docs/milestone-68-release-report.md`

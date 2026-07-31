@@ -547,6 +547,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 68 implementation record](docs/milestone-68-implementation.md)
 - [Milestone 68 architecture review](docs/milestone-68-architecture-review.md)
 - [Milestone 68 engineering review](docs/milestone-68-engineering-review.md)
-- [Milestone 68 owner-approved next-actions proposal](docs/milestone-68-owner-approved-next-actions-proposal.md)
+- [Milestone 68 Windows acceptance](docs/milestone-68-acceptance.md)
+- [Milestone 68 release report](docs/milestone-68-release-report.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

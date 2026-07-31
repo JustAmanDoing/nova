@@ -422,8 +422,8 @@ Decision and proposal evidence:
 
 ## Milestone 68 — Owner-Approved Next Actions
 
-**Status (31 July 2026): approved and implemented on a feature branch;
-protected integration and Windows acceptance remain pending.**
+**Status (31 July 2026): complete; release 0.68.0 integrated, installed,
+recovery-tested, and accepted by the owner.**
 
 - Add one bounded local Next actions section to Focus
 - Accept only explicit owner-entered actions
@@ -433,6 +433,11 @@ protected integration and Windows acceptance remain pending.**
   extraction, model-generated plans, and autonomous execution
 - Preserve local-first, privacy-first, AI-optional, recovery, and
   modular-monolith boundaries
+- Protected PR #11 and post-merge `main` passed the complete verification
+  matrix
+- Installed Windows release, migration 16, backup and restore, database
+  integrity, privacy controls, responsive layout, and genuine owner lifecycle
+  passed
 
 Implementation and review evidence:
 
@@ -440,6 +445,22 @@ Implementation and review evidence:
 - `docs/milestone-68-implementation.md`
 - `docs/milestone-68-architecture-review.md`
 - `docs/milestone-68-engineering-review.md`
+- `docs/milestone-68-acceptance.md`
+- `docs/milestone-68-release-report.md`
+
+## Milestone 69 - Owner-Approved Next Actions Daily-Use Validation
+
+**Status:** Next; validation only, with no new runtime capability approved.
+
+- Use the accepted lifecycle naturally rather than adding synthetic personal
+  actions
+- Measure whether explicit next actions improve daily planning without
+  approval fatigue
+- Confirm project association remains useful and fails closed if a genuine
+  project lifecycle change makes that test appropriate
+- Review owner feedback before expanding tasks, scheduling, reminders,
+  notifications, or another capability
+- Preserve the accepted 0.68.0 runtime while evidence is collected
 
 ## Later capabilities
 
