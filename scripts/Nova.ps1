@@ -121,8 +121,19 @@ function Get-NovaTailscaleState {
         throw "Tailscale returned an unexpected private DNS name. Phone access stopped before changing NOVA."
     }
 
+    $nodeId = [string]$status.Self.ID
+    if ([string]::IsNullOrWhiteSpace($nodeId)) {
+        throw "Tailscale did not provide this PC's private node identifier."
+    }
+    $certDomains = @(
+        $status.CertDomains |
+            Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+    )
+
     return [PSCustomObject]@{
         DnsName = $dnsName
+        NodeId = $nodeId
+        CertDomains = $certDomains
         ServeJson = ConvertTo-NovaCanonicalJson (
             Invoke-Tailscale -Executable $Executable -Arguments @(
                 "serve",
@@ -223,6 +234,27 @@ function Enable-NovaPhoneAccess {
         Write-Host "NOVA $($health.version) phone access is already on." -ForegroundColor Green
         Write-Host "Private address: https://$($state.DnsName)"
         return
+    }
+
+    if ($state.CertDomains.Count -eq 0) {
+        $approvalUrl = "https://login.tailscale.com/f/serve?node=$($state.NodeId)"
+        throw (
+            "Tailscale HTTPS certificates are not enabled for this tailnet. " +
+            "Open $approvalUrl, approve private Serve/HTTPS (not Funnel), " +
+            "then run Phone Access On as administrator again. NOVA was not changed."
+        )
+    }
+
+    $principal = New-Object Security.Principal.WindowsPrincipal(
+        [Security.Principal.WindowsIdentity]::GetCurrent()
+    )
+    if (-not $principal.IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator
+    )) {
+        throw (
+            "Windows requires Tailscale Serve to be configured by an administrator. " +
+            "Right-click Phone Access On.cmd, choose Run as administrator, and approve the Windows prompt."
+        )
     }
 
     Write-Step "Configuring NOVA's exact private phone address"

@@ -21,6 +21,9 @@
 - Content Security Policy `connect-src` is reduced to `'self'`.
 - Windows controls now provide guarded phone enable, disable, and status.
 - Enable refuses public Funnel and any unowned Serve configuration.
+- Enable now stops before rebuilding when tailnet HTTPS consent is missing,
+  reports the exact owner-approval URL, and explains the Windows administrator
+  requirement instead of waiting silently in the Tailscale command.
 - Disable refuses to remove Serve when its live configuration differs from
   the exact configuration NOVA recorded.
 - Backend and frontend versions are aligned at `0.69.0`.

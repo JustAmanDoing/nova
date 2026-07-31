@@ -178,6 +178,10 @@ foreach ($requiredPhoneControl in @(
     "reset",
     "tailscale-serve.json",
     "another service",
+    "CertDomains",
+    "HTTPS certificates are not enabled",
+    "/f/serve?node=",
+    "Run as administrator",
     "No router port or public Funnel was opened."
 )) {
     if ($controllerContent -notmatch [regex]::Escape($requiredPhoneControl)) {
