@@ -6,9 +6,9 @@
 
 **Branch:** `agent/milestone-69-secure-phone-access`
 
-**Current decision:** Not release-ready; private phone use is accepted, but the
-controlled disable-and-re-enable recovery check and protected release
-integration are still required.
+**Current decision:** Not release-ready; private phone use and controlled
+disable are accepted, but re-enable recovery and protected release integration
+are still required.
 
 ## Checks passed
 
@@ -36,6 +36,10 @@ integration are still required.
   of covering the Knowledge panels.
 - The mobile-composer correction passes frontend lint, type checking, all 46
   frontend tests, and the production build.
+- `Phone Access Off.cmd` removed the exact NOVA-owned Serve configuration and
+  ownership record. The private HTTPS address stopped accepting connections,
+  while desktop NOVA remained healthy at `0.69.0`, both containers remained
+  healthy, and the database read-only integrity check passed.
 
 ## Acceptance defects corrected
 
@@ -50,6 +54,12 @@ integration are still required.
    message composer. The composer now follows the transcript in document order
    and remains anchored within reach while the chat section scrolls. A
    regression test preserves that ordering.
+4. The first recovery re-enable attempt reached the private HTTPS health check
+   but Windows PowerShell reported that it could not create a secure TLS
+   channel. The controller now explicitly enables TLS 1.2 for that bounded
+   check, restores the prior process setting afterward, and allows 120 seconds
+   for private Serve readiness instead of 45. Parser and Windows structural
+   validation pass; the corrected re-enable path still requires host evidence.
 
 ## Resolved external blocker
 
@@ -63,14 +73,12 @@ public Funnel, or broader Docker listener was opened.
 
 ## Remaining acceptance
 
-- Controlled disable and re-enable recovery
+- Controlled re-enable recovery with the corrected Windows TLS health check
 - Protected merge, installed-main rebuild, verified final backup, tag, and
   release
 
 ## Exact next action
 
-Run `Phone Access Off.cmd` as administrator, prove that the private phone route
-stops while desktop NOVA remains healthy, then run `Phone Access On.cmd` as
-administrator and prove the same private address recovers. Do not merge or
-release 0.69.0 until that recovery evidence and the protected integration
-sequence pass.
+Run the corrected `Phone Access On.cmd` as administrator and prove the same
+private address recovers on the phone. Do not merge or release 0.69.0 until
+that evidence and the protected integration sequence pass.

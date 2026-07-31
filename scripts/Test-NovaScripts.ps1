@@ -218,6 +218,8 @@ foreach ($requiredPhoneControl in @(
     "HTTPS certificates are not enabled",
     "/f/serve?node=",
     "Run as administrator",
+    "Tls12",
+    "TimeoutSeconds = 120",
     "No router port or public Funnel was opened."
 )) {
     if ($controllerContent -notmatch [regex]::Escape($requiredPhoneControl)) {

@@ -31,6 +31,9 @@ workflows accepted, with recovery and protected release integration pending
   any true flag still triggers the fail-closed reset.
 - Disable refuses to remove Serve when its live configuration differs from
   the exact configuration NOVA recorded.
+- The bounded Windows HTTPS readiness check explicitly enables TLS 1.2,
+  restores the previous process setting afterward, and allows 120 seconds for
+  private Serve readiness.
 - Backend and frontend versions are aligned at `0.69.0`.
 - On narrow phone screens, the message composer follows the transcript and
   remains anchored within reach while the chat section scrolls. It stops at
@@ -88,10 +91,13 @@ configuration still matches that record.
 - Private phone Chat, Focus, approved knowledge, and one genuine reversible
   next-action workflow: owner passed
 - Mobile chat-composer reachability and chat-boundary behavior: owner passed
+- Controlled disable: passed; the private route stopped while desktop NOVA,
+  both containers, and database integrity remained healthy
+- Corrected PowerShell parser and Windows structural validation: passed
 
 ## Pending acceptance
 
-- Disable and re-enable recovery
+- Corrected re-enable recovery
 - Protected pull request, merged-main verification, installed-main rebuild,
   final backup, tag, and release
 

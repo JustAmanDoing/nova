@@ -230,27 +230,39 @@ function Set-NovaEnvironmentValue {
 function Test-NovaPhoneEndpoint {
     param(
         [string]$DnsName,
-        [int]$TimeoutSeconds = 45
+        [int]$TimeoutSeconds = 120
     )
 
     $phoneHealthUrl = "https://$DnsName/api/v1/health"
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     $lastFailure = "No HTTPS response was received."
-    do {
-        try {
-            $health = Invoke-RestMethod -Uri $phoneHealthUrl -TimeoutSec 5
-            if ($health.status -eq "ok") {
-                return $health
+    $previousSecurityProtocol = [Net.ServicePointManager]::SecurityProtocol
+    [Net.ServicePointManager]::SecurityProtocol = (
+        $previousSecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    )
+    try {
+        do {
+            try {
+                $health = Invoke-RestMethod -Uri $phoneHealthUrl -TimeoutSec 5
+                if ($health.status -eq "ok") {
+                    return $health
+                }
+                $lastFailure = "The private endpoint returned '$($health.status)'."
             }
-            $lastFailure = "The private endpoint returned '$($health.status)'."
-        }
-        catch {
-            $lastFailure = $_.Exception.Message
-        }
-        Start-Sleep -Seconds 2
-    } while ((Get-Date) -lt $deadline)
+            catch {
+                $lastFailure = $_.Exception.Message
+            }
+            Start-Sleep -Seconds 2
+        } while ((Get-Date) -lt $deadline)
 
-    throw "NOVA's private HTTPS endpoint did not become ready. $lastFailure"
+        throw (
+            "NOVA's private HTTPS endpoint did not become ready within " +
+            "$TimeoutSeconds seconds. $lastFailure"
+        )
+    }
+    finally {
+        [Net.ServicePointManager]::SecurityProtocol = $previousSecurityProtocol
+    }
 }
 
 function Enable-NovaPhoneAccess {
