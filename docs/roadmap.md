@@ -450,7 +450,8 @@ Implementation and review evidence:
 
 ## Milestone 69 - Secure Tailnet Phone Access
 
-**Status (31 July 2026): approved; implementation and acceptance in progress.**
+**Status (31 July 2026): implementation complete; acceptance is blocked by
+external Tailscale certificate provisioning.**
 
 The owner reprioritized secure phone access as a prerequisite for the planned
 daily-use validation.
@@ -471,6 +472,7 @@ Proposal and review evidence:
 - `docs/milestone-69-implementation.md`
 - `docs/milestone-69-architecture-review.md`
 - `docs/milestone-69-engineering-review.md`
+- `docs/milestone-69-acceptance.md`
 
 ## Milestone 70 - Phone Daily-Use Validation
 

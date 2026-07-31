@@ -80,8 +80,10 @@ configuration still matches that record.
 
 ## Pending acceptance
 
-- One-time owner authorization of Tailscale Serve HTTPS
-- Private HTTPS health through Tailscale
+- One-time owner authorization of Tailscale Serve HTTPS - complete
+- Exact private Serve configuration with Funnel disabled - complete
+- Private HTTPS health through Tailscale - blocked by a Tailscale ACME DNS
+  record HTTP 500; see `docs/milestone-69-acceptance.md`
 - Disable and re-enable recovery
 - Phone chat, Focus, knowledge, and guarded action workflow
 - Owner acceptance
