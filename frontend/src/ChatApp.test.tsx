@@ -185,6 +185,9 @@ describe("ChatApp", () => {
     expect(screen.getByRole("combobox", { name: "Local model" })).toHaveValue(
       "qwen3:8b",
     );
+    expect(
+      screen.getByRole("combobox", { name: "Open conversation" }),
+    ).toBeDisabled();
     expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
     expect(
       screen.getByText(/A suggestion is never permanent/),
@@ -192,6 +195,10 @@ describe("ChatApp", () => {
     expect(
       screen.getByText(/Retrieval uses active, approved local records only/),
     ).toBeInTheDocument();
+    const privacyDetails = screen
+      .getByText("Privacy and knowledge controls")
+      .closest("details");
+    expect(privacyDetails).not.toHaveAttribute("open");
     const composer = screen.getByRole("textbox", { name: "Message Nova" });
     const knowledgeHealth = screen.getByRole("region", {
       name: "Knowledge health",
@@ -538,6 +545,9 @@ describe("ChatApp", () => {
           return Promise.resolve(jsonResponse([]));
         }
         if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/chat/documents")) {
           return Promise.resolve(jsonResponse([]));
         }
         if (url.endsWith("/chat/conversations/conversation-1")) {

@@ -543,6 +543,24 @@ function ChatApp() {
               New
             </button>
           </div>
+          <label className="conversation-picker">
+            <span>Open conversation</span>
+            <select
+              value={selectedId ?? ""}
+              onChange={(event) => void openConversation(event.target.value)}
+              disabled={generating || conversations.length === 0}
+            >
+              {conversations.length === 0 ? (
+                <option value="">No conversations yet</option>
+              ) : null}
+              {conversations.map((conversation) => (
+                <option key={conversation.id} value={conversation.id}>
+                  {conversation.title} · {conversation.message_count} message
+                  {conversation.message_count === 1 ? "" : "s"}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="conversation-list">
             {conversations.length ? (
               conversations.map((conversation) => (
@@ -693,13 +711,16 @@ function ChatApp() {
               </button>
             )}
           </form>
-          <p className="chat-boundary">
-            Retrieval uses active, approved local records only. Select at most
-            one indexed local document for one turn. Nova revalidates its
-            fingerprint before use and stores citation metadata, not a
-            browser-accessible copy. Automatic retrieval, tools, web access,
-            and autonomous actions remain disabled.
-          </p>
+          <details className="chat-boundary">
+            <summary>Privacy and knowledge controls</summary>
+            <p>
+              Retrieval uses active, approved local records only. Select at most
+              one indexed local document for one turn. Nova revalidates its
+              fingerprint before use and stores citation metadata, not a
+              browser-accessible copy. Automatic retrieval, tools, web access,
+              and autonomous actions remain disabled.
+            </p>
+          </details>
 
           {knowledgeCandidates.length ? (
             <section className="knowledge-review" aria-labelledby="knowledge-title">

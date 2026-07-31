@@ -166,6 +166,14 @@ function FocusApp() {
         <p className="focus-warning" role="status">{overview.warning}</p>
       ) : null}
 
+      <NextActionsSection
+        actions={actions}
+        projects={overview?.projects ?? []}
+        loading={actionsLoading}
+        error={actionsError}
+        onActionChanged={applyActionChange}
+      />
+
       <div className="focus-grid" aria-busy={planningLoading}>
         <PlanningSection
           id="projects-title"
@@ -189,22 +197,14 @@ function FocusApp() {
         />
       </div>
 
-      <NextActionsSection
-        actions={actions}
-        projects={overview?.projects ?? []}
-        loading={actionsLoading}
-        error={actionsError}
-        onActionChanged={applyActionChange}
-      />
-
-      <footer className="focus-boundary">
-        <strong>Owner-controlled local focus view.</strong>
-        <span>
+      <details className="focus-boundary">
+        <summary>How Focus stays under your control</summary>
+        <p>
           Knowledge changes still use NOVA’s review controls. Next actions are
           saved only when you submit the local form, and completion history is
           retained. {overview?.limitation} {actions?.limitation}
-        </span>
-      </footer>
+        </p>
+      </details>
     </main>
   );
 }
