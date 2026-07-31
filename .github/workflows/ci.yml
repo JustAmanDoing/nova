@@ -150,6 +150,16 @@ jobs:
             | jq --exit-status \
                 '.limitation | contains("does not infer progress")' \
             > /dev/null
+          next_actions="$(
+            curl --fail --silent --show-error \
+              http://127.0.0.1:8000/api/v1/focus/actions
+          )"
+          test "$(printf '%s' "$next_actions" | jq '.open')" = '[]'
+          test "$(printf '%s' "$next_actions" | jq '.completed')" = '[]'
+          printf '%s' "$next_actions" \
+            | jq --exit-status \
+                '.limitation | contains("does not infer priority")' \
+            > /dev/null
           response_headers="$(
             curl --fail --silent --show-error --head \
               http://127.0.0.1:5173/
@@ -286,6 +296,53 @@ jobs:
         run: |
           api='http://127.0.0.1:8000/api/v1'
           intent='X-Nova-Intent: local-user-action'
+          if curl --fail --silent --output /dev/null \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{"title":"This unguarded action must fail"}' \
+            "$api/focus/actions"
+          then
+            echo 'Next-action creation succeeded without local intent.'
+            exit 1
+          fi
+          next_action="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header "$intent" \
+              --header 'Content-Type: application/json' \
+              --data '{"title":"Run representative owner acceptance"}' \
+              "$api/focus/actions"
+          )"
+          next_action_id="$(
+            printf '%s' "$next_action" | jq --raw-output '.id'
+          )"
+          test "$(printf '%s' "$next_action" | jq --raw-output '.status')" = 'open'
+          completed_action="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header "$intent" \
+              "$api/focus/actions/$next_action_id/complete"
+          )"
+          test "$(
+            printf '%s' "$completed_action" | jq --raw-output '.status'
+          )" = 'completed'
+          reopened_action="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header "$intent" \
+              "$api/focus/actions/$next_action_id/reopen"
+          )"
+          test "$(
+            printf '%s' "$reopened_action" | jq --raw-output '.status'
+          )" = 'open'
+          action_events="$(
+            curl --fail --silent --show-error \
+              "$api/focus/actions/$next_action_id/events"
+          )"
+          test "$(
+            printf '%s' "$action_events" \
+              | jq --compact-output '[.[].event_type]'
+          )" = '["created","completed","reopened"]'
           files="$(
             curl --fail --silent --show-error "$api/intake/files"
           )"

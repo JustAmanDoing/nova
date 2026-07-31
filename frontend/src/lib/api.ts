@@ -234,6 +234,33 @@ export interface PlanningOverview {
   limitation: string;
 }
 
+export type NextActionStatus = "open" | "completed";
+
+export interface NextAction {
+  id: string;
+  title: string;
+  status: NextActionStatus;
+  project_record_id: string | null;
+  project_title: string | null;
+  project_revision: number | null;
+  project_unavailable: boolean;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
+export interface NextActionOverview {
+  generated_at: string;
+  open: NextAction[];
+  completed: NextAction[];
+  limitation: string;
+}
+
+export interface CreateNextActionRequest {
+  title: string;
+  project_record_id?: string | null;
+}
+
 export interface OperationalStatus {
   status: "healthy" | "attention";
   uptime_seconds: number;
@@ -543,6 +570,36 @@ export async function getPlanningOverview(
   signal?: AbortSignal,
 ): Promise<PlanningOverview> {
   return request<PlanningOverview>("/api/v1/knowledge/planning", { signal });
+}
+
+export async function getNextActions(
+  signal?: AbortSignal,
+): Promise<NextActionOverview> {
+  return request<NextActionOverview>("/api/v1/focus/actions", { signal });
+}
+
+export async function createNextAction(
+  action: CreateNextActionRequest,
+): Promise<NextAction> {
+  return request<NextAction>("/api/v1/focus/actions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(action),
+  });
+}
+
+export async function completeNextAction(actionId: string): Promise<NextAction> {
+  return request<NextAction>(
+    `/api/v1/focus/actions/${encodeURIComponent(actionId)}/complete`,
+    { method: "POST" },
+  );
+}
+
+export async function reopenNextAction(actionId: string): Promise<NextAction> {
+  return request<NextAction>(
+    `/api/v1/focus/actions/${encodeURIComponent(actionId)}/reopen`,
+    { method: "POST" },
+  );
 }
 
 export async function updateKnowledgeRecord(

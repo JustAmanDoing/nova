@@ -183,6 +183,20 @@ existing immutable update and guarded retirement controls. The Focus page does
 not infer progress, priority, dates, deadlines, plans, tasks, or next actions,
 and it remains useful when Ollama is unavailable.
 
+Milestone 68 adds a bounded **Next actions** section to Focus. Actions are
+created only from text the owner explicitly submits in the local form. The
+first lifecycle supports only open, complete, and reopen, while retaining an
+append-only local event history. An action may be linked to one currently
+verified active project; if that project later becomes retired or fails its
+integrity check, NOVA hides the stale project content and reports the
+association as unavailable.
+
+Next actions are stored separately from permanent knowledge and do not alter
+approved Markdown records. NOVA does not generate actions from chat,
+documents, projects, or model output, and this slice adds no priorities,
+dates, deadlines, reminders, recurrence, notifications, scheduling, or
+autonomous execution. The view and lifecycle remain useful without Ollama.
+
 Chat still cannot browse the web, use tools, perform semantic or general
 document search, or take autonomous actions. Starting a conversation,
 sending a message, and reviewing a knowledge proposal require the same local
@@ -529,6 +543,10 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 67 next-capability selection](docs/milestone-67-next-capability-selection.md)
 - [Milestone 67 architecture review](docs/milestone-67-architecture-review.md)
 - [Milestone 67 engineering review](docs/milestone-67-engineering-review.md)
+- [Milestone 68 owner-approved next actions proposal](docs/milestone-68-owner-approved-next-actions-proposal.md)
+- [Milestone 68 implementation record](docs/milestone-68-implementation.md)
+- [Milestone 68 architecture review](docs/milestone-68-architecture-review.md)
+- [Milestone 68 engineering review](docs/milestone-68-engineering-review.md)
 - [Milestone 68 owner-approved next-actions proposal](docs/milestone-68-owner-approved-next-actions-proposal.md)
 - [Roadmap](docs/roadmap.md)
 - [Contributing](CONTRIBUTING.md)

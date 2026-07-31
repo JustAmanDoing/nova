@@ -55,6 +55,12 @@ def test_every_mutating_api_requires_local_action_intent(tmp_path: Path) -> None
             ),
             client.post("/api/v1/knowledge/snapshots"),
             client.post(
+                "/api/v1/focus/actions",
+                json={"title": "Blocked next action"},
+            ),
+            client.post("/api/v1/focus/actions/not-present/complete"),
+            client.post("/api/v1/focus/actions/not-present/reopen"),
+            client.post(
                 "/api/v1/backups/nova-20260725T000000.000000Z.db/restore",
                 json={"confirmation": "RESTORE nova-20260725T000000.000000Z.db"},
             ),

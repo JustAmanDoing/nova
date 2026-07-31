@@ -496,6 +496,44 @@ def _explicit_local_document_context(connection: sqlite3.Connection) -> None:
     _execute_all(connection, statements)
 
 
+def _owner_approved_next_actions(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE IF NOT EXISTS next_actions (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            project_record_id TEXT
+                REFERENCES knowledge_records(id) ON DELETE RESTRICT,
+            status TEXT NOT NULL CHECK (status IN ('open', 'completed')),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            completed_at TEXT
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_next_actions_status
+        ON next_actions (status, created_at, id)
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS next_action_events (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            action_id TEXT NOT NULL
+                REFERENCES next_actions(id) ON DELETE RESTRICT,
+            event_type TEXT NOT NULL CHECK (
+                event_type IN ('created', 'completed', 'reopened')
+            ),
+            detail TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_next_action_events_action
+        ON next_action_events (action_id, sequence)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -519,6 +557,11 @@ MIGRATIONS: tuple[Migration, ...] = (
         15,
         "explicit-local-document-context",
         _explicit_local_document_context,
+    ),
+    Migration(
+        16,
+        "owner-approved-next-actions",
+        _owner_approved_next_actions,
     ),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version
