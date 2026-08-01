@@ -145,6 +145,87 @@ afterEach(() => {
 });
 
 describe("ChatApp", () => {
+  it("opens a long conversation at the latest exchange and offers phone shortcuts", async () => {
+    const messages = Array.from({ length: 79 }, (_, index) => ({
+      id: `message-${index + 1}`,
+      conversation_id: conversation.id,
+      role: index % 2 === 0 ? "user" : "assistant",
+      content: `Private test exchange ${index + 1}`,
+      model: "qwen3:8b",
+      created_at: `2026-07-28T09:${String(index).padStart(2, "0")}:00Z`,
+      knowledge_checked: false,
+      sources: [],
+      document_sources: [],
+    }));
+    const longConversation = {
+      ...conversation,
+      model: "qwen3:8b",
+      message_count: messages.length,
+      archived_at: null,
+      trashed_at: null,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) {
+          return Promise.resolve(
+            jsonResponse([
+              {
+                name: "qwen3:8b",
+                size_bytes: 5_200_000_000,
+                parameter_size: "8.2B",
+                quantization_level: "Q4_K_M",
+              },
+            ]),
+          );
+        }
+        if (url.includes("/chat/conversations?status=")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith(`/chat/conversations/${conversation.id}`)) {
+          return Promise.resolve(jsonResponse({ ...longConversation, messages }));
+        }
+        if (url.endsWith("/chat/conversations")) {
+          return Promise.resolve(jsonResponse([longConversation]));
+        }
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
+        return Promise.resolve(jsonResponse([]));
+      }),
+    );
+
+    render(<ChatApp />);
+
+    expect(await screen.findByText("Private test exchange 79")).toBeInTheDocument();
+    expect(vi.mocked(HTMLElement.prototype.scrollTo)).toHaveBeenCalled();
+    expect(screen.getAllByRole("button", { name: "New chat" })).toHaveLength(2);
+
+    const historyToggle = screen.getByRole("button", { name: "Chats" });
+    fireEvent.click(historyToggle);
+    expect(historyToggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("complementary", { name: "Conversation history" }))
+      .toHaveClass("mobile-open");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(historyToggle).toHaveAttribute("aria-expanded", "false");
+
+    const transcript = document.querySelector<HTMLElement>(".chat-transcript");
+    expect(transcript).not.toBeNull();
+    Object.defineProperties(transcript as HTMLElement, {
+      scrollHeight: { configurable: true, value: 90_000 },
+      clientHeight: { configurable: true, value: 300 },
+      scrollTop: { configurable: true, writable: true, value: 0 },
+    });
+    fireEvent.scroll(transcript as HTMLElement);
+    const jump = screen.getByRole("button", { name: "Jump to latest" });
+    fireEvent.click(jump);
+    expect(vi.mocked(HTMLElement.prototype.scrollTo)).toHaveBeenLastCalledWith({
+      top: 90_000,
+      behavior: "smooth",
+    });
+  });
+
   it("shows the local-only boundary and available Ollama model", async () => {
     vi.stubGlobal(
       "fetch",

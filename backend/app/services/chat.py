@@ -7,6 +7,8 @@ from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Lock
+from typing import cast
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from uuid import uuid4
@@ -14,6 +16,10 @@ from uuid import uuid4
 
 class ChatNotFoundError(LookupError):
     """Raised when a requested local conversation does not exist."""
+
+
+class ChatConflictError(RuntimeError):
+    """Raised when a conversation cannot accept the requested state change."""
 
 
 class LocalModelProviderError(RuntimeError):
@@ -95,7 +101,21 @@ class ConversationRecord:
     created_at: str
     updated_at: str
     message_count: int
+    archived_at: str | None = None
+    trashed_at: str | None = None
     messages: tuple[MessageRecord, ...] = ()
+
+
+@dataclass(frozen=True)
+class ConversationEventRecord:
+    id: str
+    conversation_id: str
+    event_type: str
+    previous_title: str | None
+    new_title: str | None
+    previous_status: str | None
+    new_status: str | None
+    created_at: str
 
 
 NOVA_CHAT_SYSTEM_PROMPT = (
@@ -214,6 +234,8 @@ class ChatService:
         self.provider = provider
         self.intake_path = intake_path.resolve()
         self.document_context_max_bytes = document_context_max_bytes
+        self._turn_lock = Lock()
+        self._active_turns: set[str] = set()
 
     def list_models(self) -> list[ModelRecord]:
         return self.provider.list_models()
@@ -331,6 +353,14 @@ class ChatService:
                 """,
                 (conversation_id, title.strip(), now, now),
             )
+            self._add_conversation_event(
+                connection,
+                conversation_id,
+                "created",
+                previous_status=None,
+                new_status="active",
+                created_at=now,
+            )
         return ConversationRecord(
             id=conversation_id,
             title=title.strip(),
@@ -340,20 +370,31 @@ class ChatService:
             message_count=0,
         )
 
-    def list_conversations(self) -> list[ConversationRecord]:
+    def list_conversations(self, status: str = "active") -> list[ConversationRecord]:
+        filters = {
+            "active": "conversation.archived_at IS NULL AND conversation.trashed_at IS NULL",
+            "archived": "conversation.archived_at IS NOT NULL AND conversation.trashed_at IS NULL",
+            "trash": "conversation.trashed_at IS NOT NULL",
+            "all": "1 = 1",
+        }
+        if status not in filters:
+            raise ValueError("Conversation status must be active, archived, trash, or all.")
         with closing(self._connection()) as connection:
             rows = connection.execute(
-                """
+                f"""
                 SELECT
                     conversation.id,
                     conversation.title,
                     conversation.model,
                     conversation.created_at,
                     conversation.updated_at,
+                    conversation.archived_at,
+                    conversation.trashed_at,
                     COUNT(message.id) AS message_count
                 FROM chat_conversations AS conversation
                 LEFT JOIN chat_messages AS message
                   ON message.conversation_id = conversation.id
+                WHERE {filters[status]}
                 GROUP BY conversation.id
                 ORDER BY conversation.updated_at DESC
                 """
@@ -370,6 +411,8 @@ class ChatService:
                     conversation.model,
                     conversation.created_at,
                     conversation.updated_at,
+                    conversation.archived_at,
+                    conversation.trashed_at,
                     COUNT(message.id) AS message_count
                 FROM chat_conversations AS conversation
                 LEFT JOIN chat_messages AS message
@@ -459,6 +502,104 @@ class ChatService:
             }
         )
 
+    def rename_conversation(self, conversation_id: str, title: str) -> ConversationRecord:
+        normalized = title.strip()
+        if not normalized:
+            raise ValueError("Conversation title cannot be blank.")
+        if len(normalized) > 120:
+            raise ValueError("Conversation title cannot exceed 120 characters.")
+        self._ensure_not_generating(conversation_id)
+        now = _now()
+        with closing(self._connection()) as connection, connection:
+            row = self._conversation_row(connection, conversation_id)
+            if row["trashed_at"] is not None:
+                raise ChatConflictError("Restore this conversation before renaming it.")
+            previous_title = str(row["title"])
+            if previous_title == normalized:
+                raise ChatConflictError("The conversation already has that title.")
+            connection.execute(
+                "UPDATE chat_conversations SET title = ?, updated_at = ? WHERE id = ?",
+                (normalized, now, conversation_id),
+            )
+            self._add_conversation_event(
+                connection,
+                conversation_id,
+                "renamed",
+                previous_title=previous_title,
+                new_title=normalized,
+                previous_status=_conversation_status(row),
+                new_status=_conversation_status(row),
+                created_at=now,
+            )
+        return self.get_conversation(conversation_id)
+
+    def archive_conversation(self, conversation_id: str) -> ConversationRecord:
+        return self._change_conversation_status(
+            conversation_id,
+            expected="active",
+            target="archived",
+            event_type="archived",
+        )
+
+    def restore_conversation(self, conversation_id: str) -> ConversationRecord:
+        return self._change_conversation_status(
+            conversation_id,
+            expected="archived",
+            target="active",
+            event_type="restored",
+        )
+
+    def trash_conversation(self, conversation_id: str) -> ConversationRecord:
+        self._ensure_not_generating(conversation_id)
+        now = _now()
+        with closing(self._connection()) as connection, connection:
+            row = self._conversation_row(connection, conversation_id)
+            previous_status = _conversation_status(row)
+            if previous_status == "trash":
+                raise ChatConflictError("The conversation is already in Trash.")
+            connection.execute(
+                """
+                UPDATE chat_conversations
+                SET archived_at = NULL, trashed_at = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (now, now, conversation_id),
+            )
+            self._add_conversation_event(
+                connection,
+                conversation_id,
+                "trashed",
+                previous_status=previous_status,
+                new_status="trash",
+                created_at=now,
+            )
+        return self.get_conversation(conversation_id)
+
+    def restore_from_trash(self, conversation_id: str) -> ConversationRecord:
+        return self._change_conversation_status(
+            conversation_id,
+            expected="trash",
+            target="active",
+            event_type="restored_from_trash",
+        )
+
+    def list_conversation_events(
+        self, conversation_id: str
+    ) -> list[ConversationEventRecord]:
+        with closing(self._connection()) as connection:
+            self._conversation_row(connection, conversation_id)
+            rows = connection.execute(
+                """
+                SELECT id, conversation_id, event_type, previous_title,
+                       new_title, previous_status, new_status, created_at
+                FROM chat_conversation_events
+                WHERE conversation_id = ?
+                ORDER BY sequence
+                """,
+                (conversation_id,),
+            ).fetchall()
+        return [ConversationEventRecord(**dict(row)) for row in rows]
+
     def begin_turn(
         self,
         conversation_id: str,
@@ -466,7 +607,17 @@ class ChatService:
         model: str,
     ) -> tuple[MessageRecord, list[dict[str, str]]]:
         conversation = self.get_conversation(conversation_id)
-        message = self._add_message(conversation_id, "user", content.strip(), model)
+        if conversation.archived_at is not None or conversation.trashed_at is not None:
+            raise ChatConflictError("Restore this conversation before sending a message.")
+        with self._turn_lock:
+            if conversation_id in self._active_turns:
+                raise ChatConflictError("This conversation is already generating a reply.")
+            self._active_turns.add(conversation_id)
+        try:
+            message = self._add_message(conversation_id, "user", content.strip(), model)
+        except Exception:
+            self.end_turn(conversation_id)
+            raise
         history = [{"role": "system", "content": NOVA_CHAT_SYSTEM_PROMPT}]
         history.extend(
             [
@@ -478,6 +629,10 @@ class ChatService:
         if conversation.message_count == 0 and conversation.title == "New conversation":
             self._set_title(conversation_id, _suggest_title(message.content))
         return message, history
+
+    def end_turn(self, conversation_id: str) -> None:
+        with self._turn_lock:
+            self._active_turns.discard(conversation_id)
 
     def add_approved_knowledge_context(
         self,
@@ -662,10 +817,111 @@ class ChatService:
 
     def _set_title(self, conversation_id: str, title: str) -> None:
         with closing(self._connection()) as connection, connection:
+            row = self._conversation_row(connection, conversation_id)
             connection.execute(
                 "UPDATE chat_conversations SET title = ? WHERE id = ?",
                 (title, conversation_id),
             )
+            self._add_conversation_event(
+                connection,
+                conversation_id,
+                "renamed",
+                previous_title=str(row["title"]),
+                new_title=title,
+                previous_status=_conversation_status(row),
+                new_status=_conversation_status(row),
+            )
+
+    def _change_conversation_status(
+        self,
+        conversation_id: str,
+        *,
+        expected: str,
+        target: str,
+        event_type: str,
+    ) -> ConversationRecord:
+        self._ensure_not_generating(conversation_id)
+        now = _now()
+        with closing(self._connection()) as connection, connection:
+            row = self._conversation_row(connection, conversation_id)
+            current = _conversation_status(row)
+            if current != expected:
+                raise ChatConflictError(
+                    f"Conversation is {current}; expected {expected}."
+                )
+            archived_at = now if target == "archived" else None
+            trashed_at = now if target == "trash" else None
+            connection.execute(
+                """
+                UPDATE chat_conversations
+                SET archived_at = ?, trashed_at = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (archived_at, trashed_at, now, conversation_id),
+            )
+            self._add_conversation_event(
+                connection,
+                conversation_id,
+                event_type,
+                previous_status=current,
+                new_status=target,
+                created_at=now,
+            )
+        return self.get_conversation(conversation_id)
+
+    def _ensure_not_generating(self, conversation_id: str) -> None:
+        with self._turn_lock:
+            if conversation_id in self._active_turns:
+                raise ChatConflictError(
+                    "Wait for the current reply to finish before changing this conversation."
+                )
+
+    @staticmethod
+    def _conversation_row(
+        connection: sqlite3.Connection, conversation_id: str
+    ) -> sqlite3.Row:
+        row = connection.execute(
+            """
+            SELECT id, title, archived_at, trashed_at
+            FROM chat_conversations
+            WHERE id = ?
+            """,
+            (conversation_id,),
+        ).fetchone()
+        if row is None:
+            raise ChatNotFoundError(conversation_id)
+        return cast(sqlite3.Row, row)
+
+    @staticmethod
+    def _add_conversation_event(
+        connection: sqlite3.Connection,
+        conversation_id: str,
+        event_type: str,
+        *,
+        previous_title: str | None = None,
+        new_title: str | None = None,
+        previous_status: str | None = None,
+        new_status: str | None = None,
+        created_at: str | None = None,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO chat_conversation_events (
+                id, conversation_id, event_type, previous_title, new_title,
+                previous_status, new_status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(uuid4()),
+                conversation_id,
+                event_type,
+                previous_title,
+                new_title,
+                previous_status,
+                new_status,
+                created_at or _now(),
+            ),
+        )
 
     def _connection(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path)
@@ -682,7 +938,21 @@ def _conversation_from_row(row: sqlite3.Row) -> ConversationRecord:
         created_at=str(row["created_at"]),
         updated_at=str(row["updated_at"]),
         message_count=int(row["message_count"]),
+        archived_at=(
+            str(row["archived_at"]) if row["archived_at"] is not None else None
+        ),
+        trashed_at=(
+            str(row["trashed_at"]) if row["trashed_at"] is not None else None
+        ),
     )
+
+
+def _conversation_status(row: sqlite3.Row) -> str:
+    if row["trashed_at"] is not None:
+        return "trash"
+    if row["archived_at"] is not None:
+        return "archived"
+    return "active"
 
 
 def _message_from_row(

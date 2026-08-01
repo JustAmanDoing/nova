@@ -62,6 +62,8 @@ class ChatConversationSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
     message_count: int
+    archived_at: datetime | None = None
+    trashed_at: datetime | None = None
 
 
 class ChatConversation(ChatConversationSummary):
@@ -70,6 +72,21 @@ class ChatConversation(ChatConversationSummary):
 
 class CreateConversationRequest(BaseModel):
     title: str = Field(default="New conversation", min_length=1, max_length=120)
+
+
+class RenameConversationRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+
+
+class ChatConversationEvent(BaseModel):
+    id: str
+    conversation_id: str
+    event_type: str
+    previous_title: str | None = None
+    new_title: str | None = None
+    previous_status: str | None = None
+    new_status: str | None = None
+    created_at: datetime
 
 
 class SendChatMessageRequest(BaseModel):

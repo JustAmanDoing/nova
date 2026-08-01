@@ -69,10 +69,23 @@ export interface ChatConversationSummary {
   created_at: string;
   updated_at: string;
   message_count: number;
+  archived_at?: string | null;
+  trashed_at?: string | null;
 }
 
 export interface ChatConversation extends ChatConversationSummary {
   messages: ChatMessage[];
+}
+
+export interface ChatConversationEvent {
+  id: string;
+  conversation_id: string;
+  event_type: string;
+  previous_title: string | null;
+  new_title: string | null;
+  previous_status: string | null;
+  new_status: string | null;
+  created_at: string;
 }
 
 export type ChatStreamEvent =
@@ -455,10 +468,16 @@ export async function getChatDocuments(
 
 export async function getChatConversations(
   signal?: AbortSignal,
+  status: "active" | "archived" | "trash" | "all" = "active",
 ): Promise<ChatConversationSummary[]> {
-  return request<ChatConversationSummary[]>("/api/v1/chat/conversations", {
-    signal,
-  });
+  const path =
+    status === "active"
+      ? "/api/v1/chat/conversations"
+      : `/api/v1/chat/conversations?status=${encodeURIComponent(status)}`;
+  return request<ChatConversationSummary[]>(
+    path,
+    { signal },
+  );
 }
 
 export async function createChatConversation(
@@ -477,6 +496,66 @@ export async function getChatConversation(
 ): Promise<ChatConversation> {
   return request<ChatConversation>(
     `/api/v1/chat/conversations/${encodeURIComponent(conversationId)}`,
+    { signal },
+  );
+}
+
+export async function renameChatConversation(
+  conversationId: string,
+  title: string,
+): Promise<ChatConversationSummary> {
+  return request<ChatConversationSummary>(
+    `/api/v1/chat/conversations/${encodeURIComponent(conversationId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    },
+  );
+}
+
+export async function archiveChatConversation(
+  conversationId: string,
+): Promise<ChatConversationSummary> {
+  return request<ChatConversationSummary>(
+    `/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/archive`,
+    { method: "POST" },
+  );
+}
+
+export async function restoreChatConversation(
+  conversationId: string,
+): Promise<ChatConversationSummary> {
+  return request<ChatConversationSummary>(
+    `/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/restore`,
+    { method: "POST" },
+  );
+}
+
+export async function trashChatConversation(
+  conversationId: string,
+): Promise<ChatConversationSummary> {
+  return request<ChatConversationSummary>(
+    `/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/trash`,
+    { method: "POST" },
+  );
+}
+
+export async function restoreChatConversationFromTrash(
+  conversationId: string,
+): Promise<ChatConversationSummary> {
+  return request<ChatConversationSummary>(
+    `/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/trash/restore`,
+    { method: "POST" },
+  );
+}
+
+export async function getChatConversationEvents(
+  conversationId: string,
+  signal?: AbortSignal,
+): Promise<ChatConversationEvent[]> {
+  return request<ChatConversationEvent[]>(
+    `/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/events`,
     { signal },
   );
 }

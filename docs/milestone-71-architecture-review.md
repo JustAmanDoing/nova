@@ -4,8 +4,8 @@
 
 **Reviewed proposal:** Milestone 72 Conversation Organisation
 
-**Decision:** Passed with implementation conditions; runtime not approved by
-this review
+**Decision:** Passed with implementation conditions; revised owner-approved
+scope remains architecture-conformant
 
 ## Architectural fit
 
@@ -21,18 +21,20 @@ The existing frontend continues to call the same local same-origin API.
 
 ## Required boundaries
 
-1. Add one nullable archived timestamp to the existing conversation record.
+1. Add nullable archived and trashed timestamps to the existing conversation
+   record.
 2. Add an append-only conversation-lifecycle event table for created, renamed,
    archived, and restored events.
 3. Use a migration after current schema 16; do not rewrite existing messages.
 4. Keep active conversations as the default list so current clients retain
    predictable behavior.
-5. Require the existing local-intent header for rename, archive, and restore.
+5. Require the existing local-intent header for rename, archive, restore,
+   move-to-Trash, and restore-from-Trash.
 6. Do not allow a message to be sent to an archived conversation.
 7. Keep archived conversations directly retrievable for review, but read-only
    until the owner restores them.
-8. Archive must never delete, truncate, summarize, export, upload, or rewrite
-   messages.
+8. Archive and Trash must never delete, truncate, summarize, export, upload, or
+   rewrite messages.
 9. Rename must preserve the previous and new title in the lifecycle event.
 10. Disable lifecycle changes while that conversation is generating a reply.
 11. Keep all data under the existing local database, backup, restore, and
@@ -41,7 +43,7 @@ The existing frontend continues to call the same local same-origin API.
 
 ## Explicit exclusions
 
-- permanent or soft deletion;
+- permanent deletion;
 - automatic retention periods;
 - automatic archival or cleanup;
 - AI-generated folders, labels, categories, or archive decisions;
@@ -63,6 +65,11 @@ Pass with conditions.
 - Append-only lifecycle events make corrections and state transitions
   auditable.
 - Existing verified backup and restore remain the recovery boundary.
+- The phone transcript uses a bounded local scroll region, opens at the latest
+  exchange, and preserves chronological message order.
+- Phone history and lifecycle actions use a temporary local drawer; they do not
+  create another persistence, navigation, or authority boundary.
+- Trash is reversible and is not represented as permanent erasure.
 
 The implementation must not expose personal conversation titles in logs,
 telemetry, release evidence, test fixtures, or error messages beyond the
@@ -88,5 +95,6 @@ transactions, and no independent scaling or availability boundary exists.
 
 ## Conclusion
 
-The bounded Milestone 72 proposal is architecture-conformant and may be offered
-for owner approval. This review does not authorise implementation.
+The revised, owner-approved Milestone 72 proposal remains
+architecture-conformant. Implementation must stay within the bounded runtime
+and reversible-data conditions above.
