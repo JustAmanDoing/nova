@@ -581,6 +581,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 72 conversation organisation proposal](docs/milestone-72-conversation-organisation-proposal.md)
 - [Milestone 72 implementation record](docs/milestone-72-implementation.md)
 - [Milestone 72 acceptance record](docs/milestone-72-acceptance.md)
+- [Milestone 72 release report](docs/milestone-72-release-report.md)
 - [Milestone 69 implementation record](docs/milestone-69-implementation.md)
 - [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)
 - [Milestone 69 engineering review](docs/milestone-69-engineering-review.md)

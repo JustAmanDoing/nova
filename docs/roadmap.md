@@ -535,8 +535,9 @@ Decision and proposal evidence:
 
 ## Milestone 72 - Conversation Organisation
 
-**Status (1 August 2026): implemented and owner accepted as release candidate
-0.72.0; protected integration and exact merged-runtime verification remain.**
+**Status (1 August 2026): release approved; protected implementation merged,
+exact merged runtime verified, and evidence-only integration and publication
+remain.**
 
 - Let the owner rename a local conversation explicitly
 - Let the owner archive and restore a conversation without deleting messages
@@ -552,6 +553,7 @@ Implementation and acceptance evidence:
 
 - `docs/milestone-72-implementation.md`
 - `docs/milestone-72-acceptance.md`
+- `docs/milestone-72-release-report.md`
 
 ## Milestone 73 - Conversation Organisation Daily-Use Validation
 
