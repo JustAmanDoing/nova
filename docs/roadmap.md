@@ -535,9 +535,8 @@ Decision and proposal evidence:
 
 ## Milestone 72 - Conversation Organisation
 
-**Status (1 August 2026): implemented as release candidate 0.72.0; automated,
-installed-runtime, recovery, and simulated-phone checks passed; physical-phone
-owner acceptance remains before protected integration.**
+**Status (1 August 2026): implemented and owner accepted as release candidate
+0.72.0; protected integration and exact merged-runtime verification remain.**
 
 - Let the owner rename a local conversation explicitly
 - Let the owner archive and restore a conversation without deleting messages

@@ -4,8 +4,7 @@
 
 **Target release:** 0.72.0
 
-**Status:** Implemented; automated, installed-runtime, and simulated-phone
-acceptance passed; physical-phone owner acceptance remains
+**Status:** Implemented and owner accepted; protected integration remains
 
 ## Implemented
 
@@ -65,5 +64,6 @@ SHA-256 both equal:
 
 ## Exact next action
 
-Complete the physical-phone owner check, then integrate the protected release
-candidate using a merge commit and verify the exact merged `main` runtime.
+Integrate the accepted release candidate using a merge commit, rebuild the
+exact merged `main` runtime, and publish release evidence only after every
+protected and installed-runtime check passes.

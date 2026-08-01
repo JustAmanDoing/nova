@@ -4,8 +4,7 @@
 
 **Release candidate:** 0.72.0
 
-**Status:** Automated, installed-runtime, and simulated-phone checks passed;
-physical-phone owner acceptance pending
+**Status:** Passed; safe for protected repository integration
 
 ## Automated checks passed
 
@@ -65,12 +64,21 @@ At an accepted 390 by 844 phone viewport:
 - Recent backend and frontend logs contain no `ERROR`, `CRITICAL`,
   `Traceback`, or `Unhandled` match.
 
-## Remaining acceptance gate
+## Physical-phone owner acceptance
 
-The owner must perform one physical-phone check: open the private Chat page,
-confirm the latest exchange and composer are together, open **Chats**, and
-confirm an old conversation can be selected and the guarded management
-controls are visible. No destructive action is required.
+The owner opened the private Chat page on a physical phone and confirmed that:
 
-Until that passes, the candidate must not merge, tag, or publish as release
-0.72.0.
+- the latest exchange and composer are visible together;
+- **Chats** exposes old-conversation selection and the guarded Rename,
+  Archive, and Move to Trash controls; and
+- closing the drawer returns cleanly to the normal chat journey.
+
+The owner reported **passes**. No destructive action was required.
+
+## Release-readiness decision
+
+All approved automated, recovery, installed-runtime, simulated-phone, private
+network, and physical-phone acceptance checks passed. No release-blocking
+defect remains. Candidate 0.72.0 is safe to enter protected repository
+integration. Merge, tag, and publication remain conditional on the required
+GitHub checks and exact merged-`main` runtime verification.
