@@ -68,6 +68,39 @@ class DocumentProvider(FakeProvider):
         yield "The delivery code is amber-42 [D1]."
 
 
+class CapabilityGuidanceProvider(FakeProvider):
+    def stream_chat(
+        self,
+        model: str,
+        messages: Sequence[dict[str, str]],
+    ) -> Iterator[str]:
+        assert model == "qwen3:8b"
+        assert messages[-1] == {
+            "role": "user",
+            "content": "I'm looking to improve you to assist me fully",
+        }
+        guidance = messages[0]["content"]
+        assert "owner-approved local knowledge is checked for each turn" in guidance
+        assert "explicit remember requests prepare editable local review cards" in guidance
+        assert "one eligible local document" in guidance
+        assert "Focus plus owner-entered next actions" in guidance
+        assert "no web browsing, automatic document retrieval" in guidance
+        assert "Never suggest a reminder, scheduled task" in guidance
+        assert "conversation organisation" in guidance
+        assert "Do not invent citation labels" in guidance
+        assert "one-turn document selection" in guidance
+        assert "never make a blanket claim" in guidance
+        assert (
+            "Tools, web access, and automatic document retrieval are not available."
+            not in guidance
+        )
+        yield (
+            "Start by adding your response-style preference through NOVA's "
+            "review flow; I can already use approved local knowledge and an "
+            "explicitly selected document."
+        )
+
+
 def _application(tmp_path: Path):
     return create_app(
         Settings(
@@ -147,6 +180,36 @@ def test_local_chat_streams_and_persists_conversation(tmp_path: Path) -> None:
             ("user", "Hello Nova"),
             ("assistant", "Hello Example Owner."),
         ]
+
+
+def test_chat_receives_accurate_capability_guidance(tmp_path: Path) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = CapabilityGuidanceProvider()
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "New conversation"},
+        ).json()["id"]
+
+        response = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={
+                "model": "qwen3:8b",
+                "content": "I'm looking to improve you to assist me fully",
+            },
+        )
+
+        assert response.status_code == 200
+        events = [json.loads(line) for line in response.text.splitlines()]
+        assert [event["type"] for event in events] == [
+            "user",
+            "knowledge",
+            "delta",
+            "done",
+        ]
+        assert "approved local knowledge" in events[2]["content"]
 
 
 def test_provider_failure_is_streamed_without_inventing_reply(
