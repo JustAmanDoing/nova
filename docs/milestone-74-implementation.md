@@ -4,7 +4,8 @@
 
 **Target release:** 0.74.0
 
-**Status:** Implemented and installed; physical-owner acceptance pending
+**Status:** Implemented, installed, and owner accepted; protected integration
+remains
 
 ## Defect corrected
 
@@ -64,6 +65,6 @@ recalculated SHA-256 both equal:
 
 ## Exact next action
 
-The owner asks the installed local NOVA the original capability question and
-confirms that the answer is accurate and more useful. Protected repository
-integration may begin only after that physical-owner acceptance.
+Integrate the owner-accepted candidate through the protected pull-request
+workflow, rebuild the exact merged `main` runtime, and publish Release 0.74.0
+only after the merged-runtime evidence passes.

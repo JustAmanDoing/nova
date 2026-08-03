@@ -573,9 +573,8 @@ Evidence:
 
 ## Milestone 74 - Accurate Capability Guidance
 
-**Status (3 August 2026): implemented and installed; automated,
-installed-runtime, recovery, and real-model checks passed; physical-owner
-acceptance pending.**
+**Status (3 August 2026): implemented, installed, and owner accepted;
+protected integration and exact merged-runtime publication remain.**
 
 - Explain NOVA's verified local capabilities before limitations.
 - Distinguish Chat context from guarded controls elsewhere in NOVA.

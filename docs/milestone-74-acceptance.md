@@ -4,8 +4,7 @@
 
 **Release candidate:** 0.74.0
 
-**Status:** Automated, installed-runtime, and real-model checks passed;
-physical-owner acceptance pending
+**Status:** Passed; safe for protected repository integration
 
 ## Automated checks passed
 
@@ -69,16 +68,16 @@ unsupplied source. Its answer accurately described:
 It ended with supported next steps: share one current goal or preference, ask
 NOVA to remember it, or select a document through the interface for that turn.
 
-## Physical-owner acceptance required
+## Physical-owner acceptance
 
-The owner must ask the same question in the installed Chat interface and judge
-whether NOVA's answer is accurate, understandable, and more useful than the
-reported generic response. No merge, tag, or release publication may occur
-until the owner reports that this passes.
+The owner asked the same capability question in the installed NOVA Chat
+interface and confirmed that the corrected answer passed. This verifies that
+the response is materially more useful in the real interface, not only through
+the synthetic API acceptance path.
 
 ## Current release-readiness decision
 
-No automated, installed-runtime, recovery, privacy, architecture, or real-model
-blocker remains. Candidate `0.74.0` is ready for one bounded physical-owner
-acceptance test, but it is not yet approved for protected repository
-integration.
+All automated, installed-runtime, recovery, privacy, architecture, real-model,
+and physical-owner checks passed. Candidate `0.74.0` is safe for protected
+repository integration. Merge, tag, and publication remain conditional on the
+required GitHub checks and exact merged-`main` runtime verification.
