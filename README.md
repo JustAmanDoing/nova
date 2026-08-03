@@ -588,6 +588,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 74 engineering review](docs/milestone-74-engineering-review.md)
 - [Milestone 74 implementation record](docs/milestone-74-implementation.md)
 - [Milestone 74 acceptance record](docs/milestone-74-acceptance.md)
+- [Milestone 74 release report](docs/milestone-74-release-report.md)
 - [Milestone 69 implementation record](docs/milestone-69-implementation.md)
 - [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)
 - [Milestone 69 engineering review](docs/milestone-69-engineering-review.md)

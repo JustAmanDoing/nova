@@ -4,8 +4,8 @@
 
 **Target release:** 0.74.0
 
-**Status:** Implemented, installed, and owner accepted; protected integration
-remains
+**Status:** Implemented, owner accepted, merged through protected controls, and
+verified from exact merged `main`; evidence-only publication remains
 
 ## Defect corrected
 
@@ -65,6 +65,5 @@ recalculated SHA-256 both equal:
 
 ## Exact next action
 
-Integrate the owner-accepted candidate through the protected pull-request
-workflow, rebuild the exact merged `main` runtime, and publish Release 0.74.0
-only after the merged-runtime evidence passes.
+Integrate the release evidence through the protected pull-request workflow,
+tag the resulting `main` commit as `v0.74.0`, and publish GitHub Release 0.74.0.
