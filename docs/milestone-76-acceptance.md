@@ -116,3 +116,12 @@ implementation integration and exact merged-main verification also passed.
 
 Milestone 76 is approved for evidence-only protected integration, tag, and
 publication. No runtime defect remains open.
+
+## Post-publication status finding
+
+The final tagged archive refresh exposed one documentation-state defect: the
+generated current-status file still named Milestone 76 as the exact next
+milestone. Runtime health, archive checksums, privacy boundaries, and user data
+remained correct. Patch candidate 0.76.1 corrects the updater and adds a Windows
+control regression check; release closure pauses until that patch is published
+and the local archive reports Milestone 77.
