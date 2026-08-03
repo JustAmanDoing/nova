@@ -34,6 +34,10 @@ are not claimed as migrated.
 - Added a read-only Project Record API and `/archive.html` view.
 - Added **Record** to NOVA's primary navigation.
 - Added bounded verified text previews without browser filesystem access.
+- Corrected an owner-found phone defect where a selected preview was rendered
+  after the complete source catalogue and therefore appeared not to open. At
+  phone width, a selected document now opens immediately in a fixed, internally
+  scrollable panel with focused **Close** control and Escape-key dismissal.
 - Added a guarded Windows control for refreshing the project record.
 - Added a guarded Windows control for importing one explicitly selected
   NOVA-only source.

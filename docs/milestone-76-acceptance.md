@@ -58,6 +58,12 @@ tests. They predate this feature and do not affect the 51 passing assertions.
   boundary, grouped source catalogue, and bounded source preview.
 - A verified current-status record opened and displayed its checksum-bound local
   content.
+- The first physical-phone attempt exposed that the preview was placed below all
+  142 records. Release acceptance paused, the preview was changed to an immediate
+  phone panel, and the exact private-route tap was reproduced after rebuilding.
+- The corrected phone preview occupies the visible viewport, scrolls internally,
+  focuses its 44-pixel **Close** control, supports Escape dismissal, and does not
+  cause horizontal overflow.
 - At 390 by 844 phone size, the page has no horizontal overflow.
 - Summary cards, source cards, and 44-pixel controls remain readable and usable.
 - The small-screen navigation deliberately hides only the already-open page;

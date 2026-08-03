@@ -31,6 +31,8 @@ raw unapproved chat evidence.
   loopback binding, and security headers passed.
 - Desktop, phone-sized, cross-navigation, source-preview, and private Tailscale
   route checks passed.
+- An owner-found phone preview-placement defect was corrected and reverified
+  through the exact private address before release acceptance continued.
 - Production archive state is 142 verified sources with zero changed, missing,
   or invalid entries.
 

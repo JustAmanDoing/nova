@@ -310,4 +310,27 @@
   .archive-source button {
     min-width: 88px;
   }
+
+  .archive-preview.has-document {
+    position: fixed;
+    z-index: 80;
+    inset: 12px;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    border-color: #416452;
+    box-shadow: 0 22px 72px rgb(0 0 0 / 72%);
+  }
+
+  .archive-preview.has-document .archive-preview-heading {
+    align-items: flex-start;
+  }
+
+  .archive-preview.has-document .archive-preview-heading button {
+    min-width: 72px;
+    min-height: 44px;
+  }
+
+  .archive-preview.has-document pre {
+    max-height: none;
+  }
 }

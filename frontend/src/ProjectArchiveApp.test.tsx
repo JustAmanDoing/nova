@@ -86,6 +86,11 @@ describe("ProjectArchiveApp", () => {
     render(<ProjectArchiveApp />);
     fireEvent.click(await screen.findByRole("button", { name: "Open" }));
 
+    const preview = await screen.findByRole("dialog", {
+      name: "Selected archive document",
+    });
+    expect(preview).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
     expect(await screen.findByText(/<script>not executed<\/script>/)).toBeInTheDocument();
     expect(document.querySelector("script:not([type])")).toBeNull();
   });

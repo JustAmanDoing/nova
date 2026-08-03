@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getProjectArchive,
@@ -31,6 +31,7 @@ export default function ProjectArchiveApp() {
   const [error, setError] = useState<string | null>(null);
   const [document, setDocument] = useState<ProjectArchiveDocument | null>(null);
   const [documentLoading, setDocumentLoading] = useState(false);
+  const closePreviewButton = useRef<HTMLButtonElement>(null);
 
   async function loadReport(signal?: AbortSignal, showLoading = true) {
     if (showLoading) setLoading(true);
@@ -59,6 +60,10 @@ export default function ProjectArchiveApp() {
       .finally(() => setLoading(false));
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (document) closePreviewButton.current?.focus();
+  }, [document]);
 
   const groupedSources = useMemo(() => {
     const groups = new Map<string, ProjectArchiveSource[]>();
@@ -206,13 +211,27 @@ export default function ProjectArchiveApp() {
           ))}
         </section>
 
-        <aside className="archive-preview" aria-label="Selected archive document">
+        <aside
+          className={`archive-preview ${document ? "has-document" : ""}`}
+          aria-label="Selected archive document"
+          role={document ? "dialog" : undefined}
+          aria-modal={document ? "true" : undefined}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setDocument(null);
+          }}
+        >
           <p className="section-number">Source preview</p>
           {document ? (
             <>
               <div className="archive-preview-heading">
                 <h2>{document.label}</h2>
-                <button type="button" onClick={() => setDocument(null)}>Close</button>
+                <button
+                  ref={closePreviewButton}
+                  type="button"
+                  onClick={() => setDocument(null)}
+                >
+                  Close
+                </button>
               </div>
               <small>{document.relative_path} · SHA-256 {document.sha256.slice(0, 12)}…</small>
               {document.truncated ? (
