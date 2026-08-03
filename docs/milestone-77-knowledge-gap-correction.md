@@ -4,7 +4,7 @@
 
 **Patch candidate:** 0.76.2
 
-**Status:** Implemented; automated acceptance pending
+**Status:** Candidate installed; owner phone acceptance pending
 
 ## Owner finding
 
@@ -71,6 +71,26 @@ The correction passes safety and privacy review because:
 - Existing knowledge integrity, freshness, retrieval, approval, lifecycle, and
   unavailable-report behavior remain under their existing tests.
 
+## Verification evidence
+
+- Backend lint and strict type checking passed.
+- The complete backend suite passed: 159 tests with 93.11% coverage.
+- Frontend lint, type checking, 52 tests, and the production build passed.
+- Windows control validation, Compose validation, and all four GitHub checks
+  passed.
+- A verified pre-install backup was created as
+  `nova-20260803T110128.624020Z.db` with SHA-256
+  `02ddd94e3d728eab8a84453f5c66ae6208f33b515de307bd7c16a84a99df6bb7`.
+- Local and private Tailscale health checks reported healthy `0.76.2`.
+- The active database passed its read-only SQLite quick check after install.
+- Docker continued to publish only on `127.0.0.1`, while Tailscale Serve
+  remained tailnet-only.
+- The installed quality report marked response style, work context, and
+  technology environment as covered from the owner's existing approved local
+  records.
+- Browser validation confirmed those completed additions were absent while
+  the five genuinely missing optional additions remained visible.
+
 ## Acceptance gate
 
 Before publishing 0.76.2:
@@ -87,6 +107,6 @@ Before publishing 0.76.2:
 
 ## Exact next action
 
-Complete automated verification, install the candidate from its protected
-branch, and run the owner phone check. Milestone 77 remains active and no new
-runtime capability is approved by this correction.
+Refresh NOVA on the owner's phone and confirm the completed additions no longer
+appear. Milestone 77 remains active until that owner acceptance is recorded,
+and no new runtime capability is approved by this correction.
