@@ -766,6 +766,124 @@ describe("ChatApp", () => {
     });
   });
 
+  it("removes a suggested addition after its approved record covers the gap", async () => {
+    const candidate = {
+      id: "candidate-response-style",
+      conversation_id: "conversation-1",
+      source_message_id: "user-1",
+      kind: "preference",
+      title: "Prefer responses that are concise",
+      content: "I prefer responses that are concise and direct.",
+      source_excerpt: "Remember that I prefer responses that are concise and direct.",
+      reason: "You explicitly asked Nova to remember this.",
+      confidence: 1,
+      explicit_request: true,
+      status: "pending",
+      created_at: "2026-08-03T10:00:00Z",
+      reviewed_at: null,
+      record_path: null,
+    };
+    const missingResponseStyle = {
+      id: "response-style",
+      domain: "preferences",
+      title: "Response style",
+      why: "Helps Nova present answers in the amount and style you prefer.",
+      suggestion: "Describe how concise, detailed, or structured you want replies.",
+      priority: 4,
+      core: true,
+      review_days: 180,
+      status: "missing",
+      last_reviewed: null,
+      matched_record_ids: [],
+      matched_record_titles: [],
+    };
+    const coveredResponseStyle = {
+      ...missingResponseStyle,
+      status: "covered",
+      last_reviewed: "2026-08-03T10:01:00Z",
+      matched_record_ids: ["record-response-style"],
+      matched_record_titles: [candidate.title],
+    };
+    let reviewed = false;
+    let qualityRequests = 0;
+    const fetchMock = vi.fn(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) return Promise.resolve(jsonResponse([]));
+        if (url.endsWith("/chat/documents")) return Promise.resolve(jsonResponse([]));
+        if (url.includes("/chat/conversations")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/candidates?status=pending")) {
+          return Promise.resolve(jsonResponse(reviewed ? [] : [candidate]));
+        }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(
+            jsonResponse(
+              reviewed
+                ? [
+                    {
+                      ...knowledgeRecord,
+                      id: "record-response-style",
+                      candidate_id: candidate.id,
+                      kind: candidate.kind,
+                      title: candidate.title,
+                      content: candidate.content,
+                    },
+                  ]
+                : [],
+            ),
+          );
+        }
+        if (url.endsWith("/knowledge/quality")) {
+          qualityRequests += 1;
+          return Promise.resolve(
+            jsonResponse({
+              ...knowledgeQualityReport,
+              requirements: [
+                reviewed ? coveredResponseStyle : missingResponseStyle,
+              ],
+            }),
+          );
+        }
+        if (
+          url.endsWith(`/knowledge/candidates/${candidate.id}`) &&
+          init?.method === "PUT"
+        ) {
+          reviewed = true;
+          return Promise.resolve(
+            jsonResponse({
+              ...candidate,
+              status: "approved",
+              reviewed_at: "2026-08-03T10:01:00Z",
+              record_path: "Preferences/response-style.md",
+            }),
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Add Response style through chat",
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Approve & save" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", {
+          name: "Add Response style through chat",
+        }),
+      ).toBeNull();
+    });
+    expect(qualityRequests).toBeGreaterThanOrEqual(2);
+  });
+
   it("requires separate-record confirmation for a possible duplicate", async () => {
     const candidate = {
       id: "candidate-duplicate",

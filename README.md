@@ -619,6 +619,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 76 implementation record](docs/milestone-76-implementation.md)
 - [Milestone 76 acceptance record](docs/milestone-76-acceptance.md)
 - [Milestone 76 release candidate report](docs/milestone-76-release-report.md)
+- [Milestone 77 knowledge-gap correction](docs/milestone-77-knowledge-gap-correction.md)
 - [Milestone 69 implementation record](docs/milestone-69-implementation.md)
 - [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)
 - [Milestone 69 engineering review](docs/milestone-69-engineering-review.md)

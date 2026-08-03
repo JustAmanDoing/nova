@@ -176,6 +176,62 @@ def test_stale_record_remains_covered_but_reduces_freshness(
     assert report["freshness_percent"] == 0
 
 
+def test_guided_prompt_records_close_their_matching_gaps(tmp_path: Path) -> None:
+    application = _application(tmp_path)
+    cases = (
+        (
+            "response-style",
+            "preference",
+            "Prefer responses that are concise",
+            "I prefer responses that are concise and direct.",
+        ),
+        (
+            "work-context",
+            "reference",
+            "Work context",
+            "My work context is weekday long-haul trucking.",
+        ),
+        (
+            "technology-environment",
+            "reference",
+            "Main technology environment",
+            "My main technology environment is Windows and Ollama.",
+        ),
+        (
+            "home-responsibilities",
+            "fact",
+            "Current home responsibility",
+            "My current home responsibility is appliance maintenance.",
+        ),
+        (
+            "health-preferences",
+            "preference",
+            "Dietary preference",
+            "My health or dietary preference is vegetarian food.",
+        ),
+    )
+
+    with TestClient(application) as client:
+        approved_records: dict[str, str] = {}
+        for requirement_id, kind, title, content in cases:
+            candidate = _proposal(application, content)
+            record = _approve(
+                client,
+                candidate.id,
+                kind=kind,
+                title=title,
+                content=content,
+            )
+            approved_records[requirement_id] = record["id"]
+
+        report = client.get("/api/v1/knowledge/quality").json()
+
+    requirements = {item["id"]: item for item in report["requirements"]}
+    for requirement_id, record_id in approved_records.items():
+        assert requirements[requirement_id]["status"] == "covered"
+        assert record_id in requirements[requirement_id]["matched_record_ids"]
+
+
 def test_retrieval_self_check_finds_verified_active_records(
     tmp_path: Path,
 ) -> None:
