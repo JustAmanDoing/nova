@@ -4,8 +4,8 @@
 
 **Release candidate:** 0.76.0
 
-**Status:** Passed; protected repository integration and exact merged-main
-release verification remain
+**Status:** Passed; implementation merged and exact merged-main runtime
+verified; evidence-only integration, tag, and publication remain
 
 ## Automated checks passed
 
@@ -98,6 +98,21 @@ preview passed.
 ## Current release-readiness decision
 
 All automated, installed-runtime, recovery, privacy, architecture, desktop,
-phone-sized browser, private-route, and physical-owner checks passed. The
-candidate is approved for protected integration and exact merged-main release
-verification.
+phone-sized browser, private-route, and physical-owner checks passed. Protected
+implementation integration and exact merged-main verification also passed.
+
+## Exact merged-main verification
+
+- Protected implementation PR #22 passed all four required GitHub checks and
+  merged with merge commit
+  `6bd2c654027b0c56462d05582a873face109069b`.
+- The merge tree exactly matched accepted feature head
+  `466914969a5c4e357d59c1f039ae7264fa064ced`, and the feature branch remains
+  available.
+- Rebuilding from exact merged `main` produced healthy NOVA `0.76.0` services.
+- SQLite integrity, local/private Record HTTP responses, archive read-only
+  mounting, loopback port binding, tailnet-only Tailscale Serve, and runtime
+  log checks all passed again.
+
+Milestone 76 is approved for evidence-only protected integration, tag, and
+publication. No runtime defect remains open.

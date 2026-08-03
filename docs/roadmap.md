@@ -616,8 +616,8 @@ Decision and review evidence:
 
 ## Milestone 76 - Local NOVA Project Record
 
-**Status (3 August 2026): implemented and owner accepted; protected repository
-integration and exact merged-main release verification remain.**
+**Status (3 August 2026): implementation merged and exact merged-main runtime
+verified; evidence-only integration, tag, and publication remain.**
 
 - Maintain one canonical local current-status record.
 - Catalogue authoritative repository evidence, verified runtime evidence,
@@ -644,7 +644,8 @@ Implementation and acceptance evidence:
 
 ## Milestone 77 - Local Project Record Daily-Use Validation
 
-**Status (3 August 2026): pending Milestone 76 acceptance and release.**
+**Status (3 August 2026): pending Release 0.76.0 tag, publication, and exact
+tagged-runtime verification.**
 
 - Use Record naturally on PC and phone after Release 0.76.0.
 - Confirm the canonical project summary remains understandable and current.
