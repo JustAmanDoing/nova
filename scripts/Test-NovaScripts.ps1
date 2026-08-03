@@ -44,7 +44,9 @@ foreach ($requiredRecordControl in @(
     "git -C",
     "Get-FileHash",
     "Raw NOVA chat sources explicitly supplied",
-    "must not be written to C:"
+    "must not be written to C:",
+    "NextMilestone",
+    "Milestone 77 - Local Project Record Daily-Use Validation."
 )) {
     if ($recordContent -notmatch [regex]::Escape($requiredRecordControl)) {
         throw "The project-record control is missing: $requiredRecordControl"

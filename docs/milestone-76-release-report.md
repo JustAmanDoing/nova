@@ -12,6 +12,18 @@ evidence-only integration, tag, and publication remain
 **Implementation merge commit:**
 `6bd2c654027b0c56462d05582a873face109069b`
 
+## Post-publication correction
+
+Release 0.76.0 was published from protected `main` commit
+`92df7cca219ad49aff7abc7cc3fa94b4905c3ca5`. The required final archive
+refresh correctly recorded the release and commit but exposed one status defect:
+the generated **Exact next milestone** line still named completed Milestone 76.
+
+Patch candidate 0.76.1 changes the updater to accept an explicit next-milestone
+value with Milestone 77 as the safe current default, and adds a Windows control
+regression check. No archive source, conversation, approved knowledge record, or
+database row was lost or changed by the defect.
+
 ## Finding and implemented outcome
 
 NOVA's authoritative implementation and release documentation were already in
@@ -68,6 +80,9 @@ raw unapproved chat evidence.
 - The archive refresh control intentionally requires the running release tag to
   equal `origin/main`; it will not rewrite production status from an unmerged
   release candidate.
+- Release 0.76.0's generated current-status record names the completed milestone
+  as next. Patch 0.76.1 must be integrated and the archive refreshed before
+  Milestone 77 begins.
 - Existing non-failing React `act(...)` test warnings remain a low-priority
   harness cleanup item.
 

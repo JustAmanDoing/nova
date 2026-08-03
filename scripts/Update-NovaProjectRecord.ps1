@@ -2,11 +2,16 @@
 param(
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
     [string]$ArchiveRoot = "",
-    [string]$ProjectSnapshotPath = ""
+    [string]$ProjectSnapshotPath = "",
+    [string]$NextMilestone = "Milestone 77 - Local Project Record Daily-Use Validation."
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+if ([string]::IsNullOrWhiteSpace($NextMilestone)) {
+    throw "NextMilestone must describe the exact next milestone."
+}
 
 function Get-Sha256 {
     param([Parameter(Mandatory)][string]$Path)
@@ -195,7 +200,7 @@ speculative discussion are not imported automatically.
 
 ## Exact next milestone
 
-Milestone 76 - Local NOVA Project Record implementation and acceptance.
+$NextMilestone
 "@
     Write-Utf8Atomic -Path $currentStatusPath -Content $statusText -StagingRoot $staging
 
