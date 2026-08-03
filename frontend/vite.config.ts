@@ -9,6 +9,7 @@ export default defineConfig({
         intake: "index.html",
         chat: "chat.html",
         focus: "focus.html",
+        archive: "archive.html",
       },
     },
   },

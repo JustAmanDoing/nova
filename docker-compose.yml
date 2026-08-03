@@ -13,6 +13,7 @@ services:
       NOVA_DATABASE_PATH: /data/nova.db
       NOVA_BACKUP_PATH: /files/backups
       NOVA_KNOWLEDGE_PATH: /knowledge
+      NOVA_ARCHIVE_PATH: /project-archive
       NOVA_INTAKE_SCAN_SECONDS: ${NOVA_INTAKE_SCAN_SECONDS:-3}
       NOVA_ACTION_STALE_SECONDS: ${NOVA_ACTION_STALE_SECONDS:-300}
       NOVA_MAX_TEXT_BYTES: ${NOVA_MAX_TEXT_BYTES:-1000000}
@@ -27,6 +28,7 @@ services:
     volumes:
       - ./data:/files
       - ${NOVA_KNOWLEDGE_HOST_PATH:-./data/knowledge}:/knowledge
+      - ${NOVA_ARCHIVE_HOST_PATH:-./data/project-archive}:/project-archive:ro
       - nova_data:/data
     ports:
       - "127.0.0.1:8000:8000"

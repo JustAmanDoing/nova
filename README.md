@@ -107,6 +107,14 @@ healthy, and opens the local dashboard.
 - **Phone Access Off.cmd** removes phone access only when the live Serve
   configuration still matches the one NOVA recorded. Desktop access remains
   unchanged.
+- **Update NOVA Project Record.cmd** verifies the installed release against
+  its Git tag and `origin/main`, snapshots the exact release documentation,
+  and atomically refreshes the checksum-bound catalogue under
+  `N:\Nova\Archive`.
+- **Import NOVA Source.cmd** preserves one explicitly selected NOVA-only chat
+  or project source under `N:\Nova\Archive`. It requires typed confirmation,
+  refuses overwrite and duplicate content, rejects likely full-account
+  ChatGPT exports, and does not add the source to approved knowledge.
 
 Each launcher uses the shared, reviewable `scripts/Nova.ps1` controller. It
 does not install software or delete Docker volumes. The standard launchers
@@ -130,6 +138,7 @@ Open:
 - Nova: http://localhost:5173
 - Local chat: http://localhost:5173/chat.html
 - Projects and goals: http://localhost:5173/focus.html
+- Local project record: http://localhost:5173/archive.html
 - API docs: http://localhost:8000/docs
 - API health: http://localhost:8000/api/v1/health
 
@@ -217,6 +226,20 @@ remain bound to loopback, the backend trust and CORS rules do not expand, and
 the frontend accepts only localhost plus the exact private Tailscale DNS name
 recorded by the guarded Windows control. Tailscale Funnel and router port
 forwarding are explicitly excluded.
+
+Milestone 76 adds the read-only **Project record** page. It catalogues one
+canonical current-status record, exact release documentation snapshots, dated
+local project records, existing development archives, and explicitly supplied
+NOVA-only chat sources. Every source is checked against its recorded SHA-256
+before NOVA offers a bounded plain-text preview.
+
+Raw imported chat sources are evidence only. They remain outside Git and
+separate from owner-approved knowledge, are not automatically supplied to the
+model, and cannot be edited or deleted through the web interface. NOVA does
+not access the owner's ChatGPT account, browser history, clipboard, or
+unrelated conversations. ChatGPT information becomes local only when the
+owner explicitly supplies one NOVA-only source through the guarded Windows
+control.
 
 Chat still cannot browse the web, use tools, perform semantic or general
 document search, or take autonomous actions. Starting a conversation,
@@ -589,6 +612,13 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 74 implementation record](docs/milestone-74-implementation.md)
 - [Milestone 74 acceptance record](docs/milestone-74-acceptance.md)
 - [Milestone 74 release report](docs/milestone-74-release-report.md)
+- [Milestone 75 next capability selection](docs/milestone-75-next-capability-selection.md)
+- [Milestone 75 architecture review](docs/milestone-75-architecture-review.md)
+- [Milestone 75 engineering review](docs/milestone-75-engineering-review.md)
+- [Milestone 76 local project record proposal](docs/milestone-76-local-nova-project-record-proposal.md)
+- [Milestone 76 implementation record](docs/milestone-76-implementation.md)
+- [Milestone 76 acceptance record](docs/milestone-76-acceptance.md)
+- [Milestone 76 release candidate report](docs/milestone-76-release-report.md)
 - [Milestone 69 implementation record](docs/milestone-69-implementation.md)
 - [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)
 - [Milestone 69 engineering review](docs/milestone-69-engineering-review.md)
