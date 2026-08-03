@@ -396,6 +396,7 @@ function App() {
         <div className="chat-nav-links">
           <a className="chat-nav-link" href="/chat.html">Chat</a>
           <a className="chat-nav-link" href="/focus.html">Focus</a>
+          <a className="chat-nav-link" href="/archive.html">Record</a>
           <a className="chat-nav-link active" href="/" aria-current="page">
             Intake
           </a>

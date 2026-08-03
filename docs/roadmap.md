@@ -596,7 +596,8 @@ Proposal and review evidence:
 
 ## Milestone 75 - Evidence-Led Next Capability Selection
 
-**Status:** Begins only after Release 0.74.0 is tagged and published.
+**Status (3 August 2026): complete; Milestone 76 Local NOVA Project Record
+selected and explicitly requested by the owner.**
 
 - Review verified daily-use evidence, current owner priorities, and remaining
   low-priority limitations.
@@ -606,6 +607,52 @@ Proposal and review evidence:
 - Complete architecture and engineering review before requesting runtime
   approval.
 - Do not start another runtime feature from this roadmap entry.
+
+Decision and review evidence:
+
+- `docs/milestone-75-next-capability-selection.md`
+- `docs/milestone-75-architecture-review.md`
+- `docs/milestone-75-engineering-review.md`
+
+## Milestone 76 - Local NOVA Project Record
+
+**Status (3 August 2026): implemented and owner accepted; protected repository
+integration and exact merged-main release verification remain.**
+
+- Maintain one canonical local current-status record.
+- Catalogue authoritative repository evidence, verified runtime evidence,
+  approved knowledge, dated local archives, and explicitly imported raw
+  sources without replacing their ownership.
+- Add a read-only Project record view for PC and private phone access.
+- Add a guarded host-side import for one owner-selected NOVA-only source.
+- Preserve originals, checksums, dates, and source labels with no overwrite.
+- Keep raw chat exports outside Git and separate from approved knowledge.
+- Do not access ChatGPT automatically, import unrelated chats, add semantic
+  search, or promote raw content into knowledge automatically.
+
+Proposal and review evidence:
+
+- `docs/milestone-76-local-nova-project-record-proposal.md`
+- `docs/milestone-75-architecture-review.md`
+- `docs/milestone-75-engineering-review.md`
+
+Implementation and acceptance evidence:
+
+- `docs/milestone-76-implementation.md`
+- `docs/milestone-76-acceptance.md`
+- `docs/milestone-76-release-report.md`
+
+## Milestone 77 - Local Project Record Daily-Use Validation
+
+**Status (3 August 2026): pending Milestone 76 acceptance and release.**
+
+- Use Record naturally on PC and phone after Release 0.76.0.
+- Confirm the canonical project summary remains understandable and current.
+- Import only owner-selected NOVA sources and verify the authority labels remain
+  clear.
+- Measure catalogue growth, preview usefulness, and import friction before
+  selecting another capability.
+- Make no new runtime feature from this validation milestone.
 
 ## Later capabilities
 

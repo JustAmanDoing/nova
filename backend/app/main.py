@@ -16,6 +16,7 @@ from app.services.intake import IntakeService
 from app.services.knowledge import KnowledgeService
 from app.services.next_actions import NextActionService
 from app.services.ocr import LocalOcrService
+from app.services.project_archive import ProjectArchiveService
 
 logger = logging.getLogger(__name__)
 
@@ -80,11 +81,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             knowledge=knowledge,
             operation_lock=operation_lock,
         )
+        project_archive = ProjectArchiveService(resolved_settings.archive_path)
         application.state.intake = intake
         application.state.backups = backups
         application.state.chat = chat
         application.state.knowledge = knowledge
         application.state.next_actions = next_actions
+        application.state.project_archive = project_archive
         watcher = asyncio.create_task(
             watch_intake(intake, resolved_settings.intake_scan_seconds)
         )

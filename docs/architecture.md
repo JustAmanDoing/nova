@@ -103,6 +103,13 @@ Local data/intake folder
   area; preparation alone sends nothing and stores nothing.
 - Provides a separate read-only-first Focus page that projects only active,
   owner-approved, checksum-verified `project` and `goal` records.
+- Provides a separate read-only Project record page that catalogues current
+  release state, exact repository-document snapshots, dated local archives,
+  and explicitly supplied raw NOVA sources.
+- Verifies every project-record source against its recorded size and SHA-256
+  before offering a bounded escaped plain-text preview.
+- Labels raw imported chat sources as unapproved evidence and never represents
+  them as permanent knowledge or automatically supplies them to the model.
 - Shows deterministic 90-day review state without inferring progress,
   priority, dates, deadlines, plans, tasks, or next actions.
 - Routes additions and record reviews back through the existing chat proposal
@@ -236,6 +243,14 @@ Local data/intake folder
   generated planning data; it reads the existing verified knowledge records.
 - Historical chat citations are stored in SQLite; every new retrieval verifies
   the current Markdown path and checksum before use.
+- The project archive lives under the separately configured local archive root,
+  mapped to `N:\Nova\Archive` on the Windows host and mounted read-only in the
+  backend container.
+- The project-record index is derived evidence. Git and release documentation,
+  verified runtime state, approved knowledge, and original raw imports retain
+  their existing authority.
+- Exact release documentation snapshots and raw imports are no-overwrite and
+  checksum-bound. Raw archive data is excluded from Git.
 - Docker mounts the local `data` root so the guarded action boundary can move
   approved files; scanning and recommendation paths do not write to files.
 - SQLite lives in the `nova_data` Docker volume.
@@ -244,6 +259,10 @@ Local data/intake folder
 ### Windows operations
 
 - Friendly root-level launchers delegate to one PowerShell controller.
+- Separate project-record launchers refresh the verified local catalogue or
+  import one explicitly selected source. Imports require typed confirmation,
+  reject likely full-account ChatGPT exports, preserve originals with no
+  overwrite, and create no approved knowledge.
 - Start builds in detached mode, waits for the API and dashboard, and opens the
   loopback-only URL. Readiness uses explicit IPv4 loopback probes, allows up to
   three minutes for a slower first container start, and preserves the last

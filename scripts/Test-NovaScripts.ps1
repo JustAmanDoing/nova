@@ -6,6 +6,8 @@ Set-StrictMode -Version Latest
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $Controller = Join-Path $PSScriptRoot "Nova.ps1"
+$ProjectRecordControl = Join-Path $PSScriptRoot "Update-NovaProjectRecord.ps1"
+$ProjectSourceImport = Join-Path $PSScriptRoot "Import-NovaProjectSource.ps1"
 $tokens = $null
 $parseErrors = $null
 
@@ -18,6 +20,50 @@ $controllerAst = [System.Management.Automation.Language.Parser]::ParseFile(
 if ($parseErrors.Count -gt 0) {
     $messages = $parseErrors | ForEach-Object { $_.Message }
     throw "Nova.ps1 has syntax errors: $($messages -join '; ')"
+}
+
+foreach ($script in @($ProjectRecordControl, $ProjectSourceImport)) {
+    $scriptTokens = $null
+    $scriptErrors = $null
+    [System.Management.Automation.Language.Parser]::ParseFile(
+        $script,
+        [ref]$scriptTokens,
+        [ref]$scriptErrors
+    ) | Out-Null
+    if ($scriptErrors.Count -gt 0) {
+        $messages = $scriptErrors | ForEach-Object { $_.Message }
+        throw "$([System.IO.Path]::GetFileName($script)) has syntax errors: $($messages -join '; ')"
+    }
+}
+
+$recordContent = Get-Content -Raw -LiteralPath $ProjectRecordControl
+foreach ($requiredRecordControl in @(
+    "N:\Nova\Archive",
+    "archive-index.json",
+    "origin/main",
+    "git -C",
+    "Get-FileHash",
+    "Raw NOVA chat sources explicitly supplied",
+    "must not be written to C:"
+)) {
+    if ($recordContent -notmatch [regex]::Escape($requiredRecordControl)) {
+        throw "The project-record control is missing: $requiredRecordControl"
+    }
+}
+
+$importContent = Get-Content -Raw -LiteralPath $ProjectSourceImport
+foreach ($requiredImportControl in @(
+    "IMPORT NOVA SOURCE",
+    "conversations.json",
+    "25000000",
+    ".partial",
+    "Get-FileHash",
+    "raw_unapproved_source",
+    "Nothing was added to approved knowledge"
+)) {
+    if ($importContent -notmatch [regex]::Escape($requiredImportControl)) {
+        throw "The project-source import control is missing: $requiredImportControl"
+    }
 }
 
 $ContainerEntrypoint = Join-Path $ProjectRoot "backend\docker-entrypoint.sh"
@@ -147,6 +193,20 @@ $launchers = @{
     "Phone Access On.cmd" = "phone-enable"
     "Phone Access Off.cmd" = "phone-disable"
     "Check Phone Access.cmd" = "phone-status"
+}
+
+foreach ($projectLauncher in @(
+    "Update NOVA Project Record.cmd",
+    "Import NOVA Source.cmd"
+)) {
+    $path = Join-Path $ProjectRoot $projectLauncher
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Missing project-record launcher: $projectLauncher"
+    }
+    $content = Get-Content -Raw -LiteralPath $path
+    if ($content -notmatch 'scripts\\(Update-NovaProjectRecord|Import-NovaProjectSource)\.ps1') {
+        throw "$projectLauncher does not call its guarded PowerShell control."
+    }
 }
 
 $funnelFunction = $controllerAst.Find(

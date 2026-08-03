@@ -668,6 +668,7 @@ function ChatApp() {
             Chat
           </a>
           <a className="chat-nav-link" href="/focus.html">Focus</a>
+          <a className="chat-nav-link" href="/archive.html">Record</a>
           <a className="chat-nav-link" href="/">Intake</a>
         </div>
         <button

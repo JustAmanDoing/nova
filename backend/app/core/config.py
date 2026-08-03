@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "Nova API"
-    app_version: str = "0.74.0"
+    app_version: str = "0.76.0"
     environment: str = "development"
     api_prefix: str = "/api/v1"
     api_host: str = "0.0.0.0"
@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     database_path: Path = Path("data/nova.db")
     backup_path: Path = Path("data/backups")
     knowledge_path: Path = Path("data/knowledge")
+    archive_path: Path = Path("data/project-archive")
     intake_scan_seconds: float = 3.0
     action_stale_seconds: float = 300.0
     max_text_bytes: int = 1_000_000
@@ -65,6 +66,7 @@ class Settings(BaseSettings):
             ).resolve(),
             "backup": self.backup_path.resolve(),
             "knowledge": self.knowledge_path.resolve(),
+            "archive": self.archive_path.resolve(),
         }
         directory_items = list(directories.items())
         for index, (left_name, left_path) in enumerate(directory_items):

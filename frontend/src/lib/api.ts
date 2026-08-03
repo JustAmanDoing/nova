@@ -247,6 +247,52 @@ export interface PlanningOverview {
   limitation: string;
 }
 
+export type ProjectArchiveVerification =
+  | "verified"
+  | "changed"
+  | "missing"
+  | "invalid";
+
+export interface ProjectArchiveSource {
+  id: string;
+  label: string;
+  category: string;
+  authority: string;
+  relative_path: string;
+  expected_sha256: string;
+  actual_sha256: string | null;
+  expected_size_bytes: number;
+  actual_size_bytes: number | null;
+  captured_at: string;
+  verification_status: ProjectArchiveVerification;
+  preview_available: boolean;
+}
+
+export interface ProjectArchiveReport {
+  generated_at: string;
+  index_generated_at: string | null;
+  current_release: string | null;
+  current_commit: string | null;
+  migration_summary: string;
+  source_count: number;
+  verified_count: number;
+  changed_count: number;
+  missing_count: number;
+  invalid_count: number;
+  raw_chat_source_count: number;
+  sources: ProjectArchiveSource[];
+  warnings: string[];
+}
+
+export interface ProjectArchiveDocument {
+  id: string;
+  label: string;
+  relative_path: string;
+  sha256: string;
+  content: string;
+  truncated: boolean;
+}
+
 export type NextActionStatus = "open" | "completed";
 
 export interface NextAction {
@@ -649,6 +695,22 @@ export async function getPlanningOverview(
   signal?: AbortSignal,
 ): Promise<PlanningOverview> {
   return request<PlanningOverview>("/api/v1/knowledge/planning", { signal });
+}
+
+export async function getProjectArchive(
+  signal?: AbortSignal,
+): Promise<ProjectArchiveReport> {
+  return request<ProjectArchiveReport>("/api/v1/project-archive", { signal });
+}
+
+export async function getProjectArchiveDocument(
+  sourceId: string,
+  signal?: AbortSignal,
+): Promise<ProjectArchiveDocument> {
+  return request<ProjectArchiveDocument>(
+    `/api/v1/project-archive/sources/${encodeURIComponent(sourceId)}`,
+    { signal },
+  );
 }
 
 export async function getNextActions(
