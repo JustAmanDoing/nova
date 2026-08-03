@@ -4,7 +4,8 @@
 
 **Release candidate:** 0.74.0
 
-**Status:** Passed; safe for protected repository integration
+**Status:** Passed; product implementation merged and exact merged-main runtime
+verified; evidence-only publication remains
 
 ## Automated checks passed
 
@@ -78,6 +79,7 @@ the synthetic API acceptance path.
 ## Current release-readiness decision
 
 All automated, installed-runtime, recovery, privacy, architecture, real-model,
-and physical-owner checks passed. Candidate `0.74.0` is safe for protected
-repository integration. Merge, tag, and publication remain conditional on the
-required GitHub checks and exact merged-`main` runtime verification.
+physical-owner, protected-check, and exact merged-main checks passed. Product
+PR #20 merged with merge commit `4057e071392ad1b2c5686093112040eb0645ebbe`.
+Release `0.74.0` is approved; only protected integration of this release
+evidence, tag creation, and publication remain.

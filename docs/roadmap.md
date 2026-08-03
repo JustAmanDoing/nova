@@ -573,8 +573,8 @@ Evidence:
 
 ## Milestone 74 - Accurate Capability Guidance
 
-**Status (3 August 2026): implemented, installed, and owner accepted;
-protected integration and exact merged-runtime publication remain.**
+**Status (3 August 2026): product implementation merged and exact merged-main
+runtime verified; evidence-only integration, tag, and publication remain.**
 
 - Explain NOVA's verified local capabilities before limitations.
 - Distinguish Chat context from guarded controls elsewhere in NOVA.
@@ -592,6 +592,20 @@ Proposal and review evidence:
 - `docs/milestone-74-engineering-review.md`
 - `docs/milestone-74-implementation.md`
 - `docs/milestone-74-acceptance.md`
+- `docs/milestone-74-release-report.md`
+
+## Milestone 75 - Evidence-Led Next Capability Selection
+
+**Status:** Begins only after Release 0.74.0 is tagged and published.
+
+- Review verified daily-use evidence, current owner priorities, and remaining
+  low-priority limitations.
+- Rank candidate improvements by impact, urgency, privacy, complexity, reuse,
+  and maintenance cost.
+- Recommend one bounded next capability or recommend no runtime change.
+- Complete architecture and engineering review before requesting runtime
+  approval.
+- Do not start another runtime feature from this roadmap entry.
 
 ## Later capabilities
 
