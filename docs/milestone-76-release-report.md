@@ -4,8 +4,13 @@
 
 **Release candidate:** 0.76.0
 
-**Status:** Release approved; protected repository integration and exact
-merged-main publication remain
+**Status:** Implementation merged and exact merged-main runtime verified;
+evidence-only integration, tag, and publication remain
+
+**Implementation PR:** [#22](https://github.com/JustAmanDoing/nova/pull/22)
+
+**Implementation merge commit:**
+`6bd2c654027b0c56462d05582a873face109069b`
 
 ## Finding and implemented outcome
 
@@ -36,6 +41,23 @@ raw unapproved chat evidence.
 - Production archive state is 142 verified sources with zero changed, missing,
   or invalid entries.
 
+## Protected integration evidence
+
+- PR #22 was ready for review, mergeable, and clean against protected `main`.
+- Required GitHub checks passed: Backend quality, Frontend quality, Windows
+  controls, and Production runtime.
+- GitHub created merge commit
+  `6bd2c654027b0c56462d05582a873face109069b`; no squash or rebase was used.
+- The feature branch `agent/milestone-75-local-project-record` was preserved.
+- The merged `main` tree exactly matched the owner-accepted feature head
+  `466914969a5c4e357d59c1f039ae7264fa064ced`.
+- NOVA was rebuilt from exact merged `main`. Health reported `0.76.0`, SQLite
+  integrity returned `ok`, the archive mount remained read-only, and Docker
+  ports remained bound to Windows loopback.
+- Both local and private Tailscale Record pages returned HTTP 200. Tailscale
+  Serve remained tailnet-only and recent runtime logs contained no matching
+  error, exception, traceback, panic, or fatal event.
+
 ## Risks and limitations
 
 - The production archive contains zero verbatim ChatGPT conversation sources
@@ -51,14 +73,15 @@ raw unapproved chat evidence.
 
 ## Merge recommendation
 
-Merge through a protected pull request with a merge commit after all required
-GitHub checks pass. Preserve the feature branch.
+The implementation merge is complete. Merge this evidence-only update through
+a protected pull request with a merge commit after all required GitHub checks
+pass. Preserve both implementation and evidence branches.
 
 ## Release recommendation
 
-After protected integration, rebuild from exact merged `main`, verify Record
-locally and through Tailscale, refresh the canonical local project record from
-the new release, tag `v0.76.0`, and publish Release 0.76.0.
+Merge this evidence-only update through protected review, tag the resulting
+exact `main` as `v0.76.0`, publish Release 0.76.0, rebuild from the tag, then
+refresh and verify the canonical local project record.
 
 ## Completion and next milestone
 
@@ -68,5 +91,5 @@ the new release, tag `v0.76.0`, and publish Release 0.76.0.
 - Milestone 76 implementation and owner acceptance: 100 percent.
 
 The exact next milestone is **Milestone 77 - Local Project Record Daily-Use
-Validation**, but it must not begin until Milestone 76 is accepted, integrated,
-tagged, published, and verified from exact merged `main`.
+Validation**, but it must not begin until Milestone 76 is tagged, published,
+and verified from the exact tagged release.
