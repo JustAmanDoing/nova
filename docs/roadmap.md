@@ -557,14 +557,42 @@ Implementation and acceptance evidence:
 
 ## Milestone 73 - Conversation Organisation Daily-Use Validation
 
-**Status:** Not started; begins only after release 0.72.0 is accepted and
-published.
+**Status (3 August 2026): complete; daily use identified an inaccurate
+capability-guidance defect and selected Milestone 74 as the bounded
+correction.**
 
 - Use normal phone and PC chat for several days.
 - Record friction, failed recovery expectations, and conversation-list growth.
 - Confirm Rename, Archive, Trash, Restore, latest-message navigation, and New
   chat remain understandable in daily use.
 - Make no new runtime feature from this validation milestone.
+
+Evidence:
+
+- `docs/milestone-73-conversation-organisation-daily-use-validation.md`
+
+## Milestone 74 - Accurate Capability Guidance
+
+**Status (3 August 2026): implemented and installed; automated,
+installed-runtime, recovery, and real-model checks passed; physical-owner
+acceptance pending.**
+
+- Explain NOVA's verified local capabilities before limitations.
+- Distinguish Chat context from guarded controls elsewhere in NOVA.
+- Give product-specific, practical guidance instead of generic assistant
+  boilerplate.
+- Preserve memory approval, explicit document selection, local-only operation,
+  and all existing action boundaries.
+- Add no tool, web provider, external service, autonomous action, permission,
+  or automatic data access.
+
+Proposal and review evidence:
+
+- `docs/milestone-74-capability-guidance-proposal.md`
+- `docs/milestone-74-architecture-review.md`
+- `docs/milestone-74-engineering-review.md`
+- `docs/milestone-74-implementation.md`
+- `docs/milestone-74-acceptance.md`
 
 ## Later capabilities
 
