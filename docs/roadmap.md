@@ -616,9 +616,8 @@ Decision and review evidence:
 
 ## Milestone 76 - Local NOVA Project Record
 
-**Status (3 August 2026): implemented; automated, installed-runtime, desktop,
-phone-sized browser, private-route, recovery, and privacy checks passed;
-physical-phone owner acceptance remains.**
+**Status (3 August 2026): implemented and owner accepted; protected repository
+integration and exact merged-main release verification remain.**
 
 - Maintain one canonical local current-status record.
 - Catalogue authoritative repository evidence, verified runtime evidence,

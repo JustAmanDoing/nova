@@ -4,9 +4,8 @@
 
 **Release candidate:** 0.76.0
 
-**Status:** Automated, installed-runtime, desktop, phone-sized browser, private
-route, recovery, and privacy checks passed; physical-phone owner acceptance is
-pending
+**Status:** Passed; protected repository integration and exact merged-main
+release verification remain
 
 ## Automated checks passed
 
@@ -91,10 +90,14 @@ tests. They predate this feature and do not affect the 51 passing assertions.
 
 ## Physical-owner acceptance
 
-Pending. The owner needs to open **Record** from NOVA Chat on the phone, confirm
-the page loads, open one source, and confirm the layout is comfortable.
+The owner opened the private **Record** page on the phone. The first attempt
+found the buried-preview defect. After the correction was installed, the owner
+opened `NOVA-Current-Status` again and confirmed that the immediate on-screen
+preview passed.
 
 ## Current release-readiness decision
 
-The candidate is technically ready for the final physical-phone check. It must
-not merge or publish as Release 0.76.0 until that owner acceptance is recorded.
+All automated, installed-runtime, recovery, privacy, architecture, desktop,
+phone-sized browser, private-route, and physical-owner checks passed. The
+candidate is approved for protected integration and exact merged-main release
+verification.

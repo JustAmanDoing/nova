@@ -4,8 +4,8 @@
 
 **Release candidate:** 0.76.0
 
-**Status:** Technically verified; physical-phone owner acceptance and protected
-repository integration remain
+**Status:** Release approved; protected repository integration and exact
+merged-main publication remain
 
 ## Finding and implemented outcome
 
@@ -46,29 +46,26 @@ raw unapproved chat evidence.
 - The archive refresh control intentionally requires the running release tag to
   equal `origin/main`; it will not rewrite production status from an unmerged
   release candidate.
-- Physical-phone owner acceptance remains the final release gate.
 - Existing non-failing React `act(...)` test warnings remain a low-priority
   harness cleanup item.
 
 ## Merge recommendation
 
-Do not merge yet. Merge through a protected pull request with a merge commit
-only after physical-phone owner acceptance and all required checks pass.
+Merge through a protected pull request with a merge commit after all required
+GitHub checks pass. Preserve the feature branch.
 
 ## Release recommendation
 
-Do not tag or publish yet. After acceptance and protected integration, rebuild
-from exact merged `main`, verify Record locally and through Tailscale, refresh
-the canonical local project record from the new release, tag `v0.76.0`, and
-publish Release 0.76.0.
+After protected integration, rebuild from exact merged `main`, verify Record
+locally and through Tailscale, refresh the canonical local project record from
+the new release, tag `v0.76.0`, and publish Release 0.76.0.
 
 ## Completion and next milestone
 
 - Practical local NOVA prototype: 100 percent.
 - Broader long-term NOVA vision: approximately 88 percent.
 - Milestone 76 implementation: 100 percent.
-- Milestone 76 acceptance: approximately 95 percent pending the physical-phone
-  check.
+- Milestone 76 implementation and owner acceptance: 100 percent.
 
 The exact next milestone is **Milestone 77 - Local Project Record Daily-Use
 Validation**, but it must not begin until Milestone 76 is accepted, integrated,

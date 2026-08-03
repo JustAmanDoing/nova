@@ -4,9 +4,8 @@
 
 **Target release:** 0.76.0
 
-**Status:** Implemented on the feature branch; automated, installed-runtime,
-desktop, phone-sized browser, and private-route checks passed; physical-phone
-owner acceptance remains
+**Status:** Implemented and owner accepted; protected repository integration
+and exact merged-main release verification remain
 
 ## Owner outcome
 
@@ -91,6 +90,5 @@ ChatGPT history was migrated.
 
 ## Exact next action
 
-Complete the physical-phone acceptance of the new **Record** view. If it passes,
-integrate through the protected pull-request workflow and publish Release
-0.76.0.
+Integrate through the protected pull-request workflow, rebuild from exact merged
+`main`, refresh the canonical local record, and publish Release 0.76.0.
