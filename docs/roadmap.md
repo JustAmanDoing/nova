@@ -644,8 +644,11 @@ Implementation and acceptance evidence:
 
 ## Milestone 77 - Local Project Record Daily-Use Validation
 
-**Status (3 August 2026): pending patch 0.76.1 publication and verification that
-the local current-status record names Milestone 77.**
+**Status (3 August 2026): in progress. Patch 0.76.1 is published, installed,
+and aligned with `origin/main`; the local current-status record names Milestone
+77. The owner accepted the latest private-phone release checkpoint. Remaining
+work is ordinary daily-use validation of the summary, catalogue, preview, and
+one genuine guarded import when an appropriate NOVA-only source exists.**
 
 - Use Record naturally on PC and phone after Release 0.76.0.
 - Confirm the canonical project summary remains understandable and current.
@@ -654,6 +657,10 @@ the local current-status record names Milestone 77.**
 - Measure catalogue growth, preview usefulness, and import friction before
   selecting another capability.
 - Make no new runtime feature from this validation milestone.
+
+Validation evidence:
+
+- `docs/milestone-77-local-project-record-daily-use-validation.md`
 
 ## Later capabilities
 
