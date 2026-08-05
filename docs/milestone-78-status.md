@@ -2,7 +2,11 @@
 
 **Status date:** 5 August 2026
 
-**Installed version:** 0.78.0; Release 0.78.1 control-and-evidence patch pending
+**Status:** Complete and owner-accepted
+
+**Accepted runtime:** Release 0.78.1
+
+**Acceptance-evidence candidate:** Release 0.78.2
 
 **Implementation base:** Release 0.76.2, commit
 `598bfc79df833271556f9b97c5f717eb94744bb9`
@@ -47,7 +51,8 @@
 - The score evaluates store quality, not truth, personal completeness, or the
   owner.
 - Conflict and duplicate findings still require owner judgement.
-- Owner acceptance of the installed page on PC and phone remains pending.
+- The existing Tailscale Serve route is verified tailnet-only, but its original
+  NOVA ownership record is absent; controls will not modify it automatically.
 
 ## Verified release state
 
@@ -69,18 +74,23 @@ The release session also found that the local Compose configuration had fallen
 back to empty repository folders instead of the documented `N:\Nova\Memory`
 and read-only `N:\Nova\Archive` mounts. The ignored local `.env` was restored
 to those existing folders without copying or changing their contents. A
-Windows PowerShell default-parameter defect in the Project Record launcher is
-covered by the pending 0.78.1 patch and regression check.
+Windows PowerShell default-parameter defect in the Project Record launcher was
+fixed in Release 0.78.1 with a regression check and the guarded
+`N:\Nova\Archive` default.
+
+The owner then accepted the installed Librarian on both the Windows PC and the
+private Tailscale-connected phone. The acceptance evidence is recorded in
+`docs/milestone-78-acceptance.md`.
 
 ## Exact next action
 
-Integrate and install the 0.78.1 Windows-control patch, refresh the Project
-Record from its exact release tag, then obtain owner acceptance on PC and
-phone.
+Integrate and publish the 0.78.2 acceptance-evidence patch, refresh the local
+Project Record from its exact tag, then begin Milestone 79 validation without
+expanding runtime scope.
 
 ## Exact next milestone
 
-After Release 0.78.1 is integrated and owner-accepted, the recommended next
-milestone is **Milestone 79 - Librarian Daily-Use Validation**. It should measure
+The exact next milestone is **Milestone 79 - Librarian Daily-Use Validation**.
+It should measure
 whether issue explanations and review links are useful on PC and phone before
 any approval-assisted Librarian action is proposed.

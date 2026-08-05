@@ -1,8 +1,8 @@
-# Milestone 78 - Releases 0.78.0 and 0.78.1 Report
+# Milestone 78 - Releases 0.78.0 through 0.78.2 Report
 
 **Status date:** 5 August 2026
 
-**Status:** Release 0.78.0 published and installed; 0.78.1 control patch pending
+**Status:** Release 0.78.1 installed and owner-accepted; 0.78.2 records acceptance
 
 ## Scope
 
@@ -65,5 +65,7 @@ default next-milestone label. It does not change Librarian behavior or knowledge
 
 ## Release boundary
 
-Owner acceptance of the installed Librarian on PC and phone remains the final
-Milestone 78 gate. No automatic knowledge action is authorized.
+The owner accepted Release 0.78.1 on both the PC and private phone on 5 August
+2026. Release 0.78.2 is an evidence-only patch that records this acceptance and
+closes Milestone 78; it does not change Librarian behavior. No automatic
+knowledge action is authorized.

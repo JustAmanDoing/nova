@@ -628,6 +628,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 78 architecture review](docs/milestone-78-architecture-review.md)
 - [Milestone 78 engineering review](docs/milestone-78-engineering-review.md)
 - [Milestone 78 implementation and status](docs/milestone-78-status.md)
+- [Milestone 78 acceptance](docs/milestone-78-acceptance.md)
 - [Milestone 78 release report](docs/milestone-78-release-report.md)
 - [Milestone 69 implementation record](docs/milestone-69-implementation.md)
 - [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)
