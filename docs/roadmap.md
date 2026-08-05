@@ -664,8 +664,10 @@ Validation evidence:
 
 ## Milestone 78 - The Librarian
 
-**Status (5 August 2026): Release 0.78.0 candidate implemented on its dedicated
-branch; complete verification and protected integration remain.**
+**Status (5 August 2026): Release 0.78.0 passed protected integration and exact
+merged-main verification, was published and installed, and reports matching
+read-only results on PC and private phone. Release 0.78.1 is the pending
+Windows-control and evidence patch; owner acceptance remains.**
 
 - Provide a first-class read-only Knowledge Health page.
 - Reuse the existing store, revisions, checksums, duplicate score, quality
