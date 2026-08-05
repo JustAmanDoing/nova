@@ -1,0 +1,383 @@
+.librarian-shell {
+  width: min(1440px, calc(100% - 40px));
+  min-height: 100vh;
+  margin: 0 auto;
+  color: #edf2ee;
+}
+
+.librarian-local-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #9eaaa3;
+  font-size: 0.76rem;
+}
+
+.librarian-local-status span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8bf6b8;
+  box-shadow: 0 0 12px rgba(139, 246, 184, 0.55);
+}
+
+.librarian-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 36px;
+  align-items: end;
+  padding: 72px 0 42px;
+}
+
+.librarian-hero h1 {
+  max-width: 900px;
+  margin: 12px 0 16px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3rem, 7vw, 6.5rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+}
+
+.librarian-hero p:last-child,
+.librarian-method > div:first-child + div,
+.librarian-detail > p,
+.librarian-boundary p {
+  max-width: 790px;
+  color: #a6b3ac;
+  line-height: 1.7;
+}
+
+.librarian-hero button,
+.librarian-actions button,
+.librarian-detail button,
+.librarian-review-link {
+  min-height: 44px;
+  padding: 10px 16px;
+  color: #07110b;
+  border: 0;
+  border-radius: 10px;
+  background: #8bf6b8;
+  cursor: pointer;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.librarian-hero button:disabled,
+.librarian-actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.librarian-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.librarian-summary > div,
+.librarian-method,
+.librarian-queue,
+.librarian-detail,
+.librarian-boundary {
+  border: 1px solid #2d493a;
+  border-radius: 18px;
+  background: #0c1611;
+}
+
+.librarian-summary > div {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+}
+
+.librarian-summary span,
+.librarian-section-heading > span,
+.librarian-source span,
+.librarian-source small {
+  color: #91a097;
+  font-size: 0.74rem;
+}
+
+.librarian-summary strong {
+  color: #dce5df;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.35rem;
+  font-weight: 400;
+}
+
+.librarian-summary .is-good strong {
+  color: #8bf6b8;
+}
+
+.librarian-summary .is-warn strong {
+  color: #f3cc87;
+}
+
+.librarian-method {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.3fr) minmax(0, 1fr);
+  gap: 32px;
+  margin-top: 16px;
+  padding: 24px;
+}
+
+.librarian-method h2,
+.librarian-queue h2,
+.librarian-detail h2 {
+  margin: 5px 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.8rem;
+  font-weight: 400;
+}
+
+.librarian-dimensions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(100px, 1fr));
+  gap: 16px;
+}
+
+.librarian-dimensions > div {
+  display: grid;
+  gap: 8px;
+}
+
+.librarian-dimensions span {
+  color: #a6b3ac;
+  font-size: 0.76rem;
+}
+
+.librarian-dimensions strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+  font-weight: 400;
+}
+
+.librarian-meter {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #26342d;
+}
+
+.librarian-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #8bf6b8;
+}
+
+.librarian-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(330px, 0.75fr);
+  gap: 18px;
+  align-items: start;
+  padding: 18px 0;
+}
+
+.librarian-queue,
+.librarian-detail,
+.librarian-boundary {
+  padding: 24px;
+}
+
+.librarian-detail {
+  position: sticky;
+  top: 18px;
+}
+
+.librarian-section-heading,
+.librarian-detail-heading,
+.librarian-issue {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.librarian-issue-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.librarian-issue {
+  padding: 16px;
+  border: 1px solid #293a31;
+  border-radius: 13px;
+  background: #0a110d;
+}
+
+.librarian-issue-copy {
+  min-width: 0;
+}
+
+.librarian-issue h3 {
+  margin: 9px 0 6px;
+  font-size: 1rem;
+}
+
+.librarian-issue p,
+.librarian-source p,
+.librarian-detail li {
+  color: #aab6af;
+  line-height: 1.55;
+}
+
+.librarian-badges,
+.librarian-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.librarian-badges span {
+  padding: 5px 8px;
+  color: #aab6af;
+  border-radius: 999px;
+  background: #202b25;
+  font-size: 0.68rem;
+}
+
+.librarian-priority.critical,
+.librarian-priority.high {
+  color: #ffd2cc;
+  background: #3c201d;
+}
+
+.librarian-priority.medium {
+  color: #f3d69f;
+  background: #382d18;
+}
+
+.librarian-actions {
+  flex: 0 0 auto;
+}
+
+.librarian-actions a {
+  min-height: 44px;
+  padding: 11px 14px;
+  color: #dce5df;
+  border: 1px solid #52615a;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.librarian-detail-heading button {
+  color: #dce5df;
+  border: 1px solid #52615a;
+  background: #111915;
+}
+
+.librarian-detail ul {
+  padding-left: 20px;
+}
+
+.librarian-detail h3 {
+  margin: 24px 0 8px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.librarian-source {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #293a31;
+  border-radius: 12px;
+  background: #09100c;
+}
+
+.librarian-source p {
+  margin: 5px 0;
+}
+
+.librarian-review-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.librarian-error {
+  padding: 14px 16px;
+  color: #ffd4cf;
+  border: 1px solid #71463f;
+  border-radius: 12px;
+  background: #1a1110;
+}
+
+.librarian-empty {
+  color: #a6b3ac;
+}
+
+.librarian-boundary {
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  margin-bottom: 72px;
+}
+
+.librarian-boundary p {
+  margin: 0;
+}
+
+@media (max-width: 1000px) {
+  .librarian-dimensions {
+    grid-template-columns: repeat(3, minmax(100px, 1fr));
+  }
+
+  .librarian-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .librarian-detail {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .librarian-shell {
+    width: min(100% - 24px, 1440px);
+  }
+
+  .librarian-local-status {
+    display: none;
+  }
+
+  .librarian-hero,
+  .librarian-method {
+    grid-template-columns: 1fr;
+  }
+
+  .librarian-hero {
+    padding-top: 44px;
+  }
+
+  .librarian-hero button {
+    width: 100%;
+  }
+
+  .librarian-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .librarian-dimensions {
+    grid-template-columns: repeat(2, minmax(100px, 1fr));
+  }
+
+  .librarian-issue,
+  .librarian-section-heading,
+  .librarian-boundary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .librarian-actions > * {
+    flex: 1;
+    text-align: center;
+  }
+}

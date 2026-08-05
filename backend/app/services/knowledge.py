@@ -484,9 +484,7 @@ class KnowledgeService:
                     draft.title,
                     draft.content,
                 )
-                duplicate_record_id = (
-                    str(duplicate[0]["id"]) if duplicate is not None else None
-                )
+                duplicate_record_id = str(duplicate[0]["id"]) if duplicate is not None else None
                 duplicate_score = duplicate[1] if duplicate is not None else None
                 connection.execute(
                     """
@@ -520,9 +518,7 @@ class KnowledgeService:
                     (message.id,),
                 ).fetchone()
                 if row is None:
-                    raise KnowledgeProposalError(
-                        "Nova could not prepare the knowledge proposal."
-                    )
+                    raise KnowledgeProposalError("Nova could not prepare the knowledge proposal.")
                 if str(row["id"]) == candidate_id:
                     connection.execute(
                         """
@@ -610,9 +606,7 @@ class KnowledgeService:
                 revision=record.revision,
                 updated_at=updated_at.isoformat(),
                 review_due_at=review_due_at.isoformat(),
-                review_state=(
-                    "review_due" if generated_at > review_due_at else "current"
-                ),
+                review_state=("review_due" if generated_at > review_due_at else "current"),
             )
             if record.kind == "project":
                 projects.append(item)
@@ -642,7 +636,22 @@ class KnowledgeService:
         )
 
     def quality_report(self) -> KnowledgeQualityReportRecord:
-        generated_at = datetime.now(UTC)
+        records = self._approved_records()
+        active_records = [record for record in records if record.status == "active"]
+
+        # A quality report must never count an unverified record as knowledge.
+        for record in active_records:
+            self._verify_record_file(record.relative_path, record.sha256)
+        return self._quality_report_for_records(records)
+
+    def quality_report_for_verified_records(
+        self,
+        records: list[KnowledgeRecord],
+    ) -> KnowledgeQualityReportRecord:
+        """Build the existing quality report from caller-verified records."""
+        return self._quality_report_for_records(records)
+
+    def _approved_records(self) -> list[KnowledgeRecord]:
         with closing(self._connection()) as connection:
             rows = connection.execute(
                 """
@@ -658,22 +667,20 @@ class KnowledgeService:
                 ORDER BY record.updated_at DESC, record.id
                 """
             ).fetchall()
-        records = [_knowledge_record_from_row(row) for row in rows]
-        active_records = [record for record in records if record.status == "active"]
-        retired_record_count = sum(
-            record.status == "retired" for record in records
-        )
+        return [_knowledge_record_from_row(row) for row in rows]
 
-        # A quality report must never count an unverified record as knowledge.
-        for record in active_records:
-            self._verify_record_file(record.relative_path, record.sha256)
+    def _quality_report_for_records(
+        self,
+        records: list[KnowledgeRecord],
+    ) -> KnowledgeQualityReportRecord:
+        generated_at = datetime.now(UTC)
+        active_records = [record for record in records if record.status == "active"]
+        retired_record_count = sum(record.status == "retired" for record in records)
 
         requirement_statuses: list[KnowledgeRequirementStatusRecord] = []
         for definition in _KNOWLEDGE_REQUIREMENTS:
             matched = tuple(
-                record
-                for record in active_records
-                if _requirement_matches(definition, record)
+                record for record in active_records if _requirement_matches(definition, record)
             )
             last_reviewed = max(
                 (_parse_timestamp(record.updated_at) for record in matched),
@@ -681,9 +688,7 @@ class KnowledgeService:
             )
             if last_reviewed is None:
                 status = "missing"
-            elif generated_at - last_reviewed > timedelta(
-                days=definition.review_days
-            ):
+            elif generated_at - last_reviewed > timedelta(days=definition.review_days):
                 status = "stale"
             else:
                 status = "covered"
@@ -699,34 +704,24 @@ class KnowledgeService:
                     review_days=definition.review_days,
                     status=status,
                     last_reviewed=(
-                        last_reviewed.isoformat()
-                        if last_reviewed is not None
-                        else None
+                        last_reviewed.isoformat() if last_reviewed is not None else None
                     ),
                     matched_record_ids=tuple(record.id for record in matched),
-                    matched_record_titles=tuple(
-                        record.title for record in matched
-                    ),
+                    matched_record_titles=tuple(record.title for record in matched),
                 )
             )
 
-        core_requirements = tuple(
-            item for item in requirement_statuses if item.core
-        )
+        core_requirements = tuple(item for item in requirement_statuses if item.core)
         core_weight = sum(item.priority for item in core_requirements)
         covered_core_weight = sum(
-            item.priority
-            for item in core_requirements
-            if item.status != "missing"
+            item.priority for item in core_requirements if item.status != "missing"
         )
         covered_requirements = tuple(
             item for item in requirement_statuses if item.status != "missing"
         )
         covered_weight = sum(item.priority for item in covered_requirements)
         fresh_weight = sum(
-            item.priority
-            for item in covered_requirements
-            if item.status == "covered"
+            item.priority for item in covered_requirements if item.status == "covered"
         )
 
         retrieval_limit = 100
@@ -734,8 +729,12 @@ class KnowledgeService:
         retrieval_failures: list[RetrievalQualityFailureRecord] = []
         retrieval_passed = 0
         for record in retrieval_sample:
-            sources = self.retrieve_approved(record.title, limit=3)
-            if any(source.record_id == record.id for source in sources):
+            matched_record_ids = _rank_verified_records(
+                record.title,
+                active_records,
+                limit=3,
+            )
+            if record.id in matched_record_ids:
                 retrieval_passed += 1
             else:
                 retrieval_failures.append(
@@ -753,17 +752,13 @@ class KnowledgeService:
             generated_at=generated_at.isoformat(),
             active_record_count=len(active_records),
             retired_record_count=retired_record_count,
-            core_covered=sum(
-                item.status != "missing" for item in core_requirements
-            ),
+            core_covered=sum(item.status != "missing" for item in core_requirements),
             core_total=len(core_requirements),
             completion_percent=_percentage(
                 covered_core_weight,
                 core_weight,
             ),
-            fresh_covered=sum(
-                item.status == "covered" for item in covered_requirements
-            ),
+            fresh_covered=sum(item.status == "covered" for item in covered_requirements),
             covered_total=len(covered_requirements),
             freshness_percent=_percentage(fresh_weight, covered_weight),
             retrieval_total_records=len(active_records),
@@ -918,10 +913,7 @@ class KnowledgeService:
                 normalized_title,
                 normalized_content,
             )
-            if (
-                duplicate is not None
-                and duplicate_confirmation != "CREATE SEPARATE RECORD"
-            ):
+            if duplicate is not None and duplicate_confirmation != "CREATE SEPARATE RECORD":
                 raise KnowledgeDuplicateConfirmationError(
                     "This looks like an existing active record. Review the "
                     "possible duplicate before choosing Create separate record."
@@ -1067,10 +1059,7 @@ class KnowledgeService:
                 normalized_content,
                 exclude_record_id=record_id,
             )
-            if (
-                duplicate is not None
-                and duplicate_confirmation != "CREATE SEPARATE RECORD"
-            ):
+            if duplicate is not None and duplicate_confirmation != "CREATE SEPARATE RECORD":
                 raise KnowledgeDuplicateConfirmationError(
                     "This edit looks like another active record. Review the "
                     "possible duplicate before keeping a separate record."
@@ -1199,9 +1188,7 @@ class KnowledgeService:
         ):
             row = self._record_row(connection, record_id)
             if str(row["status"]) != "active":
-                raise KnowledgeRecordStateError(
-                    "This knowledge record is already retired."
-                )
+                raise KnowledgeRecordStateError("This knowledge record is already retired.")
             self._verify_record_file(
                 str(row["relative_path"]),
                 str(row["sha256"]),
@@ -1374,9 +1361,7 @@ class KnowledgeService:
         if row is None:
             raise KnowledgeCandidateNotFoundError(candidate_id)
         if str(row["status"]) != "pending":
-            raise KnowledgeCandidateStateError(
-                "This knowledge proposal has already been reviewed."
-            )
+            raise KnowledgeCandidateStateError("This knowledge proposal has already been reviewed.")
         return cast(sqlite3.Row, row)
 
     def _relative_record_path(
@@ -1388,9 +1373,7 @@ class KnowledgeService:
     ) -> Path:
         created_date = datetime.fromisoformat(created_at).date().isoformat()
         slug = _slug(title)
-        return Path(_KIND_DIRECTORIES[kind]) / (
-            f"{created_date} - {slug} - {record_id[:8]}.md"
-        )
+        return Path(_KIND_DIRECTORIES[kind]) / (f"{created_date} - {slug} - {record_id[:8]}.md")
 
     def _relative_record_revision_path(
         self,
@@ -1444,25 +1427,16 @@ class KnowledgeService:
             """,
             (exclude_record_id, exclude_record_id),
         ).fetchall()
-        requested_content = _normalized_duplicate_text(content)
-        requested_tokens = _duplicate_tokens(f"{title} {content}")
         best: tuple[sqlite3.Row, float] | None = None
         for row in rows:
-            existing_content = _normalized_duplicate_text(str(row["content"]))
-            if requested_content == existing_content:
-                score = 1.0
-            elif str(row["kind"]) != kind:
-                continue
-            else:
-                existing_tokens = _duplicate_tokens(
-                    f"{row['title']} {row['content']}"
-                )
-                union = requested_tokens | existing_tokens
-                score = (
-                    len(requested_tokens & existing_tokens) / len(union)
-                    if union
-                    else 0.0
-                )
+            score = knowledge_duplicate_score(
+                kind,
+                title,
+                content,
+                str(row["kind"]),
+                str(row["title"]),
+                str(row["content"]),
+            )
             if score >= 0.8 and (best is None or score > best[1]):
                 best = (row, round(score, 6))
         return best
@@ -1604,9 +1578,7 @@ def _validate_record_fields(
     if not normalized_title or len(normalized_title) > 120:
         raise ValueError("The knowledge title must be between 1 and 120 characters.")
     if not normalized_content or len(normalized_content) > 4_000:
-        raise ValueError(
-            "The knowledge content must be between 1 and 4,000 characters."
-        )
+        raise ValueError("The knowledge content must be between 1 and 4,000 characters.")
     return normalized_kind, normalized_title, normalized_content
 
 
@@ -1614,11 +1586,30 @@ def _normalized_duplicate_text(value: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", value.casefold()))
 
 
+def knowledge_duplicate_score(
+    left_kind: str,
+    left_title: str,
+    left_content: str,
+    right_kind: str,
+    right_title: str,
+    right_content: str,
+) -> float:
+    """Return the deterministic score used by knowledge duplicate review."""
+    if _normalized_duplicate_text(left_content) == _normalized_duplicate_text(right_content):
+        return 1.0
+    if left_kind != right_kind:
+        return 0.0
+    left_tokens = _duplicate_tokens(f"{left_title} {left_content}")
+    right_tokens = _duplicate_tokens(f"{right_title} {right_content}")
+    union = left_tokens | right_tokens
+    if not union:
+        return 0.0
+    return round(len(left_tokens & right_tokens) / len(union), 6)
+
+
 def _duplicate_tokens(value: str) -> set[str]:
     return {
-        token
-        for token in _retrieval_tokens(value)
-        if token not in {"remember", "saved", "record"}
+        token for token in _retrieval_tokens(value) if token not in {"remember", "saved", "record"}
     }
 
 
@@ -1702,8 +1693,7 @@ def _requirement_matches(
         return True
     searchable = f" {_normalized_phrase(f'{record.title} {record.content}')} "
     return any(
-        f" {_normalized_phrase(phrase)} " in searchable
-        for phrase in definition.match_phrases
+        f" {_normalized_phrase(phrase)} " in searchable for phrase in definition.match_phrases
     )
 
 
@@ -1747,14 +1737,38 @@ def _retrieval_score(
     if len(overlap) < required:
         return 0.0
     title_overlap = overlap & title_tokens
-    return (
-        len(overlap) + (1.5 * len(title_overlap))
-    ) / max(len(query_tokens), 1)
+    return (len(overlap) + (1.5 * len(title_overlap))) / max(len(query_tokens), 1)
+
+
+def _rank_verified_records(
+    query: str,
+    records: list[KnowledgeRecord],
+    *,
+    limit: int,
+) -> tuple[str, ...]:
+    query_tokens = _retrieval_tokens(query)
+    if not query_tokens or limit < 1:
+        return ()
+    ranked = [
+        (
+            _retrieval_score(
+                query_tokens,
+                record.title,
+                record.content,
+                record.kind,
+            ),
+            record.id,
+        )
+        for record in records
+    ]
+    ranked = [item for item in ranked if item[0] > 0.0]
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    return tuple(record_id for _, record_id in ranked[:limit])
 
 
 def _slug(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
-    return (slug[:60].rstrip("-") or "knowledge")
+    return slug[:60].rstrip("-") or "knowledge"
 
 
 def _markdown_record(
@@ -1779,8 +1793,7 @@ def _markdown_record(
     }
     lines = ["---"]
     lines.extend(
-        f"{key}: {json.dumps(value, ensure_ascii=False)}"
-        for key, value in metadata.items()
+        f"{key}: {json.dumps(value, ensure_ascii=False)}" for key, value in metadata.items()
     )
     lines.extend(
         [
@@ -1792,8 +1805,7 @@ def _markdown_record(
             "",
             "## Provenance",
             "",
-            "Prepared from a local Nova conversation and saved only after "
-            "explicit owner approval.",
+            "Prepared from a local Nova conversation and saved only after explicit owner approval.",
             "",
         ]
     )
@@ -1826,31 +1838,18 @@ def _candidate_from_row(row: sqlite3.Row) -> KnowledgeCandidateRecord:
         explicit_request=bool(row["explicit_request"]),
         status=str(row["status"]),
         created_at=str(row["created_at"]),
-        reviewed_at=(
-            str(row["reviewed_at"]) if row["reviewed_at"] is not None else None
-        ),
-        record_path=(
-            str(row["record_path"]) if row["record_path"] is not None else None
-        ),
+        reviewed_at=(str(row["reviewed_at"]) if row["reviewed_at"] is not None else None),
+        record_path=(str(row["record_path"]) if row["record_path"] is not None else None),
         duplicate_record_id=(
-            str(row["duplicate_record_id"])
-            if row["duplicate_title"] is not None
-            else None
+            str(row["duplicate_record_id"]) if row["duplicate_title"] is not None else None
         ),
         duplicate_title=(
-            str(row["duplicate_title"])
-            if row["duplicate_title"] is not None
-            else None
+            str(row["duplicate_title"]) if row["duplicate_title"] is not None else None
         ),
-        duplicate_path=(
-            str(row["duplicate_path"])
-            if row["duplicate_path"] is not None
-            else None
-        ),
+        duplicate_path=(str(row["duplicate_path"]) if row["duplicate_path"] is not None else None),
         duplicate_score=(
             float(row["duplicate_score"])
-            if row["duplicate_title"] is not None
-            and row["duplicate_score"] is not None
+            if row["duplicate_title"] is not None and row["duplicate_score"] is not None
             else None
         ),
     )
@@ -1869,9 +1868,7 @@ def _knowledge_record_from_row(row: sqlite3.Row) -> KnowledgeRecord:
         status=str(row["status"]),
         revision=int(row["revision"]),
         updated_at=str(row["updated_at"]),
-        retired_at=(
-            str(row["retired_at"]) if row["retired_at"] is not None else None
-        ),
+        retired_at=(str(row["retired_at"]) if row["retired_at"] is not None else None),
     )
 
 

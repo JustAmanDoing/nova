@@ -16,6 +16,10 @@ The current MVP can:
 - Update approved knowledge by creating a new immutable Markdown revision
 - Retire approved knowledge from future retrieval without deleting its files
 - Create checksum-verified knowledge snapshots containing every tracked revision
+- Review read-only Librarian health across coverage, freshness, retrieval,
+  integrity, and deterministic consistency
+- Inspect duplicate, conflict, stale, missing, broken-reference, and checksum
+  evidence without automatically changing knowledge
 - Observe files placed in a local intake folder
 - Record filename, path, size, timestamps, and SHA-256 fingerprint
 - Detect exact duplicates without deleting either copy
@@ -139,6 +143,7 @@ Open:
 - Local chat: http://localhost:5173/chat.html
 - Projects and goals: http://localhost:5173/focus.html
 - Local project record: http://localhost:5173/archive.html
+- Librarian: http://localhost:5173/librarian.html
 - API docs: http://localhost:8000/docs
 - API health: http://localhost:8000/api/v1/health
 
@@ -620,6 +625,10 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 76 acceptance record](docs/milestone-76-acceptance.md)
 - [Milestone 76 release candidate report](docs/milestone-76-release-report.md)
 - [Milestone 77 knowledge-gap correction](docs/milestone-77-knowledge-gap-correction.md)
+- [Milestone 78 architecture review](docs/milestone-78-architecture-review.md)
+- [Milestone 78 engineering review](docs/milestone-78-engineering-review.md)
+- [Milestone 78 implementation and status](docs/milestone-78-status.md)
+- [Milestone 78 release candidate report](docs/milestone-78-release-report.md)
 - [Milestone 69 implementation record](docs/milestone-69-implementation.md)
 - [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)
 - [Milestone 69 engineering review](docs/milestone-69-engineering-review.md)

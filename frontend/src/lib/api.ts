@@ -224,6 +224,109 @@ export interface KnowledgeQualityReport {
   limitation: string;
 }
 
+export type LibrarianIssueType =
+  | "duplicate"
+  | "conflict"
+  | "stale"
+  | "missing_coverage"
+  | "missing_file"
+  | "checksum_mismatch"
+  | "broken_reference";
+
+export interface LibrarianIssue {
+  id: string;
+  issue_type: LibrarianIssueType;
+  priority: "critical" | "high" | "medium" | "low";
+  title: string;
+  summary: string;
+  reason: string;
+  evidence: string[];
+  confidence: number;
+  record_ids: string[];
+  source_titles: string[];
+  suggested_action: string;
+  review_url: string | null;
+}
+
+export interface LibrarianHealth {
+  generated_at: string;
+  health_score: number;
+  dimensions: {
+    coverage: number;
+    freshness: number;
+    retrieval: number;
+    integrity: number;
+    consistency: number;
+  };
+  counts: {
+    duplicates: number;
+    conflicts: number;
+    stale: number;
+    missing_coverage: number;
+    missing_files: number;
+    checksum_failures: number;
+    broken_references: number;
+  };
+  active_record_count: number;
+  retired_record_count: number;
+  verified_source_count: number;
+  average_source_confidence: number | null;
+  methodology: string;
+  limitation: string;
+}
+
+export interface LibrarianReview {
+  generated_at: string;
+  total: number;
+  issues: LibrarianIssue[];
+  limitation: string;
+}
+
+export interface LibrarianSource {
+  record_id: string;
+  candidate_id: string;
+  kind: KnowledgeKind;
+  title: string;
+  content: string;
+  status: KnowledgeRecordStatus;
+  revision: number;
+  updated_at: string;
+  relative_path: string;
+  sha256: string;
+  verification_status:
+    | "verified"
+    | "missing_file"
+    | "checksum_mismatch"
+    | "broken_reference";
+  candidate_confidence: number;
+  explicit_request: boolean;
+  source_reason: string;
+  conversation_id: string;
+  source_message_id: string;
+}
+
+export interface LibrarianItem {
+  generated_at: string;
+  issue: LibrarianIssue;
+  sources: LibrarianSource[];
+  revisions: Array<{
+    record_id: string;
+    revision: number;
+    status: KnowledgeRecordStatus;
+    created_at: string;
+    relative_path: string;
+    sha256: string;
+  }>;
+  events: Array<{
+    sequence: number;
+    record_id: string;
+    event_type: "created" | "updated" | "retired";
+    detail: string;
+    created_at: string;
+  }>;
+  limitation: string;
+}
+
 export type PlanningKnowledgeKind = "goal" | "project";
 export type PlanningReviewState = "current" | "review_due";
 
@@ -689,6 +792,28 @@ export async function getKnowledgeQuality(
   return request<KnowledgeQualityReport>("/api/v1/knowledge/quality", {
     signal,
   });
+}
+
+export async function getLibrarianHealth(
+  signal?: AbortSignal,
+): Promise<LibrarianHealth> {
+  return request<LibrarianHealth>("/api/v1/librarian/health", { signal });
+}
+
+export async function getLibrarianReview(
+  signal?: AbortSignal,
+): Promise<LibrarianReview> {
+  return request<LibrarianReview>("/api/v1/librarian/review", { signal });
+}
+
+export async function getLibrarianItem(
+  itemId: string,
+  signal?: AbortSignal,
+): Promise<LibrarianItem> {
+  return request<LibrarianItem>(
+    `/api/v1/librarian/item/${encodeURIComponent(itemId)}`,
+    { signal },
+  );
 }
 
 export async function getPlanningOverview(

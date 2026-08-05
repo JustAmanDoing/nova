@@ -14,6 +14,7 @@ from app.services.backup import BackupService
 from app.services.chat import ChatService, OllamaProvider
 from app.services.intake import IntakeService
 from app.services.knowledge import KnowledgeService
+from app.services.librarian import LibrarianService
 from app.services.next_actions import NextActionService
 from app.services.ocr import LocalOcrService
 from app.services.project_archive import ProjectArchiveService
@@ -76,6 +77,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             operation_lock=operation_lock,
         )
         await asyncio.to_thread(knowledge.initialize)
+        librarian = LibrarianService(
+            database_path=resolved_settings.database_path,
+            knowledge_path=resolved_settings.knowledge_path,
+            knowledge=knowledge,
+        )
         next_actions = NextActionService(
             database_path=str(resolved_settings.database_path),
             knowledge=knowledge,
@@ -86,6 +92,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.backups = backups
         application.state.chat = chat
         application.state.knowledge = knowledge
+        application.state.librarian = librarian
         application.state.next_actions = next_actions
         application.state.project_archive = project_archive
         watcher = asyncio.create_task(

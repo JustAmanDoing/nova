@@ -98,6 +98,7 @@ export default function ProjectArchiveApp() {
           <a className="chat-nav-link active" href="/archive.html" aria-current="page">
             Record
           </a>
+          <a className="chat-nav-link" href="/librarian.html">Librarian</a>
           <a className="chat-nav-link" href="/">Intake</a>
         </div>
         <span className="archive-local-status">

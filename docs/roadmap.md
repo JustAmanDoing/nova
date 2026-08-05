@@ -616,8 +616,8 @@ Decision and review evidence:
 
 ## Milestone 76 - Local NOVA Project Record
 
-**Status (3 August 2026): Release 0.76.0 published and exact tagged runtime
-verified; patch 0.76.1 is pending for the generated next-milestone status.**
+**Status (5 August 2026): complete; Releases 0.76.0, 0.76.1, and the accepted
+0.76.2 knowledge-gap correction are published.**
 
 - Maintain one canonical local current-status record.
 - Catalogue authoritative repository evidence, verified runtime evidence,
@@ -644,11 +644,10 @@ Implementation and acceptance evidence:
 
 ## Milestone 77 - Local Project Record Daily-Use Validation
 
-**Status (3 August 2026): in progress. Patch 0.76.1 is published, installed,
-and aligned with `origin/main`; the local current-status record names Milestone
-77. The owner accepted the latest private-phone release checkpoint. Remaining
-work is ordinary daily-use validation of the summary, catalogue, preview, and
-one genuine guarded import when an appropriate NOVA-only source exists.**
+**Status (5 August 2026): complete. The owner accepted private-phone operation,
+confirmed previously approved suggestions disappeared after the 0.76.2 fix,
+and explicitly approved proceeding to Milestone 78. No synthetic import was
+added merely to satisfy the optional validation scenario.**
 
 - Use Record naturally on PC and phone after Release 0.76.0.
 - Confirm the canonical project summary remains understandable and current.
@@ -661,6 +660,41 @@ one genuine guarded import when an appropriate NOVA-only source exists.**
 Validation evidence:
 
 - `docs/milestone-77-local-project-record-daily-use-validation.md`
+- `docs/milestone-77-knowledge-gap-correction.md`
+
+## Milestone 78 - The Librarian
+
+**Status (5 August 2026): Release 0.78.0 candidate implemented on its dedicated
+branch; complete verification and protected integration remain.**
+
+- Provide a first-class read-only Knowledge Health page.
+- Reuse the existing store, revisions, checksums, duplicate score, quality
+  checklist, source confidence, and review workflow.
+- Report deterministic duplicates, conservative structural conflicts, stale
+  areas, missing coverage, missing files, broken references, and checksum
+  failures.
+- Expose GET-only health, review queue, and item-detail APIs.
+- Explain every flag with evidence, source records, confidence, and a suggested
+  owner action.
+- Make zero automatic modifications and create no second review store.
+
+Review and implementation evidence:
+
+- `docs/milestone-78-architecture-review.md`
+- `docs/milestone-78-engineering-review.md`
+- `docs/milestone-78-status.md`
+- `docs/milestone-78-release-report.md`
+
+## Milestone 79 - Librarian Daily-Use Validation
+
+**Status: recommended next milestone; not started or approved for runtime
+expansion.**
+
+- Validate explanations, issue ordering, and review links on PC and phone.
+- Measure false-positive friction before changing any detection rule.
+- Keep the Librarian read-only throughout validation.
+- Require a new architecture and engineering decision before any
+  approval-assisted Librarian action.
 
 ## Later capabilities
 
