@@ -120,6 +120,7 @@ function FocusApp() {
             Focus
           </a>
           <a className="chat-nav-link" href="/archive.html">Record</a>
+          <a className="chat-nav-link" href="/librarian.html">Librarian</a>
           <a className="chat-nav-link" href="/">Intake</a>
         </div>
         <span className="focus-local-status">

@@ -10,6 +10,7 @@ export default defineConfig({
         chat: "chat.html",
         focus: "focus.html",
         archive: "archive.html",
+        librarian: "librarian.html",
       },
     },
   },

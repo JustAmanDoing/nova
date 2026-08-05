@@ -44,6 +44,10 @@ server {
     expires -1;
   }
 
+  location = /librarian.html {
+    expires -1;
+  }
+
   location / {
     try_files $uri $uri/ /index.html;
   }
