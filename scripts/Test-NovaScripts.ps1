@@ -39,6 +39,7 @@ foreach ($script in @($ProjectRecordControl, $ProjectSourceImport)) {
 $recordContent = Get-Content -Raw -LiteralPath $ProjectRecordControl
 foreach ($requiredRecordControl in @(
     "N:\Nova\Archive",
+    '[string]$ArchiveRoot = "N:\Nova\Archive"',
     "archive-index.json",
     "origin/main",
     "git -C",

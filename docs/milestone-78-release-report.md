@@ -59,9 +59,9 @@ All material changes remain in the existing owner-controlled review workflow.
 
 The release workflow exposed a Windows PowerShell parameter-binding defect in
 the Project Record launcher. Release 0.78.1 moves default repository-path
-resolution into the script body, adds a launcher regression check, and replaces
-the stale default next-milestone label. It does not change Librarian behavior or
-knowledge.
+resolution into the script body, binds the archive default to the documented
+`N:\Nova\Archive`, adds a launcher regression check, and replaces the stale
+default next-milestone label. It does not change Librarian behavior or knowledge.
 
 ## Release boundary
 

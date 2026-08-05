@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$RepositoryRoot = "",
-    [string]$ArchiveRoot = "",
+    [string]$ArchiveRoot = "N:\Nova\Archive",
     [string]$ProjectSnapshotPath = "",
     [string]$NextMilestone = "Review the current roadmap and record the exact next approved milestone."
 )
@@ -92,8 +92,7 @@ function Get-Authority {
 
 $repository = (Resolve-Path -LiteralPath $RepositoryRoot).Path
 if ([string]::IsNullOrWhiteSpace($ArchiveRoot)) {
-    $novaRoot = Split-Path -Parent (Split-Path -Parent $repository)
-    $ArchiveRoot = Join-Path $novaRoot "Archive"
+    throw "ArchiveRoot must identify the local NOVA project archive."
 }
 $archive = [System.IO.Path]::GetFullPath($ArchiveRoot)
 if ([System.IO.Path]::GetPathRoot($archive).TrimEnd("\") -ieq "C:") {
