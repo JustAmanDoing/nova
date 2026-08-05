@@ -117,7 +117,12 @@ _KNOWLEDGE_REQUIREMENTS = (
         priority=4,
         core=True,
         review_days=180,
-        match_phrases=("response style", "answer style", "reply style"),
+        match_phrases=(
+            "response style",
+            "answer style",
+            "reply style",
+            "prefer responses",
+        ),
     ),
     KnowledgeRequirementDefinition(
         id="current-goals",
@@ -164,6 +169,7 @@ _KNOWLEDGE_REQUIREMENTS = (
         core=True,
         review_days=180,
         match_phrases=(
+            "work context",
             "work schedule",
             "working hours",
             "occupation",
@@ -187,6 +193,7 @@ _KNOWLEDGE_REQUIREMENTS = (
             "gpu",
             "device",
             "software",
+            "technology environment",
         ),
     ),
     KnowledgeRequirementDefinition(
@@ -228,7 +235,13 @@ _KNOWLEDGE_REQUIREMENTS = (
         priority=2,
         core=False,
         review_days=180,
-        match_phrases=("home project", "home maintenance", "appliance", "house"),
+        match_phrases=(
+            "home project",
+            "home maintenance",
+            "home responsibility",
+            "appliance",
+            "house",
+        ),
     ),
     KnowledgeRequirementDefinition(
         id="financial-goals",
@@ -250,7 +263,13 @@ _KNOWLEDGE_REQUIREMENTS = (
         priority=2,
         core=False,
         review_days=180,
-        match_phrases=("diet", "dietary", "health preference", "nutrition"),
+        match_phrases=(
+            "diet",
+            "dietary",
+            "dietary preference",
+            "health preference",
+            "nutrition",
+        ),
     ),
     KnowledgeRequirementDefinition(
         id="emergency-plan",
