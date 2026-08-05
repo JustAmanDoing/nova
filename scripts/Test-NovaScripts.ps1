@@ -69,6 +69,7 @@ if ($bindingExitCode -eq 0) {
 if (($bindingOutput -join [Environment]::NewLine) -notmatch "must not be written to C:") {
     throw "The project-record launcher did not resolve its default repository path."
 }
+$global:LASTEXITCODE = 0
 
 $importContent = Get-Content -Raw -LiteralPath $ProjectSourceImport
 foreach ($requiredImportControl in @(
