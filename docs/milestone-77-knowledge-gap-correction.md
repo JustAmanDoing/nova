@@ -4,7 +4,7 @@
 
 **Patch candidate:** 0.76.2
 
-**Status:** Candidate installed; owner phone acceptance pending
+**Status:** Owner accepted on the private phone; ready to publish
 
 ## Owner finding
 
@@ -105,8 +105,21 @@ Before publishing 0.76.2:
 6. the owner must confirm that the additions already approved now disappear
    from **Suggested next additions**.
 
+## Owner acceptance
+
+On 5 August 2026, the owner opened Tailscale on the phone, loaded NOVA through
+the existing private route, refreshed Chat, and confirmed that the previously
+approved suggestions were gone. This closes the final acceptance gate for the
+0.76.2 correction.
+
+The result confirms the intended bounded behavior: approved, verified local
+knowledge closes its matching deterministic gap, while genuinely missing
+optional additions remain available. No knowledge record was edited, merged,
+retired, deleted, uploaded, or otherwise changed by the quality report.
+
 ## Exact next action
 
-Refresh NOVA on the owner's phone and confirm the completed additions no longer
-appear. Milestone 77 remains active until that owner acceptance is recorded,
-and no new runtime capability is approved by this correction.
+Merge the accepted correction, publish Release 0.76.2, refresh the local NOVA
+Project Record from that exact release, and continue the separately approved
+Milestone 78 Librarian implementation. No additional runtime authority is
+approved by this correction.
