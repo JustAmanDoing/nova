@@ -46,11 +46,28 @@ foreach ($requiredRecordControl in @(
     "Raw NOVA chat sources explicitly supplied",
     "must not be written to C:",
     "NextMilestone",
-    "Milestone 77 - Local Project Record Daily-Use Validation."
+    "Review the current roadmap and record the exact next approved milestone."
 )) {
     if ($recordContent -notmatch [regex]::Escape($requiredRecordControl)) {
         throw "The project-record control is missing: $requiredRecordControl"
     }
+}
+
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+$bindingOutput = & powershell.exe `
+    -NoLogo `
+    -NoProfile `
+    -ExecutionPolicy Bypass `
+    -File $ProjectRecordControl `
+    -ArchiveRoot "C:\NOVA-project-record-binding-test" 2>&1
+$bindingExitCode = $LASTEXITCODE
+$ErrorActionPreference = $previousErrorActionPreference
+if ($bindingExitCode -eq 0) {
+    throw "The project-record control unexpectedly accepted an archive on C:."
+}
+if (($bindingOutput -join [Environment]::NewLine) -notmatch "must not be written to C:") {
+    throw "The project-record launcher did not resolve its default repository path."
 }
 
 $importContent = Get-Content -Raw -LiteralPath $ProjectSourceImport

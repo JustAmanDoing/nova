@@ -2,7 +2,7 @@
 
 **Status date:** 5 August 2026
 
-**Candidate version:** 0.78.0
+**Installed version:** 0.78.0; Release 0.78.1 control-and-evidence patch pending
 
 **Implementation base:** Release 0.76.2, commit
 `598bfc79df833271556f9b97c5f717eb94744bb9`
@@ -46,27 +46,41 @@
   deterministic threshold; it never resolves them automatically.
 - The score evaluates store quality, not truth, personal completeness, or the
   owner.
-- Release 0.78.0 remains a branch candidate until protected integration,
-  exact-merge runtime verification, publication, and owner acceptance.
+- Conflict and duplicate findings still require owner judgement.
+- Owner acceptance of the installed page on PC and phone remains pending.
 
-## Verified candidate state
+## Verified release state
 
 Backend lint, strict typing, 164 tests, and 93.65% coverage pass. Frontend lint,
 typing, 55 tests, and production build pass. Windows controls, Compose
 configuration, complete image builds, and an isolated non-root production
-runtime pass. The installed Release 0.76.2 stack and its database remain healthy
-and unchanged by candidate verification.
+runtime pass. PR #27 passed all four protected checks and merged at
+`fc6509e884cdf0f009f88d329831680c569d8268`. The exact merge passed the same
+post-merge checks, was published and installed as Release 0.78.0, and refreshed
+the local Project Record with 569 checksum-bound entries.
+
+Installed-runtime verification reports health score 100, four optional
+missing-coverage review items, and zero duplicate, conflict, stale,
+missing-file, broken-reference, or checksum findings. PC and private-phone
+requests match. The database and all approved knowledge files retained their
+SHA-256 values across the Librarian reads.
+
+The release session also found that the local Compose configuration had fallen
+back to empty repository folders instead of the documented `N:\Nova\Memory`
+and read-only `N:\Nova\Archive` mounts. The ignored local `.env` was restored
+to those existing folders without copying or changing their contents. A
+Windows PowerShell default-parameter defect in the Project Record launcher is
+covered by the pending 0.78.1 patch and regression check.
 
 ## Exact next action
 
-Commit the verified candidate, push its dedicated branch, and open protected
-review for Release 0.78.0. After checks and review pass, merge without bypassing
-protection, rebuild the exact merge, publish the release, refresh the local NOVA
-Project Record, and obtain owner acceptance on PC and phone.
+Integrate and install the 0.78.1 Windows-control patch, refresh the Project
+Record from its exact release tag, then obtain owner acceptance on PC and
+phone.
 
 ## Exact next milestone
 
-After Release 0.78.0 is integrated and owner-accepted, the recommended next
+After Release 0.78.1 is integrated and owner-accepted, the recommended next
 milestone is **Milestone 79 - Librarian Daily-Use Validation**. It should measure
 whether issue explanations and review links are useful on PC and phone before
 any approval-assisted Librarian action is proposed.

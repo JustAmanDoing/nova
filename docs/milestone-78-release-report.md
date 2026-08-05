@@ -1,8 +1,8 @@
-# Milestone 78 - Release 0.78.0 Candidate Report
+# Milestone 78 - Releases 0.78.0 and 0.78.1 Report
 
 **Status date:** 5 August 2026
 
-**Status:** Candidate implementation and local verification complete
+**Status:** Release 0.78.0 published and installed; 0.78.1 control patch pending
 
 ## Scope
 
@@ -38,8 +38,32 @@ All material changes remain in the existing owner-controlled review workflow.
 - The installed 0.76.2 live stack remained running and healthy throughout;
   its active database passed the read-only integrity check.
 
+## Protected integration and installed evidence
+
+- PR #27 merged the reviewed candidate at
+  `fc6509e884cdf0f009f88d329831680c569d8268` after all four checks passed.
+- A fresh `main` run rebuilt and exercised the exact merge; all four jobs
+  passed again.
+- Release 0.78.0 was published from that merge and installed only after a
+  verified pre-update database backup.
+- The installed PC and private-phone endpoints both reported version 0.78.0
+  and knowledge health 100.
+- The installed queue contained four optional missing-coverage items and no
+  duplicate, conflict, stale, missing-file, broken-reference, or checksum
+  issue.
+- Database and approved-knowledge SHA-256 values were unchanged across direct,
+  same-origin, detail, Project Record, and private-phone reads.
+- The Project Record was refreshed for 0.78.0 with 569 checksum-bound entries.
+
+## Control patch
+
+The release workflow exposed a Windows PowerShell parameter-binding defect in
+the Project Record launcher. Release 0.78.1 moves default repository-path
+resolution into the script body, adds a launcher regression check, and replaces
+the stale default next-milestone label. It does not change Librarian behavior or
+knowledge.
+
 ## Release boundary
 
-This report does not claim 0.78.0 publication, installation, phone acceptance,
-or protected-main integration. Those remain release gates after this candidate
-is committed and reviewed.
+Owner acceptance of the installed Librarian on PC and phone remains the final
+Milestone 78 gate. No automatic knowledge action is authorized.

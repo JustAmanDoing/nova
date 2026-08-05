@@ -1,13 +1,20 @@
 [CmdletBinding()]
 param(
-    [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
+    [string]$RepositoryRoot = "",
     [string]$ArchiveRoot = "",
     [string]$ProjectSnapshotPath = "",
-    [string]$NextMilestone = "Milestone 77 - Local Project Record Daily-Use Validation."
+    [string]$NextMilestone = "Review the current roadmap and record the exact next approved milestone."
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+    if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        throw "NOVA could not resolve the project-record script directory."
+    }
+    $RepositoryRoot = Split-Path -Parent $PSScriptRoot
+}
 
 if ([string]::IsNullOrWhiteSpace($NextMilestone)) {
     throw "NextMilestone must describe the exact next milestone."
