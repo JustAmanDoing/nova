@@ -664,10 +664,9 @@ Validation evidence:
 
 ## Milestone 78 - The Librarian
 
-**Status (5 August 2026): Release 0.78.0 passed protected integration and exact
-merged-main verification, was published and installed, and reports matching
-read-only results on PC and private phone. Release 0.78.1 is the pending
-Windows-control and evidence patch; owner acceptance remains.**
+**Status (5 August 2026): complete. Release 0.78.1 is installed and the owner
+accepted the read-only Librarian on both PC and private phone. Release 0.78.2
+records the acceptance evidence and closes the milestone.**
 
 - Provide a first-class read-only Knowledge Health page.
 - Reuse the existing store, revisions, checksums, duplicate score, quality
@@ -685,12 +684,13 @@ Review and implementation evidence:
 - `docs/milestone-78-architecture-review.md`
 - `docs/milestone-78-engineering-review.md`
 - `docs/milestone-78-status.md`
+- `docs/milestone-78-acceptance.md`
 - `docs/milestone-78-release-report.md`
 
 ## Milestone 79 - Librarian Daily-Use Validation
 
-**Status: recommended next milestone; not started or approved for runtime
-expansion.**
+**Status: exact next milestone; validation scope approved by completion of
+Milestone 78, with no runtime expansion.**
 
 - Validate explanations, issue ordering, and review links on PC and phone.
 - Measure false-positive friction before changing any detection rule.
