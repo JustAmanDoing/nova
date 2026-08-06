@@ -2,6 +2,8 @@
 
 ## Principles
 
+- Follow the approved [NOVA Engineering Principles](docs/engineering-principles.md):
+  reuse first and build custom code only when necessary.
 - Keep Nova local-first and useful without an AI provider.
 - Prefer small, end-to-end changes over speculative frameworks.
 - Explain recommendations and preserve user control.
@@ -9,11 +11,12 @@
 
 ## Development workflow
 
-1. Create a focused branch.
-2. Add or update tests with the implementation.
-3. Run the relevant backend and frontend checks.
-4. Document behavior changes.
-5. Open a pull request with the rationale and validation results.
+1. Search for proven free, open-source solutions and record the reuse decision.
+2. Create a focused branch.
+3. Add or update tests with the implementation.
+4. Run the relevant backend and frontend checks.
+5. Document behavior changes.
+6. Open a pull request with the rationale and validation results.
 
 On Windows, validate the friendly launchers with:
 
