@@ -34,6 +34,18 @@ React chat page
 
 It does not bypass or extend the guarded file workflow.
 
+## Approved future interaction direction
+
+The approved [NOVA Conductor interaction north star](conductor-interaction-north-star.md)
+defines a future single conversational interface over NOVA's existing domain
+services. It is a product direction, not a claim that agent delegation, voice
+routing, background work, or proactive notification exists today.
+
+The first Conductor slice must remain a small orchestration layer inside the
+modular monolith. Existing services retain their authority, and every material
+action retains its approval, audit, and recovery boundaries. Specialist agents
+may be introduced only through a separately approved, measured capability.
+
 ## Current vertical slice
 
 ```text
