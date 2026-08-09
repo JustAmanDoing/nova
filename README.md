@@ -630,6 +630,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 78 implementation and status](docs/milestone-78-status.md)
 - [Milestone 78 acceptance](docs/milestone-78-acceptance.md)
 - [Milestone 78 release report](docs/milestone-78-release-report.md)
+- [Milestone 79 Librarian daily-use validation](docs/milestone-79-librarian-daily-use-validation.md)
 - [Milestone 79 knowledge examples Phase 1 candidate](docs/milestone-79-knowledge-examples-candidate.md)
 - [Milestone 79 knowledge examples Phase 1 acceptance](docs/milestone-79-knowledge-examples-acceptance.md)
 - [NOVA Conductor interaction north star](docs/conductor-interaction-north-star.md)

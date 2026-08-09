@@ -689,8 +689,9 @@ Review and implementation evidence:
 
 ## Development System Foundation - Governance Insertion
 
-**Status (9 August 2026): documented as governance-only work. Milestone 79 has
-not begun and remains the exact next runtime milestone.**
+**Status (9 August 2026): complete and authoritative on `main` through PR #31
+at merge commit `8ba8c92cc7ff596557bf4df78a6ce2d3e3b28689`. This was governance-only
+work and made no NOVA runtime change.**
 
 - Add repository-wide durable instructions in root `AGENTS.md`.
 - Establish the full discuss-to-owner-acceptance development playbook.
@@ -711,16 +712,19 @@ Foundation documents:
 
 ## Milestone 79 - Librarian Daily-Use Validation
 
-**Status (9 August 2026): daily-use validation remains in progress in separate
-draft PR #33. Knowledge Examples Phase 1 merged through PR #35, was installed
-from protected `main`, and was owner-accepted on the physical PC and phone. No
-release tag or version bump was created.**
+**Status (9 August 2026): daily-use validation evidence remains under review in
+draft PR #33. The plain-language correction from PR #34 and Knowledge Examples
+Phase 1 from PR #35 are merged, installed, technically verified, and accepted
+on the physical PC and phone. No release tag, version bump, detection-rule, or
+authority change was made.**
 
-- Validate explanations, issue ordering, and review links on PC and phone.
-- Measure false-positive friction before changing any detection rule.
-- Keep the Librarian read-only throughout validation.
+- Validate explanations, issue ordering, and review links on PC and phone -
+  complete and owner-accepted.
+- Measure false-positive friction before changing any detection rule - owner
+  feedback recorded; no rule changed.
+- Keep the Librarian read-only throughout validation - verified.
 - Require a new architecture and engineering decision before any
-  approval-assisted Librarian action.
+  approval-assisted Librarian action - preserved.
 - Give all 13 existing knowledge checks two or three static, privacy-safe
   examples that can prepare an editable, unsent Chat draft - complete with two
   examples per requirement.
@@ -729,10 +733,14 @@ release tag or version bump was created.**
 - Preserve the generic Open handoff and every existing read-only, approval,
   matching, scoring, priority, and issue-order boundary - verified.
 
-Candidate review evidence:
+Knowledge Examples Phase 1 evidence:
 
 - `docs/milestone-79-knowledge-examples-candidate.md`
 - `docs/milestone-79-knowledge-examples-acceptance.md`
+
+Validation evidence:
+
+- `docs/milestone-79-librarian-daily-use-validation.md`
 
 ## Later capabilities
 

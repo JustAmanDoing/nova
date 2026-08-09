@@ -4,7 +4,8 @@
 
 **Base release:** 0.78.2
 
-**Status:** Owner-requested correction in review; not released or installed
+**Status:** Merged through PR #34 and installed; its current wording was later
+extended by PR #35 and owner-accepted on PC and phone
 
 ## Owner feedback
 
@@ -41,8 +42,17 @@ terms. In particular, Home responsibilities becomes Home jobs and projects,
 and the interface explains that suggestions can be ignored and nothing changes
 unless the owner chooses.
 
-Physical owner acceptance is still required after a protected merge and
-installation. Until then, Release 0.78.2 remains authoritative.
+PR #35 later made the separately approved name **Home jobs and routines** and
+added optional static examples. That current installed wording preserves this
+plain-language decision.
+
+PR #34 merged at `d60799dc56ebc10174076e9b98fb3659b7075fd6` after all
+protected checks passed. That commit was installed and validated on the Windows
+NOVA runtime. PR #35 then merged at
+`93daa9806590c950c94044e637a44125f5739ec0`, was installed through the guarded
+updater, preserved owner data, and was accepted on the physical PC and phone.
+Release 0.78.2 remains the authoritative version. The complete current evidence
+is recorded in `docs/milestone-79-knowledge-examples-acceptance.md`.
 
 ## Remaining limitation
 
@@ -52,5 +62,5 @@ owner decision.
 
 ## Exact next action
 
-The owner reviews the wording in draft PR #34 and explicitly approves or rejects
-it. No merge or installation happens before that decision.
+After protected CI passes on the reconciled PR #33 head, the owner reviews the
+consolidated validation evidence and explicitly approves or rejects merging it.
