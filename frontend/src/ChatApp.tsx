@@ -52,23 +52,23 @@ type DraftMessage = Pick<
 
 const KNOWLEDGE_PROMPT_STARTERS: Record<string, string> = {
   "preferred-name": "Remember that my name is ",
-  "response-style": "Remember that I prefer responses that ",
-  "current-goals": "Remember that my current goal is ",
-  "active-projects": "Remember that my active project is ",
-  "timezone-location": "Remember that my timezone or general location is ",
-  "work-context": "Remember that my work context or schedule is ",
+  "response-style": "Remember that I like replies that are ",
+  "current-goals": "Remember that something I want to achieve is ",
+  "active-projects": "Remember that a project I am working on is ",
+  "timezone-location": "Remember that my time zone or general area is ",
+  "work-context": "Remember that my work or schedule includes ",
   "technology-environment":
-    "Remember that my main technology environment is ",
+    "Remember that a device or program I use is ",
   "household-context":
-    "Remember that the household context useful for planning is ",
-  "vehicle-context": "Remember that my vehicle context is ",
+    "Remember that someone I plan with is ",
+  "vehicle-context": "Remember that my vehicle or maintenance reminder is ",
   "home-responsibilities":
-    "Remember that my current home responsibility is ",
-  "financial-goals": "Remember that my high-level financial goal is ",
+    "Remember that a home job or project I want help with is ",
+  "financial-goals": "Remember that a money goal I want help planning is ",
   "health-preferences":
-    "Remember that my health or dietary preference is ",
+    "Remember that a food or health preference useful for planning is ",
   "emergency-plan":
-    "Remember that my emergency plan or contact process is ",
+    "Remember that an emergency contact or step I want to save is ",
 };
 
 function ChatApp() {

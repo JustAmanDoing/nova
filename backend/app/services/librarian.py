@@ -199,16 +199,14 @@ class LibrarianService:
                 round(sum(confidences) / len(confidences), 3) if confidences else None
             ),
             methodology=(
-                "The health score is the unweighted mean of existing core "
-                "coverage, freshness, deterministic retrieval, file integrity, "
-                "and consistency dimensions. Consistency counts verified active "
-                "records not involved in a deterministic duplicate or same-title "
-                "conflict. The score evaluates the knowledge store, not the owner."
+                "Nova checks five things: whether useful information is present, "
+                "up to date, easy to find, matches its saved files, and does not "
+                "repeat or disagree. The score describes Nova's saved information, "
+                "not the owner."
             ),
             limitation=(
-                "The Librarian is read-only. It reports deterministic evidence "
-                "and links to the existing knowledge review workflow; it never "
-                "edits, merges, retires, deletes, uploads, or invents knowledge."
+                "The Librarian only shows suggestions. It cannot change, combine, "
+                "remove, share, or make up saved information."
             ),
         )
 
@@ -219,8 +217,8 @@ class LibrarianService:
             total=len(issues),
             issues=issues,
             limitation=(
-                "Review items are recomputed from current local evidence and are "
-                "not a second knowledge store. No item changes knowledge."
+                "This list comes from your current saved information. It is not "
+                "another copy, and opening an item changes nothing."
             ),
         )
 
@@ -237,8 +235,8 @@ class LibrarianService:
             revisions=self._revisions(issue.record_ids),
             events=self._events(issue.record_ids),
             limitation=(
-                "This detail view is evidence only. Use the linked existing "
-                "workflow to review a record; no action occurs here."
+                "This page only explains the suggestion. Open it in Chat if you "
+                "want to review it; nothing changes here."
             ),
         )
 
@@ -291,9 +289,21 @@ class LibrarianService:
                 continue
             issue_type = source.verification_status
             labels = {
-                "missing_file": ("critical", "Missing knowledge file"),
-                "checksum_mismatch": ("critical", "Knowledge checksum mismatch"),
-                "broken_reference": ("critical", "Broken knowledge reference"),
+                "missing_file": ("critical", "Saved file is missing"),
+                "checksum_mismatch": ("critical", "Saved file changed unexpectedly"),
+                "broken_reference": ("critical", "Saved file link does not work"),
+            }
+            reasons = {
+                "missing_file": "The saved file is no longer where Nova expects it.",
+                "checksum_mismatch": "The file no longer matches the version you approved.",
+                "broken_reference": (
+                    "The saved file points outside Nova's allowed knowledge folder."
+                ),
+            }
+            problem_labels = {
+                "missing_file": "File missing",
+                "checksum_mismatch": "File changed",
+                "broken_reference": "File link problem",
             }
             priority, title = labels[issue_type]
             issues.append(
@@ -302,19 +312,18 @@ class LibrarianService:
                     source.record_id,
                     priority,
                     f"{title}: {source.title}",
-                    "An active approved record cannot be integrity-verified.",
-                    "The current file evidence does not match the approved record metadata.",
+                    "Nova cannot safely use this saved item right now.",
+                    reasons[issue_type],
                     (
-                        f"Verification status: {issue_type.replace('_', ' ')}.",
-                        f"Expected local path: {source.relative_path}.",
-                        f"Recorded SHA-256: {source.sha256}.",
+                        f"Problem: {problem_labels[issue_type]}.",
+                        f"Expected file: {source.relative_path}.",
+                        f"Saved file check code: {source.sha256}.",
                     ),
                     1.0,
                     (source.record_id,),
                     (source.title,),
                     (
-                        "Open the record in the existing review workflow and "
-                        "verify the source before changing anything."
+                        "Open this item and check the file before making any changes."
                     ),
                     _record_url(source.record_id),
                 )
@@ -339,26 +348,19 @@ class LibrarianService:
                         "duplicate",
                         "|".join(record_ids),
                         "medium",
-                        f"Possible duplicate: {titles[0]} and {titles[1]}",
+                        f"These may say the same thing: {titles[0]} and {titles[1]}",
+                        "The two saved items are very similar.",
+                        "Nova found a strong match using its usual saved-item comparison.",
                         (
-                            "Two active records meet NOVA's existing "
-                            "deterministic duplicate threshold."
-                        ),
-                        (
-                            "The same duplicate scoring used during knowledge "
-                            "approval found substantial overlap."
-                        ),
-                        (
-                            f"Deterministic duplicate score: {score:.3f}.",
-                            f"Record IDs: {record_ids[0]} and {record_ids[1]}.",
+                            f"Similarity: {score * 100:.0f}%.",
+                            f"Saved items: {titles[0]} and {titles[1]}.",
                         ),
                         score,
                         record_ids,
                         titles,
                         (
-                            "Review both records in the existing knowledge "
-                            "workflow; keep, revise, or retire only with owner "
-                            "approval."
+                            "Compare both items. Keep, update, or remove one only "
+                            "if you choose."
                         ),
                         _record_url(record_ids[0]),
                     )
@@ -378,25 +380,21 @@ class LibrarianService:
                     "conflict",
                     "|".join(record_ids),
                     "high",
-                    f"Potential conflict: {titles[0]}",
+                    f"These may disagree: {titles[0]}",
+                    "Two saved items have the same name but different information.",
                     (
-                        "Multiple active records use the same normalized title "
-                        "but contain different text."
+                        "Nova can see that the names match and the text differs. "
+                        "It cannot decide which one is right."
                     ),
                     (
-                        "NOVA can prove the titles match and the contents differ; "
-                        "it does not infer which statement is true."
-                    ),
-                    (
-                        f"Normalized title: {normalized_title}.",
-                        f"Distinct active contents: {len(contents)}.",
+                        f"Matching name: {titles[0]}.",
+                        f"Different versions found: {len(contents)}.",
                     ),
                     1.0,
                     record_ids,
                     titles,
                     (
-                        "Compare the source records in the existing workflow and "
-                        "decide whether a new revision is needed."
+                        "Compare both saved items and update one only if you choose."
                     ),
                     _record_url(record_ids[0]),
                 )
@@ -409,22 +407,19 @@ class LibrarianService:
                         "stale",
                         requirement.id,
                         "medium",
-                        f"Review due: {requirement.title}",
-                        (
-                            "The existing quality report marks this area stale "
-                            f"after {requirement.review_days} days."
-                        ),
+                        f"{requirement.title} may need checking",
+                        f"This saved information has not been checked for "
+                        f"{requirement.review_days} days.",
                         requirement.why,
                         (
-                            f"Last reviewed: {requirement.last_reviewed}.",
-                            f"Review interval: {requirement.review_days} days.",
+                            f"Last checked: {requirement.last_reviewed}.",
+                            f"Suggested check: every {requirement.review_days} days.",
                         ),
                         1.0,
                         requirement.matched_record_ids,
                         requirement.matched_record_titles,
                         (
-                            "Open the matching record and save a new revision "
-                            "only if the owner confirms a change."
+                            "Open the saved item. Update it only if something has changed."
                         ),
                         (
                             _record_url(requirement.matched_record_ids[0])
@@ -439,15 +434,19 @@ class LibrarianService:
                         "missing_coverage",
                         requirement.id,
                         "high" if requirement.core else "low",
-                        f"Missing coverage: {requirement.title}",
+                        requirement.title,
                         (
-                            "No active, approved, integrity-verified record "
-                            "matches this published checklist area."
+                            "You have not saved anything about this in Nova. "
+                            "You can ignore this suggestion."
                         ),
                         requirement.why,
                         (
-                            f"Checklist domain: {requirement.domain}.",
-                            f"Core area: {'yes' if requirement.core else 'no'}.",
+                            f"Area: {requirement.domain.title()}.",
+                            (
+                                "Suggested for basic Nova setup."
+                                if requirement.core
+                                else "Optional suggestion."
+                            ),
                         ),
                         1.0,
                         (),

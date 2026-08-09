@@ -11,13 +11,35 @@ import {
 } from "./lib/api";
 
 const ISSUE_LABELS: Record<string, string> = {
-  duplicate: "Duplicate",
-  conflict: "Conflict",
-  stale: "Review due",
-  missing_coverage: "Missing coverage",
-  missing_file: "Missing file",
-  checksum_mismatch: "Checksum",
-  broken_reference: "Broken reference",
+  duplicate: "Possible repeat",
+  conflict: "Different versions",
+  stale: "May need checking",
+  missing_coverage: "Not saved yet",
+  missing_file: "File missing",
+  checksum_mismatch: "File changed",
+  broken_reference: "File link problem",
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  critical: "Urgent",
+  high: "Important",
+  medium: "Worth checking",
+  low: "Optional",
+};
+
+const DIMENSION_LABELS: Record<string, string> = {
+  coverage: "What is saved",
+  freshness: "Up to date",
+  retrieval: "Easy to find",
+  integrity: "Files match",
+  consistency: "No conflicts",
+};
+
+const VERIFICATION_LABELS: Record<string, string> = {
+  verified: "File checked",
+  missing_file: "File missing",
+  checksum_mismatch: "File changed",
+  broken_reference: "File link problem",
 };
 
 export default function LibrarianApp() {
@@ -78,6 +100,7 @@ export default function LibrarianApp() {
       (health?.counts.conflicts ?? 0),
     [health],
   );
+  const itemCount = review?.total ?? 0;
 
   async function openItem(issue: LibrarianIssue) {
     setDetailLoading(true);
@@ -113,22 +136,21 @@ export default function LibrarianApp() {
         </div>
         <span className="librarian-local-status">
           <span aria-hidden="true" />
-          Read-only analysis
+          Suggestions only
         </span>
       </nav>
 
       <header className="librarian-hero">
         <div>
-          <p className="eyebrow">Milestone 78 · Knowledge health</p>
-          <h1>Keep knowledge trustworthy.</h1>
+          <p className="eyebrow">Knowledge check</p>
+          <h1>Check what Nova remembers.</h1>
           <p>
-            The Librarian checks approved local records, sources, revisions,
-            freshness, and checksums. It explains what needs review and changes
-            nothing by itself.
+            The Librarian checks your saved information and points out anything
+            worth looking at. It never changes anything by itself.
           </p>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading}>
-          {loading ? "Checking…" : "Refresh analysis"}
+          {loading ? "Checking…" : "Check again"}
         </button>
       </header>
 
@@ -136,41 +158,44 @@ export default function LibrarianApp() {
 
       <section className="librarian-summary" aria-label="Knowledge health summary">
         <SummaryCard
-          label="Knowledge health"
+          label="Overall health"
           value={loading && !health ? "—" : `${health?.health_score ?? 0}%`}
           tone="good"
         />
         <SummaryCard
-          label="Review queue"
+          label="Suggestions"
           value={loading && !review ? "—" : String(review?.total ?? 0)}
         />
         <SummaryCard
-          label="Needs attention"
+          label="Problems"
           value={loading && !health ? "—" : String(attentionCount)}
           tone={attentionCount > 0 ? "warn" : "good"}
         />
         <SummaryCard
-          label="Verified sources"
+          label="Checked records"
           value={loading && !health ? "—" : String(health?.verified_source_count ?? 0)}
         />
       </section>
 
       <section className="librarian-method">
         <div>
-          <p className="section-number">Five transparent checks</p>
-          <h2>Health dimensions</h2>
+          <p className="section-number">Five simple checks</p>
+          <h2>How everything looks</h2>
         </div>
         <div className="librarian-dimensions">
           {Object.entries(health?.dimensions ?? {}).map(([label, value]) => (
             <div key={label}>
-              <span>{readable(label)}</span>
+              <span>{DIMENSION_LABELS[label] ?? readable(label)}</span>
               <strong>{value}%</strong>
-              <div className="librarian-meter" aria-label={`${readable(label)} ${value}%`}>
+              <div
+                className="librarian-meter"
+                aria-label={`${DIMENSION_LABELS[label] ?? readable(label)} ${value}%`}
+              >
                 <span style={{ width: `${value}%` }} />
               </div>
             </div>
           ))}
-          {!health ? <p>Checking the existing quality report and local sources…</p> : null}
+          {!health ? <p>Checking your saved information…</p> : null}
         </div>
       </section>
 
@@ -178,13 +203,13 @@ export default function LibrarianApp() {
         <section className="librarian-queue" aria-label="Librarian review queue">
           <div className="librarian-section-heading">
             <div>
-              <p className="section-number">Owner review</p>
-              <h2>{review?.total ?? 0} items to consider</h2>
+              <p className="section-number">Your choice</p>
+              <h2>{itemCount} {itemCount === 1 ? "item" : "items"} to consider</h2>
             </div>
-            <span>No automatic changes</span>
+            <span>Nothing changes unless you choose</span>
           </div>
           {!loading && review?.issues.length === 0 ? (
-            <p className="librarian-empty">No deterministic review item is active.</p>
+            <p className="librarian-empty">Nothing needs your review.</p>
           ) : null}
           <div className="librarian-issue-list">
             {review?.issues.map((issue) => (
@@ -192,10 +217,10 @@ export default function LibrarianApp() {
                 <div className="librarian-issue-copy">
                   <div className="librarian-badges">
                     <span className={`librarian-priority ${issue.priority}`}>
-                      {readable(issue.priority)}
+                      {PRIORITY_LABELS[issue.priority] ?? readable(issue.priority)}
                     </span>
                     <span>{ISSUE_LABELS[issue.issue_type]}</span>
-                    <span>{Math.round(issue.confidence * 100)}% evidence</span>
+                    <span>{Math.round(issue.confidence * 100)}% sure</span>
                   </div>
                   <h3>{issue.title}</h3>
                   <p>{issue.summary}</p>
@@ -206,9 +231,9 @@ export default function LibrarianApp() {
                     onClick={() => void openItem(issue)}
                     disabled={detailLoading}
                   >
-                    View evidence
+                    Why this is here
                   </button>
-                  {issue.review_url ? <a href={issue.review_url}>Review</a> : null}
+                  {issue.review_url ? <a href={issue.review_url}>Open</a> : null}
                 </div>
               </article>
             ))}
@@ -217,14 +242,14 @@ export default function LibrarianApp() {
 
         <aside
           className={`librarian-detail ${detail ? "has-detail" : ""}`}
-          aria-label="Selected Librarian item"
+          aria-label="Suggestion details"
           role={detail ? "dialog" : undefined}
           aria-modal={detail ? "true" : undefined}
           onKeyDown={(event) => {
             if (event.key === "Escape") setDetail(null);
           }}
         >
-          <p className="section-number">Evidence and sources</p>
+          <p className="section-number">Why this is here</p>
           {detail ? (
             <>
               <div className="librarian-detail-heading">
@@ -235,23 +260,28 @@ export default function LibrarianApp() {
               </div>
               <p>{detail.issue.reason}</p>
               <ul>{detail.issue.evidence.map((item) => <li key={item}>{item}</li>)}</ul>
-              <h3>Suggested next step</h3>
+              <h3>What you can do</h3>
               <p>{detail.issue.suggested_action}</p>
               {detail.sources.map((source) => (
                 <article className="librarian-source" key={source.record_id}>
                   <strong>{source.title}</strong>
                   <span>
-                    {readable(source.kind)} · revision {source.revision} ·{" "}
-                    {Math.round(source.candidate_confidence * 100)}% source confidence
+                    Saved as {readable(source.kind).toLowerCase()} · version{" "}
+                    {source.revision} · {Math.round(source.candidate_confidence * 100)}% sure
                   </span>
-                  <span>{readable(source.verification_status)}</span>
+                  <span>
+                    {VERIFICATION_LABELS[source.verification_status] ??
+                      readable(source.verification_status)}
+                  </span>
                   <p>{source.content}</p>
-                  <small>{source.relative_path} · SHA-256 {source.sha256.slice(0, 12)}…</small>
+                  <small>
+                    {source.relative_path} · File check code {source.sha256.slice(0, 12)}…
+                  </small>
                 </article>
               ))}
               {detail.events.length ? (
                 <>
-                  <h3>Audit history</h3>
+                  <h3>Change history</h3>
                   <ul>
                     {detail.events.map((event) => (
                       <li key={event.sequence}>
@@ -263,20 +293,22 @@ export default function LibrarianApp() {
               ) : null}
               {detail.issue.review_url ? (
                 <a className="librarian-review-link" href={detail.issue.review_url}>
-                  Open existing review workflow
+                  Open review in Chat
                 </a>
               ) : null}
             </>
           ) : (
-            <p>Select a review item to inspect why it was flagged, its source
-              confidence, and its immutable revision evidence.</p>
+            <p>
+              Choose an item to see why Nova showed it, what information it used,
+              and what you can do next.
+            </p>
           )}
         </aside>
       </div>
 
       <footer className="librarian-boundary">
-        <strong>The Librarian is advisory.</strong>
-        <p>{health?.limitation ?? "It never edits, merges, retires, or deletes knowledge."}</p>
+        <strong>The Librarian only makes suggestions.</strong>
+        <p>{health?.limitation ?? "It never changes or removes your saved information."}</p>
       </footer>
     </main>
   );
@@ -304,5 +336,5 @@ function readable(value: string): string {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unable to read Librarian analysis.";
+  return error instanceof Error ? error.message : "Nova could not load this check.";
 }
