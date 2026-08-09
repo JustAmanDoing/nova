@@ -62,5 +62,6 @@ owner decision.
 
 ## Exact next action
 
-After protected CI passes on the reconciled PR #33 head, the owner reviews the
-consolidated validation evidence and explicitly approves or rejects merging it.
+Begin a separate evidence-led capability discussion. No Milestone 80 runtime
+scope is approved before architecture review, engineering review, and explicit
+owner approval.

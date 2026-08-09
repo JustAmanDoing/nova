@@ -8,9 +8,9 @@
 
 **Installed current head:** `93daa9806590c950c94044e637a44125f5739ec0`
 
-**Status:** Installed behavior and Knowledge Examples Phase 1 are technically
-verified and owner-accepted on PC and phone; this consolidated evidence remains
-under review in draft PR #33
+**Status:** Complete; installed behavior and Knowledge Examples Phase 1 are
+technically verified, owner-accepted on PC and phone, and integrated through
+PR #33 at merge commit `41adbfff8c0bc44b091ff977e7635abc82e399ce`
 
 ## Objective
 
@@ -144,9 +144,9 @@ absent. The control remains fail-closed and no network setting was changed.
 
 The installed correction and Knowledge Examples Phase 1 pass with no observed
 runtime, privacy, integrity, data-preservation, or usability defect. The
-installed behavior is owner-accepted; Milestone 79 remains in progress only
-while this consolidated validation evidence is reviewed. NOVA 0.78.2 remains
-the installed version at merge commit
+installed behavior is owner-accepted and its consolidated validation evidence
+is integrated. Milestone 79 is complete. NOVA 0.78.2 remains the installed
+version at merge commit
 `93daa9806590c950c94044e637a44125f5739ec0`.
 
 Any approval-assisted Librarian action still requires a new architecture and
@@ -157,10 +157,11 @@ engineering decision plus explicit owner approval.
 - Accepted practical local NOVA prototype: 100 percent.
 - Broader long-term NOVA vision: approximately 86 percent, unchanged because
   this milestone validates existing behavior rather than adding capability.
-- Milestone 79: approximately 95 percent; the behavior is merged, installed,
-  technically verified, and owner-accepted, with evidence integration pending.
+- Milestone 79: 100 percent; the behavior and evidence are merged, installed,
+  technically verified, and owner-accepted.
 
 ## Exact next action
 
-After protected CI passes on the reconciled PR #33 head, the owner reviews this
-consolidated validation record and explicitly approves or rejects merging it.
+Begin a separate evidence-led capability discussion. No Milestone 80 runtime
+scope is approved before architecture review, engineering review, and explicit
+owner approval.

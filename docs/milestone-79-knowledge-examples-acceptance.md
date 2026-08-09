@@ -83,8 +83,9 @@ path, model, permission, or external provider.
 - The private Tailscale route remains healthy and Funnel remains off, but the
   pre-existing NOVA ownership record for the current Serve configuration is
   still absent.
-- Draft PR #33 remains separate validation and state evidence. This acceptance
-  record does not modify or claim acceptance of that branch.
+- PR #33 remained separate validation and state evidence until it merged at
+  `41adbfff8c0bc44b091ff977e7635abc82e399ce`. It did not modify the accepted
+  Phase 1 behavior.
 
 ## Project state
 
@@ -92,11 +93,11 @@ path, model, permission, or external provider.
   and owner-accepted.
 - Accepted practical local NOVA prototype: 100 percent.
 - Broader long-term NOVA vision: approximately 86 percent.
-- Milestone 79 overall: approximately 95 percent; its separate daily-use
-  validation evidence and final reconciliation remain in progress.
+- Milestone 79 overall: 100 percent; its separate daily-use validation evidence
+  is integrated and the installed behavior is owner-accepted.
 
 ## Exact next action
 
-After protected CI passes on the exact documentation-PR head, the owner reviews
-and explicitly approves or rejects merging this acceptance record. Do not
-merge it merely because the checks pass.
+Begin a separate evidence-led capability discussion. No Milestone 80 runtime
+scope is approved before architecture review, engineering review, and explicit
+owner approval.

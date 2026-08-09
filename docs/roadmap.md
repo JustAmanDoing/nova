@@ -712,11 +712,12 @@ Foundation documents:
 
 ## Milestone 79 - Librarian Daily-Use Validation
 
-**Status (9 August 2026): daily-use validation evidence remains under review in
-draft PR #33. The plain-language correction from PR #34 and Knowledge Examples
-Phase 1 from PR #35 are merged, installed, technically verified, and accepted
-on the physical PC and phone. No release tag, version bump, detection-rule, or
-authority change was made.**
+**Status (9 August 2026): complete and owner-accepted. PR #33 integrated the
+daily-use validation evidence at merge commit
+`41adbfff8c0bc44b091ff977e7635abc82e399ce`. The plain-language correction from
+PR #34 and Knowledge Examples Phase 1 from PR #35 are merged, installed,
+technically verified, and accepted on the physical PC and phone. No release
+tag, version bump, detection-rule, or authority change was made.**
 
 - Validate explanations, issue ordering, and review links on PC and phone -
   complete and owner-accepted.
@@ -741,6 +742,10 @@ Knowledge Examples Phase 1 evidence:
 Validation evidence:
 
 - `docs/milestone-79-librarian-daily-use-validation.md`
+
+No Milestone 80 runtime scope is approved. The next gate is an evidence-led
+capability discussion, followed by architecture review, engineering review, and
+explicit owner approval before any implementation.
 
 ## Later capabilities
 
