@@ -179,9 +179,14 @@ added a truthful failure-path test.
 - CI/workflow, container-contract, container-policy, and repository-hygiene
   static tests: 10 passed.
 - Working-tree whitespace check: passed.
-- PowerShell Windows-control and local Docker/Compose execution: not available
-  in the Remote sandbox; the unchanged Windows controls and the new isolated
-  no-model Conductor smoke path remain required in protected GitHub CI.
+- PowerShell Windows-control validation: passed on the Windows development host.
+- Compose validation and both production image builds: passed on the Windows
+  development host without starting or installing NOVA.
+- An isolated backend container with Ollama unavailable published exactly the
+  four approved capabilities and completed the no-model Next actions request
+  with persisted capability evidence. Its test-only container and volumes were
+  removed after the check.
+- Protected GitHub CI remains required before merge consideration.
 
 This is candidate evidence only. It does not represent protected CI, merge,
 release, installation, or owner acceptance.
