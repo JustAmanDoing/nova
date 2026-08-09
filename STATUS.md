@@ -9,13 +9,13 @@
 ---
 record_version: 1
 verification: VERIFIED
-verified_at: 2026-08-10T13:45:00+10:00
-current_milestone: Milestone 80 - Conductor Phase 1 candidate in progress; feature work paused for continuity
+verified_at: 2026-08-10T09:47:04+10:00
+current_milestone: Milestone 80 - Conductor Phase 1 candidate in progress; continuity operational and feature work remains paused
 integrated_branch: main
 integrated_commit: 1905e442699d923c2ea6a70b62e17712684f330b
-active_branch: agent/milestone-80-conductor-phase-1
-active_commit: bce194bbe3154ce1ec2c895d779a55cbaa72d43c
-pull_request: 38
+active_branch: agent/engineering-continuity
+active_commit: f8be9d7121881643790c6292803960ba45c7b1c7
+pull_request: none
 release: v0.78.2
 installed_commit: 93daa9806590c950c94044e637a44125f5739ec0
 ---
@@ -48,8 +48,10 @@ Milestone 79 is complete and integrated on `main`.
 - The candidate implements four exact read-only Conductor status requests,
   no-model routing for those requests, evidence persistence, Migration 18, UI
   starters and evidence cards, regression coverage, and CI smoke coverage.
-- Further Milestone 80 product work is paused until the engineering-continuity
-  workflow is committed and verified.
+- The canonical GitHub status branch, mandatory repository instructions,
+  engineering workflow, live fail-closed resume check, and Windows structural
+  regression guard are implemented and published. Milestone 80 product work
+  remains paused pending continuity review and integration.
 
 ## Checks and tests
 
@@ -65,12 +67,24 @@ For Milestone 80 candidate commit
   Backend quality, Frontend quality, and Production runtime all passed.
 - Existing non-failing React `act(...)` warnings remain.
 
+For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
+
+- `git diff --check` passed.
+- PowerShell syntax validation passed.
+- `scripts/Test-NovaScripts.ps1` passed with the continuity regression guard.
+- The live GitHub resume check reconciled `main`, the Milestone 80 head, and
+  draft PR #38.
+- A deliberately missing status ref failed closed with
+  `CURRENT STATUS NOT VERIFIED`.
+
 ## Branch and commit
 
 - Integrated branch: `main`
 - Integrated commit: `1905e442699d923c2ea6a70b62e17712684f330b`
-- Active feature branch: `agent/milestone-80-conductor-phase-1`
-- Active feature commit: `bce194bbe3154ce1ec2c895d779a55cbaa72d43c`
+- Active continuity branch: `agent/engineering-continuity`
+- Active continuity commit: `f8be9d7121881643790c6292803960ba45c7b1c7`
+- Paused Milestone 80 branch: `agent/milestone-80-conductor-phase-1` at
+  `bce194bbe3154ce1ec2c895d779a55cbaa72d43c`
 - Actual Windows checkout: clean `agent/fix-knowledge-gap-refresh` at
   `b3bd610cbd0536fd99c26001d1211b47d92dee0a`; after fetch, that local branch is
   behind its remote by four commits. Its local `main` remains stale at
@@ -79,9 +93,11 @@ For Milestone 80 candidate commit
 
 ## Pull request and release state
 
-- Draft PR #38, **Add bounded Conductor status routing**, is open and mergeable
-  against `main`.
-- PR #38 protected CI is successful.
+- The continuity branch is pushed but has no pull request. The GitHub App can
+  read but returned 403 for issue, branch, and pull-request mutations; local
+  `gh` authentication reports an invalid token. No credential was changed.
+- Draft PR #38, **Add bounded Conductor status routing**, remains open and
+  mergeable against `main`; its protected CI is successful.
 - Merge, release, Windows installation, and physical acceptance are not
   approved.
 - Current installed release: NOVA 0.78.2 at installed commit
@@ -93,13 +109,15 @@ For Milestone 80 candidate commit
 
 ## Blockers and risks
 
-- Engineering continuity must be committed and verified before more Milestone
-  80 implementation or merge consideration.
+- Engineering continuity is operational on GitHub and locally verified, but
+  its repository instructions are not integrated on `main` until owner review,
+  draft PR creation, protected CI, and explicit merge approval.
 - The actual Windows checkout is clean but stale and on an older branch; align
   it deliberately before local feature engineering resumes.
-- Local GitHub CLI authentication reports an invalid token. The continuity read
-  path therefore uses GitHub's public read-only API and does not require that
-  credential.
+- Local GitHub CLI authentication reports an invalid token and the GitHub App
+  lacks write permission. The continuity read path works through GitHub's
+  public read-only API and does not require that credential, but draft PR
+  creation is blocked until GitHub CLI authentication is restored.
 - PR #38 documentation and description still say protected CI is required even
   though the exact-head run passed. Correct that evidence only after continuity
   is operational.
@@ -108,9 +126,10 @@ For Milestone 80 candidate commit
 
 ## Exact next action
 
-Implement and verify the engineering-continuity workflow on the dedicated
-`agent/engineering-continuity` branch, without changing Milestone 80 product
-code. Then update this record to the continuity commit and PR state.
+Restore GitHub CLI authentication, open a draft pull request from
+`agent/engineering-continuity` at
+`f8be9d7121881643790c6292803960ba45c7b1c7` to `main`, and let protected CI run.
+Do not resume Milestone 80 product work or merge either branch.
 
 ## Session closeout requirement
 
