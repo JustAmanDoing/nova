@@ -4,17 +4,20 @@
 
 **Validated release:** 0.78.2
 
-**Validated repository base:** `d7615cdfc2238f12d459ed26bcbd6cdcb4b88e3a`
+**Initial validation base:** `d7615cdfc2238f12d459ed26bcbd6cdcb4b88e3a`
 
-**Status:** In progress; technical PC and phone-sized checkpoint passed, owner
-daily-use feedback pending
+**Installed correction head:** `d60799dc56ebc10174076e9b98fb3659b7075fd6`
+
+**Status:** In progress; the approved plain-language correction is installed,
+all technical checks passed, and physical owner acceptance is pending
 
 ## Objective
 
 Validate the accepted read-only Librarian during ordinary PC and private-phone
-use before proposing any change to its detection rules or authority. This
-milestone records evidence only. It adds no runtime behavior, dependency, data,
-schema, deployment, network, automatic action, or second review store.
+use before proposing any change to its detection rules or authority. The
+milestone began as evidence-only validation. Owner feedback led to the
+separately approved copy-only correction in PR #34. It added no detection,
+dependency, data, schema, network, automatic action, or second review store.
 
 ## Live checkpoint
 
@@ -29,12 +32,12 @@ equivalent Librarian health, review-queue, and item-detail evidence:
 - 16 active records and 16 verified sources;
 - duplicate, conflict, stale, missing-file, broken-reference, and checksum
   findings: zero; and
-- four low-priority optional missing-coverage suggestions, ordered by title:
-  Emergency plan, Financial goals, Home responsibilities, and Vehicle context.
+- four optional suggestions, ordered by title: Emergency contacts or plan,
+  Home jobs and projects, Money goals, and Vehicle details and maintenance.
 
-Every item exposed a deterministic reason, checklist evidence, confidence,
-safe optional next step, and an existing Chat review link. The links prepared
-an editable prompt and displayed that nothing had been sent or saved.
+Every item used everyday wording, explained why it appeared, offered a safe
+optional next step, and linked to the existing Chat review flow. The links
+prepared an editable prompt and displayed that nothing had been sent or saved.
 
 ## Read-only proof
 
@@ -50,14 +53,22 @@ dialogs, and review handoff were exercised without submitting a prompt.
 No knowledge was edited, merged, retired, deleted, uploaded, inferred, or
 added. No automatic action occurred.
 
+Before installation, NOVA created a verified database backup. After the
+installation, the backup passed the protected download verification, the active
+database passed its integrity check, all 19 approved knowledge files remained
+present, and the same 16 active records, verified sources, and review-item IDs
+remained available. Opening the installed Librarian and Chat handoff did not
+change the active database.
+
 ## Usability checkpoint
 
-The PC page and a 390 by 844 phone viewport were reviewed against the private
-route. The page had no horizontal overflow, retained understandable health and
-queue summaries, kept all four issues in the expected order, and exposed the
-same evidence and review destinations as the API. The evidence dialog stayed
-within the phone viewport; its close and review controls were 44 pixels high.
-No browser warning or error was recorded.
+The installed PC page and a 390 by 844 phone viewport were reviewed. The page
+had no horizontal overflow, used the approved plain-language labels, kept all
+four suggestions in the expected order, and showed the same details as the
+private phone route. The Home jobs and projects explanation fitted within the
+phone viewport, every visible control met the 44-pixel touch target, and the
+Chat handoff prepared the expected editable sentence. No browser warning or
+error was recorded.
 
 Responsive navigation keeps four destinations visible by hiding the current
 page's own link. Librarian remained reachable from the other primary pages,
@@ -74,6 +85,9 @@ and its own page retained Chat, Focus, Record, and Intake links.
 - Windows launcher and controller checks: passed.
 - Compose configuration: passed.
 - Protected GitHub CI on the exact repository base: all required jobs passed.
+- PR #34 protected CI and post-merge `main` CI: all four jobs passed.
+- Windows installation reached merge commit
+  `d60799dc56ebc10174076e9b98fb3659b7075fd6` after creating a verified backup.
 - Installed runtime, PC route, private route, API equivalence, responsive UI,
   review handoff, and data-preservation checks: passed.
 
@@ -83,13 +97,14 @@ Neither warning is specific to the Librarian or changed by this milestone.
 
 ## Remaining daily-use evidence
 
-Synthetic responsive checks support acceptance but do not replace physical
-owner use. The remaining bounded evidence is whether, during normal phone use:
+Automated responsive checks support acceptance but do not replace physical
+owner use. The remaining bounded evidence is whether the installed wording:
 
-1. the four optional suggestions are understandable and not distracting;
-2. their ordering feels useful;
-3. View evidence provides enough explanation; and
-4. Review opens the expected editable prompt without unexpected action.
+1. makes Home jobs and projects, Money goals, and Vehicle details and
+   maintenance understandable;
+2. makes it clear that every suggestion is optional;
+3. gives enough explanation under Why this is here; and
+4. opens the expected editable prompt without unexpected action.
 
 This feedback is required to measure false-positive friction. Do not change a
 detection rule merely to make the current queue shorter. The live store also
@@ -99,15 +114,15 @@ synthetic mutation of owner data.
 
 ## Owner feedback checkpoint
 
-On 9 August 2026, the owner confirmed that the Emergency plan suggestion is
-not needed. This is measured false-positive friction for this owner: the
-suggestion is technically accurate against the optional checklist, but is not
-useful in normal use.
+On 9 August 2026, the owner confirmed that the Emergency plan suggestion is not
+needed. The owner also confirmed that home responsibilities are useful but the
+old technical wording was hard to understand. The owner approved PR #34's
+plain-language correction and approved its Windows installation.
 
 No emergency-plan knowledge was added merely to clear the queue, and no
-detection rule was changed from this single observation. Financial goals, Home
-responsibilities, Vehicle context, evidence clarity, ordering, and the review
-handoff remain to be assessed through normal phone use.
+detection rule was changed from this single observation. Emergency contacts or
+plan remains an optional suggestion that can be ignored. A future Ignore action
+or detection change remains a separate product decision.
 
 The private route works, but the existing Windows phone-status control still
 cannot prove route ownership because its original Serve ownership record is
@@ -115,9 +130,11 @@ absent. The control remains fail-closed and no network setting was changed.
 
 ## Current decision
 
-The technical checkpoint passes with no observed runtime, privacy, integrity,
-or usability defect. Milestone 79 remains in progress until the owner records
-normal phone-use feedback. Release 0.78.2 remains installed and unchanged.
+The installed correction passes with no observed runtime, privacy, integrity,
+data-preservation, or automated usability defect. Milestone 79 remains in
+progress only until the owner physically accepts the installed wording. NOVA
+0.78.2 remains the installed version at repository head
+`d60799dc56ebc10174076e9b98fb3659b7075fd6`.
 
 Any approval-assisted Librarian action still requires a new architecture and
 engineering decision plus explicit owner approval.
@@ -127,13 +144,11 @@ engineering decision plus explicit owner approval.
 - Accepted practical local NOVA prototype: 100 percent.
 - Broader long-term NOVA vision: approximately 86 percent, unchanged because
   this milestone validates existing behavior rather than adding capability.
-- Milestone 79: approximately 90 percent; the technical checkpoint is complete,
-  one noisy suggestion has been identified, and the remaining physical owner
-  feedback is still pending.
+- Milestone 79: approximately 95 percent; the correction is merged, installed,
+  and technically verified, with physical owner acceptance still pending.
 
 ## Exact next action
 
-Review Financial goals, Home responsibilities, and Vehicle context from the
-private phone route, then report whether each is useful or noisy and whether
-View evidence and Review behave as expected. Do not add knowledge merely to
-complete this validation.
+Open the installed Librarian page on the phone or PC and report whether the new
+wording is clear. In particular, check Home jobs and projects, Why this is here,
+and Open. Do not add knowledge merely to complete this validation.

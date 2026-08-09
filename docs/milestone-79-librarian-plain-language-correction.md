@@ -4,7 +4,7 @@
 
 **Base release:** 0.78.2
 
-**Status:** Owner-requested correction in review; not released or installed
+**Status:** Merged through PR #34 and installed; physical owner acceptance pending
 
 ## Owner feedback
 
@@ -41,8 +41,10 @@ terms. In particular, Home responsibilities becomes Home jobs and projects,
 and the interface explains that suggestions can be ignored and nothing changes
 unless the owner chooses.
 
-Physical owner acceptance is still required after a protected merge and
-installation. Until then, Release 0.78.2 remains authoritative.
+PR #34 merged at `d60799dc56ebc10174076e9b98fb3659b7075fd6` after all
+protected checks passed. The same commit is installed on the Windows NOVA
+runtime. NOVA is healthy, owner data was preserved, and physical owner
+acceptance is still required. Release 0.78.2 remains the authoritative version.
 
 ## Remaining limitation
 
@@ -52,5 +54,6 @@ owner decision.
 
 ## Exact next action
 
-The owner reviews the wording in draft PR #34 and explicitly approves or rejects
-it. No merge or installation happens before that decision.
+The owner checks the installed Librarian on the phone or PC and reports whether
+the new wording is clear, especially Home jobs and projects, Why this is here,
+and Open.

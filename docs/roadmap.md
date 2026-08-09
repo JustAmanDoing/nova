@@ -712,10 +712,10 @@ Foundation documents:
 
 ## Milestone 79 - Librarian Daily-Use Validation
 
-**Status (9 August 2026): in progress. The technical PC and phone-sized
-checkpoint passed against installed Release 0.78.2; physical owner daily-use
-feedback remains required. No runtime expansion or detection-rule change has
-been made.**
+**Status (9 August 2026): in progress. The owner-approved plain-language
+correction from PR #34 is merged, installed, and technically verified against
+NOVA 0.78.2. Physical owner acceptance remains required. No detection-rule or
+authority change has been made.**
 
 - Validate explanations, issue ordering, and review links on PC and phone.
 - Measure false-positive friction before changing any detection rule.
