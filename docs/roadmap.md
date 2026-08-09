@@ -687,10 +687,33 @@ Review and implementation evidence:
 - `docs/milestone-78-acceptance.md`
 - `docs/milestone-78-release-report.md`
 
+## Development System Foundation - Governance Insertion
+
+**Status (9 August 2026): documented as governance-only work. Milestone 79 has
+not begun and remains the exact next runtime milestone.**
+
+- Add repository-wide durable instructions in root `AGENTS.md`.
+- Establish the full discuss-to-owner-acceptance development playbook.
+- Define owner, product, engineering, Codex, Remote, GitHub, and Windows
+  runtime responsibilities and authority boundaries.
+- Record a current-capability matrix and require verification before building
+  replacements for existing platform features.
+- Make ChatGPT/Codex Remote on phone the primary remote development control
+  surface over the Windows PC.
+- Record the owner's physical verification of phone Remote against PC chats.
+- Keep this insertion documentation-only with no NOVA runtime change.
+
+Foundation documents:
+
+- `AGENTS.md`
+- `docs/engineering-principles.md`
+- `docs/development-playbook.md`
+
 ## Milestone 79 - Librarian Daily-Use Validation
 
-**Status: exact next milestone; validation scope approved by completion of
-Milestone 78, with no runtime expansion.**
+**Status: not begun; exact next runtime milestone after the Development System
+Foundation, with validation scope approved by completion of Milestone 78 and no
+runtime expansion.**
 
 - Validate explanations, issue ordering, and review links on PC and phone.
 - Measure false-positive friction before changing any detection rule.

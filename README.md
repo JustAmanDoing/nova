@@ -637,4 +637,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 69 acceptance](docs/milestone-69-acceptance.md)
 - [Milestone 69 release report](docs/milestone-69-release-report.md)
 - [Roadmap](docs/roadmap.md)
+- [Repository instructions](AGENTS.md)
+- [Engineering principles](docs/engineering-principles.md)
+- [Development playbook](docs/development-playbook.md)
 - [Contributing](CONTRIBUTING.md)
