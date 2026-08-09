@@ -7,10 +7,10 @@ const issue = {
   id: "lib-review-1",
   issue_type: "checksum_mismatch",
   priority: "critical",
-  title: "Knowledge checksum mismatch: Response style",
-  summary: "An active approved record cannot be integrity-verified.",
-  reason: "The file checksum differs from the approved record metadata.",
-  evidence: ["Recorded SHA-256 differs from the local file."],
+  title: "Saved file changed unexpectedly: Response style",
+  summary: "Nova cannot safely use this saved item right now.",
+  reason: "The file no longer matches the version you approved.",
+  evidence: ["Problem: File changed."],
   confidence: 1,
   record_ids: ["record-1"],
   source_titles: ["Response style"],
@@ -41,8 +41,8 @@ const health = {
   retired_record_count: 1,
   verified_source_count: 1,
   average_source_confidence: 1,
-  methodology: "Transparent five-dimension store score; not the owner.",
-  limitation: "The Librarian is read-only and never changes knowledge.",
+  methodology: "Five simple checks of Nova's saved information; not the owner.",
+  limitation: "The Librarian only shows suggestions and never changes information.",
 };
 
 const review = {
@@ -123,43 +123,51 @@ afterEach(() => {
 });
 
 describe("LibrarianApp", () => {
-  it("shows transparent health and a read-only review queue", async () => {
+  it("shows health and suggestions in plain language", async () => {
     const fetchMock = successfulFetch();
     vi.stubGlobal("fetch", fetchMock);
 
     render(<LibrarianApp />);
 
     expect(await screen.findByText("82%")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Check what Nova remembers." }))
+      .toBeInTheDocument();
     expect(screen.getByText(issue.title)).toBeInTheDocument();
-    expect(screen.getByText("No automatic changes")).toBeInTheDocument();
+    expect(screen.getByText("Nothing changes unless you choose")).toBeInTheDocument();
+    expect(screen.getByText("Files match")).toBeInTheDocument();
+    expect(screen.getByText("100% sure")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Librarian" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    expect(screen.getByRole("link", { name: "Review" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute(
       "href",
       issue.review_url,
     );
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("opens source confidence and immutable evidence without a write request", async () => {
+  it("opens plain-language details without a write request", async () => {
     const fetchMock = successfulFetch();
     vi.stubGlobal("fetch", fetchMock);
 
     render(<LibrarianApp />);
-    fireEvent.click(await screen.findByRole("button", { name: "View evidence" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Why this is here" }));
 
     const dialog = await screen.findByRole("dialog", {
-      name: "Selected Librarian item",
+      name: "Suggestion details",
     });
     expect(dialog).toBeInTheDocument();
-    expect(screen.getByText(/revision 2 · 100% source confidence/)).toBeInTheDocument();
+    expect(screen.getByText(/Saved as preference · version 2 · 100% sure/))
+      .toBeInTheDocument();
+    expect(screen.getAllByText("File changed")).toHaveLength(2);
     expect(screen.getByText("I prefer concise responses.")).toBeInTheDocument();
     expect(screen.getByText(/Updated · Owner saved revision 2/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
-    expect(screen.getByRole("link", { name: "Open existing review workflow" }))
+    expect(screen.getByRole("link", { name: "Open review in Chat" }))
       .toHaveAttribute("href", issue.review_url);
+    expect(screen.queryByText(/integrity-verified|immutable|SHA-256|deterministic/i))
+      .not.toBeInTheDocument();
     expect(fetchMock.mock.calls.every(([, init]) => !init?.method)).toBe(true);
   });
 
@@ -176,7 +184,7 @@ describe("LibrarianApp", () => {
 
     render(<LibrarianApp />);
     expect(await screen.findByText(issue.title)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Refresh analysis" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check again" }));
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("503"));
     expect(screen.getByText(issue.title)).toBeInTheDocument();

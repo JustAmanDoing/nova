@@ -77,6 +77,40 @@ def test_librarian_empty_health_and_missing_review_are_transparent(
     assert review.status_code == 200
     assert review.json()["total"] == 13
     assert all(item["issue_type"] == "missing_coverage" for item in review.json()["issues"])
+    titles = {item["title"] for item in review.json()["issues"]}
+    assert {
+        "How you like replies",
+        "What you want to achieve",
+        "Projects you are working on",
+        "Your time zone or area",
+        "Your work and schedule",
+        "Your devices and software",
+        "People you plan with",
+        "Money goals",
+        "Food or health preferences",
+    } <= titles
+    home = next(
+        item
+        for item in review.json()["issues"]
+        if item["review_url"].endswith("home-responsibilities")
+    )
+    assert home["title"] == "Home jobs and projects"
+    assert home["summary"] == (
+        "You have not saved anything about this in Nova. You can ignore this suggestion."
+    )
+    assert home["reason"] == "Helps Nova remember home maintenance and projects."
+    assert home["evidence"] == ["Area: Home.", "Optional suggestion."]
+    assert home["suggested_action"] == (
+        "Add a home job or project if you want Nova to help you remember it."
+    )
+    visible_copy = " ".join(
+        str(item[field])
+        for item in review.json()["issues"]
+        for field in ("title", "summary", "reason", "suggested_action")
+    ).lower()
+    assert "context" not in visible_copy
+    assert "environment" not in visible_copy
+    assert "dietary" not in visible_copy
 
 
 def test_librarian_detects_duplicates_conflicts_and_stale_records(
@@ -122,14 +156,19 @@ def test_librarian_detects_duplicates_conflicts_and_stale_records(
     assert any(
         item["issue_type"] == "duplicate"
         and {first["id"], duplicate["id"]} <= set(item["record_ids"])
+        and item["title"].startswith("These may say the same thing:")
         for item in issues
     )
     assert any(
         item["issue_type"] == "conflict"
         and {first["id"], conflict["id"]} <= set(item["record_ids"])
+        and item["title"].startswith("These may disagree:")
         for item in issues
     )
-    assert any(item["issue_type"] == "stale" for item in issues)
+    assert any(
+        item["issue_type"] == "stale" and item["title"].endswith("may need checking")
+        for item in issues
+    )
 
 
 def test_librarian_distinguishes_missing_checksum_and_broken_sources(
@@ -180,6 +219,10 @@ def test_librarian_distinguishes_missing_checksum_and_broken_sources(
     assert counts["broken_references"] == 1
     issue_types = {item["issue_type"] for item in review.json()["issues"]}
     assert {"missing_file", "checksum_mismatch", "broken_reference"} <= issue_types
+    issue_titles = {item["issue_type"]: item["title"] for item in review.json()["issues"]}
+    assert issue_titles["missing_file"].startswith("Saved file is missing:")
+    assert issue_titles["checksum_mismatch"].startswith("Saved file changed unexpectedly:")
+    assert issue_titles["broken_reference"].startswith("Saved file link does not work:")
 
 
 def test_librarian_item_exposes_sources_revisions_and_review_link(

@@ -111,9 +111,9 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="response-style",
         domain="preferences",
-        title="Response style",
-        why="Helps Nova present answers in the amount and style you prefer.",
-        suggestion="Describe how concise, detailed, or structured you want replies.",
+        title="How you like replies",
+        why="Helps Nova answer in the way you prefer.",
+        suggestion="Say whether you want short, detailed, or step-by-step replies.",
         priority=4,
         core=True,
         review_days=180,
@@ -127,9 +127,9 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="current-goals",
         domain="planning",
-        title="Current goals",
-        why="Lets Nova prioritise recommendations around outcomes you chose.",
-        suggestion="Add at least one current goal you want Nova to support.",
+        title="What you want to achieve",
+        why="Helps Nova focus on what matters to you.",
+        suggestion="Add something you want Nova to help you achieve.",
         priority=5,
         core=True,
         review_days=90,
@@ -139,9 +139,9 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="active-projects",
         domain="planning",
-        title="Active projects",
-        why="Gives Nova the context needed to suggest practical next actions.",
-        suggestion="Add the project you are actively working on now.",
+        title="Projects you are working on",
+        why="Helps Nova suggest useful next steps.",
+        suggestion="Add a project you are working on.",
         priority=5,
         core=True,
         review_days=90,
@@ -151,9 +151,12 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="timezone-location",
         domain="personal",
-        title="Timezone or location context",
-        why="Prevents mistakes in dates, times, schedules, and local suggestions.",
-        suggestion="Add your timezone or general location; an exact address is not needed.",
+        title="Your time zone or area",
+        why="Helps Nova get times, dates, and local suggestions right.",
+        suggestion=(
+            "Add your time zone or general area. You do not need to give an "
+            "exact address."
+        ),
         priority=4,
         core=True,
         review_days=365,
@@ -162,9 +165,9 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="work-context",
         domain="work",
-        title="Work context or schedule",
-        why="Helps Nova make realistic plans that fit your working life.",
-        suggestion="Add the work context or schedule that affects your planning.",
+        title="Your work and schedule",
+        why="Helps Nova make plans that fit around your work.",
+        suggestion="Add the working hours or job details that affect your plans.",
         priority=4,
         core=True,
         review_days=180,
@@ -180,9 +183,9 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="technology-environment",
         domain="technology",
-        title="Technology and device environment",
-        why="Helps Nova give compatible technical guidance.",
-        suggestion="Add the main devices or software environment Nova should support.",
+        title="Your devices and software",
+        why="Helps Nova give instructions that work on your devices.",
+        suggestion="Add the main devices or programs you want Nova to help with.",
         priority=3,
         core=True,
         review_days=180,
@@ -199,9 +202,11 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="household-context",
         domain="personal",
-        title="Household or relationship context",
-        why="Can improve shared planning when you choose to provide it.",
-        suggestion="Optionally add household context that is useful for planning.",
+        title="People you plan with",
+        why="Helps Nova with shared plans when you choose to save this.",
+        suggestion=(
+            "Add only the family or household details that are useful for planning."
+        ),
         priority=3,
         core=False,
         review_days=365,
@@ -218,9 +223,12 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="vehicle-context",
         domain="vehicles",
-        title="Vehicle context",
-        why="Can support compatible maintenance and ownership guidance.",
-        suggestion="Optionally add a vehicle or maintenance record.",
+        title="Vehicle details and maintenance",
+        why="Helps Nova give advice that fits your vehicle.",
+        suggestion=(
+            "Add your vehicle or a maintenance reminder if you want Nova to "
+            "help with it."
+        ),
         priority=3,
         core=False,
         review_days=180,
@@ -229,9 +237,9 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="home-responsibilities",
         domain="home",
-        title="Home responsibilities",
-        why="Can help with maintenance, inventories, and household projects.",
-        suggestion="Optionally add a current home responsibility or project.",
+        title="Home jobs and projects",
+        why="Helps Nova remember home maintenance and projects.",
+        suggestion="Add a home job or project if you want Nova to help you remember it.",
         priority=2,
         core=False,
         review_days=180,
@@ -246,9 +254,12 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="financial-goals",
         domain="finance",
-        title="Financial goals",
-        why="Can improve planning while keeping account credentials out of knowledge.",
-        suggestion="Optionally add a high-level financial goal without account secrets.",
+        title="Money goals",
+        why="Helps Nova support your planning without storing banking details.",
+        suggestion=(
+            "Add a general money goal if you want help planning it. Do not "
+            "include account numbers or passwords."
+        ),
         priority=3,
         core=False,
         review_days=180,
@@ -257,9 +268,12 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="health-preferences",
         domain="health",
-        title="Health or dietary preferences",
-        why="Can tailor general planning when you choose to provide it.",
-        suggestion="Optionally add a non-sensitive health or dietary preference.",
+        title="Food or health preferences",
+        why="Helps Nova tailor general plans when you choose to save this.",
+        suggestion=(
+            "Add a food or health preference if it would help with planning. "
+            "Avoid private medical details."
+        ),
         priority=2,
         core=False,
         review_days=180,
@@ -274,9 +288,12 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="emergency-plan",
         domain="safety",
-        title="Emergency plan",
-        why="Can make personal contingency planning easier to retrieve.",
-        suggestion="Optionally add a safe, non-secret emergency plan or contact process.",
+        title="Emergency contacts or plan",
+        why="Helps Nova find the emergency steps or contacts you choose to save.",
+        suggestion=(
+            "Add emergency contacts or steps only if you want them here. Do "
+            "not include private details you would rather keep elsewhere."
+        ),
         priority=4,
         core=False,
         review_days=180,

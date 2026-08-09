@@ -88,9 +88,9 @@ const knowledgeQualityReport = {
     {
       id: "current-goals",
       domain: "planning",
-      title: "Current goals",
-      why: "Lets Nova prioritise recommendations around outcomes you chose.",
-      suggestion: "Add at least one current goal you want Nova to support.",
+      title: "What you want to achieve",
+      why: "Helps Nova focus on what matters to you.",
+      suggestion: "Add something you want Nova to help you achieve.",
       priority: 5,
       core: true,
       review_days: 90,
@@ -102,7 +102,7 @@ const knowledgeQualityReport = {
     {
       id: "emergency-plan",
       domain: "safety",
-      title: "Emergency plan",
+      title: "Emergency contacts or plan",
       why: "Can make personal contingency planning easier to retrieve.",
       suggestion: "Optionally add a safe, non-secret emergency plan.",
       priority: 4,
@@ -786,9 +786,9 @@ describe("ChatApp", () => {
     const missingResponseStyle = {
       id: "response-style",
       domain: "preferences",
-      title: "Response style",
-      why: "Helps Nova present answers in the amount and style you prefer.",
-      suggestion: "Describe how concise, detailed, or structured you want replies.",
+      title: "How you like replies",
+      why: "Helps Nova answer in the way you prefer.",
+      suggestion: "Say whether you want short, detailed, or step-by-step replies.",
       priority: 4,
       core: true,
       review_days: 180,
@@ -869,7 +869,7 @@ describe("ChatApp", () => {
 
     expect(
       await screen.findByRole("button", {
-        name: "Add Response style through chat",
+        name: "Add How you like replies through chat",
       }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Approve & save" }));
@@ -877,7 +877,7 @@ describe("ChatApp", () => {
     await waitFor(() => {
       expect(
         screen.queryByRole("button", {
-          name: "Add Response style through chat",
+          name: "Add How you like replies through chat",
         }),
       ).toBeNull();
     });
@@ -1160,9 +1160,9 @@ describe("ChatApp", () => {
     expect(
       screen.getByText(/NOVA scores its published capability checklist, not you/),
     ).toBeInTheDocument();
-    expect(screen.getByText("Current goals")).toBeInTheDocument();
+    expect(screen.getByText("What you want to achieve")).toBeInTheDocument();
     expect(screen.getByText("Core")).toBeInTheDocument();
-    expect(screen.getByText("Emergency plan")).toBeInTheDocument();
+    expect(screen.getByText("Emergency contacts or plan")).toBeInTheDocument();
     expect(screen.getByText("Optional")).toBeInTheDocument();
     expect(screen.getAllByText("Missing")).toHaveLength(2);
     expect(
@@ -1250,13 +1250,13 @@ describe("ChatApp", () => {
     render(<ChatApp />);
 
     const addButton = await screen.findByRole("button", {
-      name: "Add Current goals through chat",
+      name: "Add What you want to achieve through chat",
     });
     const callsBeforeClick = fetchMock.mock.calls.length;
     fireEvent.click(addButton);
 
     const composer = screen.getByRole("textbox", { name: "Message Nova" });
-    expect(composer).toHaveValue("Remember that my current goal is ");
+    expect(composer).toHaveValue("Remember that something I want to achieve is ");
     expect(composer).toHaveFocus();
     expect(screen.getByRole("status")).toHaveTextContent(
       "Nothing has been sent or saved.",
@@ -1298,13 +1298,13 @@ describe("ChatApp", () => {
     render(<ChatApp />);
 
     const addButton = await screen.findByRole("button", {
-      name: "Add Emergency plan through chat",
+      name: "Add Emergency contacts or plan through chat",
     });
     fireEvent.click(addButton);
 
     expect(screen.getByText("Optional")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message Nova" })).toHaveValue(
-      "Remember that my emergency plan or contact process is ",
+      "Remember that an emergency contact or step I want to save is ",
     );
   });
 
@@ -1362,7 +1362,9 @@ describe("ChatApp", () => {
     ).toBeInTheDocument();
     const callsBeforeClick = fetchMock.mock.calls.length;
     fireEvent.click(
-      screen.getByRole("button", { name: "Review Current goals record" }),
+      screen.getByRole("button", {
+        name: "Review What you want to achieve record",
+      }),
     );
 
     const titleInput = screen.getByDisplayValue(knowledgeRecord.title);
@@ -1415,7 +1417,7 @@ describe("ChatApp", () => {
       name: "Message Nova",
     });
     await waitFor(() =>
-      expect(composer).toHaveValue("Remember that my active project is "),
+      expect(composer).toHaveValue("Remember that a project I am working on is "),
     );
     expect(composer).toHaveFocus();
     expect(screen.getByRole("status")).toHaveTextContent(
