@@ -711,10 +711,10 @@ Foundation documents:
 
 ## Milestone 79 - Librarian Daily-Use Validation
 
-**Candidate status (9 August 2026): daily-use validation remains in progress in
-separate draft PR #33. A bounded Phase 1 knowledge-examples implementation is
-owner-approved and under review on a separate branch; it is not merged,
-released, installed, or owner-accepted.**
+**Status (9 August 2026): daily-use validation remains in progress in separate
+draft PR #33. Knowledge Examples Phase 1 merged through PR #35, was installed
+from protected `main`, and was owner-accepted on the physical PC and phone. No
+release tag or version bump was created.**
 
 - Validate explanations, issue ordering, and review links on PC and phone.
 - Measure false-positive friction before changing any detection rule.
@@ -722,15 +722,17 @@ released, installed, or owner-accepted.**
 - Require a new architecture and engineering decision before any
   approval-assisted Librarian action.
 - Give all 13 existing knowledge checks two or three static, privacy-safe
-  examples that can prepare an editable, unsent Chat draft.
+  examples that can prepare an editable, unsent Chat draft - complete with two
+  examples per requirement.
 - Keep the backend requirement catalogue authoritative and show examples only
-  for missing information or an opened missing check.
+  for missing information or an opened missing check - complete.
 - Preserve the generic Open handoff and every existing read-only, approval,
-  matching, scoring, priority, and issue-order boundary.
+  matching, scoring, priority, and issue-order boundary - verified.
 
 Candidate review evidence:
 
 - `docs/milestone-79-knowledge-examples-candidate.md`
+- `docs/milestone-79-knowledge-examples-acceptance.md`
 
 ## Later capabilities
 
