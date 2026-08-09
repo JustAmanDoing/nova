@@ -31,6 +31,19 @@ Choosing an existing dependency is not automatically preferable. Record why it
 is a better fit than a small local implementation, and do not adopt it when its
 risk, complexity, or authority exceeds the problem it solves.
 
+## Current platform capability check
+
+Before proposing custom code, verify whether the current versions of ChatGPT,
+Codex, Codex Remote, GitHub, Docker, Tailscale, Ollama, Windows, or NOVA already
+provide the required capability. Use current official documentation, installed
+version evidence, the live repository, and a bounded proof when behavior is
+uncertain.
+
+Do not build a replacement because an older version lacked a feature or because
+model memory says the platform cannot do it. Record the verified capability,
+its limits, and why reuse, integration, extension, or custom implementation is
+the better fit.
+
 ## Philosophy
 
 - NOVA owns the workflow.
