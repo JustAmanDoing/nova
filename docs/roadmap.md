@@ -723,8 +723,14 @@ runtime expansion.**
 
 ## Later capabilities
 
+- NOVA Conductor unified interaction direction, phased over existing services
+  before any bounded specialist-agent runtime
 - Optional local or cloud AI provider adapters
 - Broader project and document memory beyond the approved conversational
   knowledge implemented in Milestones 55–59
 - Plugin and agent interfaces
 - Broader operational monitoring and disaster recovery
+
+Approved direction:
+
+- `docs/conductor-interaction-north-star.md`
