@@ -103,12 +103,19 @@ class KnowledgeSnapshotResponse(BaseModel):
     created_at: datetime
 
 
+class KnowledgeExampleResponse(BaseModel):
+    text: str
+    draft: str
+
+
 class KnowledgeRequirementStatusResponse(BaseModel):
     id: str
     domain: str
     title: str
     why: str
     suggestion: str
+    prompt_starter: str
+    examples: list[KnowledgeExampleResponse] = Field(min_length=2, max_length=3)
     priority: int = Field(ge=1, le=5)
     core: bool
     review_days: int = Field(ge=1)

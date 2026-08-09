@@ -712,16 +712,31 @@ Foundation documents:
 
 ## Milestone 79 - Librarian Daily-Use Validation
 
-**Status (9 August 2026): in progress. The owner-approved plain-language
-correction from PR #34 is merged, installed, and technically verified against
-NOVA 0.78.2. Physical owner acceptance remains required. No detection-rule or
-authority change has been made.**
+**Status (9 August 2026): daily-use validation evidence remains under review in
+draft PR #33. The plain-language correction from PR #34 and Knowledge Examples
+Phase 1 from PR #35 are merged, installed, technically verified, and accepted
+on the physical PC and phone. No release tag, version bump, detection-rule, or
+authority change was made.**
 
-- Validate explanations, issue ordering, and review links on PC and phone.
-- Measure false-positive friction before changing any detection rule.
-- Keep the Librarian read-only throughout validation.
+- Validate explanations, issue ordering, and review links on PC and phone -
+  complete and owner-accepted.
+- Measure false-positive friction before changing any detection rule - owner
+  feedback recorded; no rule changed.
+- Keep the Librarian read-only throughout validation - verified.
 - Require a new architecture and engineering decision before any
-  approval-assisted Librarian action.
+  approval-assisted Librarian action - preserved.
+- Give all 13 existing knowledge checks two or three static, privacy-safe
+  examples that can prepare an editable, unsent Chat draft - complete with two
+  examples per requirement.
+- Keep the backend requirement catalogue authoritative and show examples only
+  for missing information or an opened missing check - complete.
+- Preserve the generic Open handoff and every existing read-only, approval,
+  matching, scoring, priority, and issue-order boundary - verified.
+
+Knowledge Examples Phase 1 evidence:
+
+- `docs/milestone-79-knowledge-examples-candidate.md`
+- `docs/milestone-79-knowledge-examples-acceptance.md`
 
 Validation evidence:
 

@@ -262,6 +262,23 @@ export default function LibrarianApp() {
               <ul>{detail.issue.evidence.map((item) => <li key={item}>{item}</li>)}</ul>
               <h3>What you can do</h3>
               <p>{detail.issue.suggested_action}</p>
+              {detail.issue.issue_type === "missing_coverage" &&
+              detail.issue.examples.length &&
+              detail.issue.review_url ? (
+                <div className="librarian-examples">
+                  <h3>Examples — you do not need to add these.</h3>
+                  <ul>
+                    {detail.issue.examples.map((example) => (
+                      <li key={example.text}>
+                        <a href={exampleReviewUrl(detail.issue.review_url!, example.draft)}>
+                          {example.text}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  <p>Each link prepares an editable Chat draft. It sends and saves nothing.</p>
+                </div>
+              ) : null}
               {detail.sources.map((source) => (
                 <article className="librarian-source" key={source.record_id}>
                   <strong>{source.title}</strong>
@@ -333,6 +350,10 @@ function SummaryCard({
 
 function readable(value: string): string {
   return value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function exampleReviewUrl(reviewUrl: string, draft: string): string {
+  return `${reviewUrl}&example=${encodeURIComponent(draft)}`;
 }
 
 function errorMessage(error: unknown): string {

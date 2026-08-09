@@ -6,10 +6,11 @@
 
 **Initial validation base:** `d7615cdfc2238f12d459ed26bcbd6cdcb4b88e3a`
 
-**Installed correction head:** `d60799dc56ebc10174076e9b98fb3659b7075fd6`
+**Installed current head:** `93daa9806590c950c94044e637a44125f5739ec0`
 
-**Status:** In progress; the approved plain-language correction is installed,
-all technical checks passed, and physical owner acceptance is pending
+**Status:** Installed behavior and Knowledge Examples Phase 1 are technically
+verified and owner-accepted on PC and phone; this consolidated evidence remains
+under review in draft PR #33
 
 ## Objective
 
@@ -18,6 +19,8 @@ use before proposing any change to its detection rules or authority. The
 milestone began as evidence-only validation. Owner feedback led to the
 separately approved copy-only correction in PR #34. It added no detection,
 dependency, data, schema, network, automatic action, or second review store.
+The later, separately approved Knowledge Examples Phase 1 in PR #35 added
+static blank-page guidance without changing those boundaries.
 
 ## Live checkpoint
 
@@ -33,11 +36,12 @@ equivalent Librarian health, review-queue, and item-detail evidence:
 - duplicate, conflict, stale, missing-file, broken-reference, and checksum
   findings: zero; and
 - four optional suggestions, ordered by title: Emergency contacts or plan,
-  Home jobs and projects, Money goals, and Vehicle details and maintenance.
+  Home jobs and routines, Money goals, and Vehicle details and maintenance.
 
 Every item used everyday wording, explained why it appeared, offered a safe
-optional next step, and linked to the existing Chat review flow. The links
-prepared an editable prompt and displayed that nothing had been sent or saved.
+optional next step, and linked to the existing Chat review flow. Missing checks
+also offered two optional examples. The links prepared an editable prompt and
+displayed that nothing had been sent or saved.
 
 ## Read-only proof
 
@@ -46,29 +50,33 @@ dialogs, and review handoff were exercised without submitting a prompt.
 
 | State | Result |
 | --- | --- |
-| Active database SHA-256 | Before and after values matched; the private value was not published |
-| Approved-knowledge manifest SHA-256 | Before and after values matched; the private value was not published |
+| Active database SHA-256 | Before and after values matched the acceptance record |
+| Approved-knowledge manifest SHA-256 | Before and after values matched the acceptance record |
 | Approved-knowledge files | All 19 files were unchanged |
 
 No knowledge was edited, merged, retired, deleted, uploaded, inferred, or
 added. No automatic action occurred.
 
-Before installation, NOVA created a verified database backup. After the
-installation, the backup passed the protected download verification, the active
-database passed its integrity check, all 19 approved knowledge files remained
-present, and the same 16 active records, verified sources, and review-item IDs
-remained available. Opening the installed Librarian and Chat handoff did not
-change the active database.
+Before each guarded installation, NOVA created a verified database backup. The
+latest installation backup and preservation hashes are recorded in
+`docs/milestone-79-knowledge-examples-acceptance.md`. After installation, the
+active database passed its integrity check, all 19 approved knowledge files
+remained present, and the same records, sources, and review-item IDs remained
+available. Opening the installed Librarian and Chat handoff did not change the
+active database.
 
 ## Usability checkpoint
 
-The installed PC page and a 390 by 844 phone viewport were reviewed. The page
-had no horizontal overflow, used the approved plain-language labels, kept all
-four suggestions in the expected order, and showed the same details as the
-private phone route. The Home jobs and projects explanation fitted within the
-phone viewport, every visible control met the 44-pixel touch target, and the
-Chat handoff prepared the expected editable sentence. No browser warning or
-error was recorded.
+The installed PC page and a 390 by 844 phone viewport were reviewed during the
+plain-language correction. The exact Knowledge Examples candidate repeated the
+responsive review before merge, and the installed private route remained
+healthy afterward. The page used the approved labels, kept all four suggestions
+in the expected order, and showed the same details as the private route. The
+Home jobs and routines explanation and examples fitted within the phone
+viewport, every visible example and generic handoff met the 44-pixel touch
+target, and the Chat handoff prepared the expected editable sentence. No
+browser warning or error was recorded. The owner then accepted the installed
+behavior on the physical PC and phone.
 
 Responsive navigation keeps four destinations visible by hiding the current
 page's own link. Librarian remained reachable from the other primary pages,
@@ -78,39 +86,38 @@ and its own page retained Chat, Focus, Record, and Intake links.
 
 - Backend Ruff: passed.
 - Backend strict mypy: passed for 40 source files.
-- Backend pytest: 164 passed with 93.65% coverage.
+- Backend pytest: 165 passed with 93.68% coverage for the current behavior.
 - Frontend lint and type check: passed.
-- Frontend Vitest: 55 passed, including all three Librarian tests.
+- Frontend Vitest: 57 passed for the current behavior.
 - Frontend production build: passed.
 - Windows launcher and controller checks: passed.
 - Compose configuration: passed.
 - Protected GitHub CI on the exact repository base: all required jobs passed.
 - PR #34 protected CI and post-merge `main` CI: all four jobs passed.
+- PR #35 protected CI: all four jobs passed on the exact candidate.
 - Windows installation reached merge commit
-  `d60799dc56ebc10174076e9b98fb3659b7075fd6` after creating a verified backup.
+  `93daa9806590c950c94044e637a44125f5739ec0` after creating a verified backup.
 - Installed runtime, PC route, private route, API equivalence, responsive UI,
   review handoff, and data-preservation checks: passed.
 
-The frontend suite still emits existing non-failing React `act(...)` warnings,
-and the local build emits an existing Node `url.parse()` deprecation warning.
-Neither warning is specific to the Librarian or changed by this milestone.
+The frontend suite still emits existing non-failing React `act(...)` warnings.
+They are not specific to the Librarian and were not changed by this milestone.
 
-## Remaining daily-use evidence
+## Daily-use outcome
 
-Automated responsive checks support acceptance but do not replace physical
-owner use. The remaining bounded evidence is whether the installed wording:
+Automated responsive checks supported but did not replace physical owner use.
+The owner accepted that the installed behavior:
 
-1. makes Home jobs and projects, Money goals, and Vehicle details and
+1. makes Home jobs and routines, Money goals, and Vehicle details and
    maintenance understandable;
 2. makes it clear that every suggestion is optional;
 3. gives enough explanation under Why this is here; and
 4. opens the expected editable prompt without unexpected action.
 
-This feedback is required to measure false-positive friction. Do not change a
-detection rule merely to make the current queue shorter. The live store also
-has no duplicate, conflict, stale, missing-file, broken-reference, or checksum
-issue, so those states remain covered by automated tests rather than a
-synthetic mutation of owner data.
+The live store still has no duplicate, conflict, stale, missing-file,
+broken-reference, or checksum issue, so those states remain covered by
+automated tests rather than a synthetic mutation of owner data. Do not change a
+detection rule merely to make the current queue shorter.
 
 ## Owner feedback checkpoint
 
@@ -118,6 +125,11 @@ On 9 August 2026, the owner confirmed that the Emergency plan suggestion is not
 needed. The owner also confirmed that home responsibilities are useful but the
 old technical wording was hard to understand. The owner approved PR #34's
 plain-language correction and approved its Windows installation.
+
+After PR #35 renamed the check to Home jobs and routines and added optional
+examples, the owner accepted the installed result on both the physical PC and
+phone. That acceptance did not add the example sentence to knowledge; permanent
+knowledge still requires the existing explicit approval flow.
 
 No emergency-plan knowledge was added merely to clear the queue, and no
 detection rule was changed from this single observation. Emergency contacts or
@@ -130,11 +142,12 @@ absent. The control remains fail-closed and no network setting was changed.
 
 ## Current decision
 
-The installed correction passes with no observed runtime, privacy, integrity,
-data-preservation, or automated usability defect. Milestone 79 remains in
-progress only until the owner physically accepts the installed wording. NOVA
-0.78.2 remains the installed version at repository head
-`d60799dc56ebc10174076e9b98fb3659b7075fd6`.
+The installed correction and Knowledge Examples Phase 1 pass with no observed
+runtime, privacy, integrity, data-preservation, or usability defect. The
+installed behavior is owner-accepted; Milestone 79 remains in progress only
+while this consolidated validation evidence is reviewed. NOVA 0.78.2 remains
+the installed version at merge commit
+`93daa9806590c950c94044e637a44125f5739ec0`.
 
 Any approval-assisted Librarian action still requires a new architecture and
 engineering decision plus explicit owner approval.
@@ -144,11 +157,10 @@ engineering decision plus explicit owner approval.
 - Accepted practical local NOVA prototype: 100 percent.
 - Broader long-term NOVA vision: approximately 86 percent, unchanged because
   this milestone validates existing behavior rather than adding capability.
-- Milestone 79: approximately 95 percent; the correction is merged, installed,
-  and technically verified, with physical owner acceptance still pending.
+- Milestone 79: approximately 95 percent; the behavior is merged, installed,
+  technically verified, and owner-accepted, with evidence integration pending.
 
 ## Exact next action
 
-Open the installed Librarian page on the phone or PC and report whether the new
-wording is clear. In particular, check Home jobs and projects, Why this is here,
-and Open. Do not add knowledge merely to complete this validation.
+After protected CI passes on the reconciled PR #33 head, the owner reviews this
+consolidated validation record and explicitly approves or rejects merging it.
