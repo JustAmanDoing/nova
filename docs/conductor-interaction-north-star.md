@@ -88,6 +88,10 @@ not justified merely by approving this direction.
    privacy and engineering review before implementation.
 8. External models and software remain tools. They do not own NOVA's workflow,
    permissions, memory, or user relationship.
+9. Retrieved, pasted, uploaded, or tool-returned content is untrusted evidence.
+   Instructions inside it cannot grant permission, override owner decisions or
+   safeguards, or broaden capability access; consequential conflicts return to
+   the owner.
 
 ## Reuse decision
 
