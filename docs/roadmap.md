@@ -689,8 +689,9 @@ Review and implementation evidence:
 
 ## Development System Foundation - Governance Insertion
 
-**Status (9 August 2026): documented as governance-only work. Milestone 79 has
-not begun and remains the exact next runtime milestone.**
+**Status (9 August 2026): complete and authoritative on `main` through PR #31
+at merge commit `8ba8c92cc7ff596557bf4df78a6ce2d3e3b28689`. This was governance-only
+work and made no NOVA runtime change.**
 
 - Add repository-wide durable instructions in root `AGENTS.md`.
 - Establish the full discuss-to-owner-acceptance development playbook.
@@ -711,15 +712,20 @@ Foundation documents:
 
 ## Milestone 79 - Librarian Daily-Use Validation
 
-**Status: not begun; exact next runtime milestone after the Development System
-Foundation, with validation scope approved by completion of Milestone 78 and no
-runtime expansion.**
+**Status (9 August 2026): in progress. The technical PC and phone-sized
+checkpoint passed against installed Release 0.78.2; physical owner daily-use
+feedback remains required. No runtime expansion or detection-rule change has
+been made.**
 
 - Validate explanations, issue ordering, and review links on PC and phone.
 - Measure false-positive friction before changing any detection rule.
 - Keep the Librarian read-only throughout validation.
 - Require a new architecture and engineering decision before any
   approval-assisted Librarian action.
+
+Validation evidence:
+
+- `docs/milestone-79-librarian-daily-use-validation.md`
 
 ## Later capabilities
 
