@@ -77,6 +77,17 @@ const knowledgeQualityReport = {
       title: "Preferred name",
       why: "Lets Nova address you consistently without guessing.",
       suggestion: "Tell Nova the name you want it to use.",
+      prompt_starter: "Remember that the name I want you to use is ",
+      examples: [
+        {
+          text: "A first name, such as Sam",
+          draft: "Remember that the name I want you to use is Sam.",
+        },
+        {
+          text: "A nickname, such as Sunny",
+          draft: "Remember that the nickname I want you to use is Sunny.",
+        },
+      ],
       priority: 5,
       core: true,
       review_days: 365,
@@ -91,6 +102,17 @@ const knowledgeQualityReport = {
       title: "What you want to achieve",
       why: "Helps Nova focus on what matters to you.",
       suggestion: "Add something you want Nova to help you achieve.",
+      prompt_starter: "Remember that something I want to achieve is ",
+      examples: [
+        {
+          text: "Build a steady exercise habit",
+          draft: "Remember that I want to build a steady exercise habit.",
+        },
+        {
+          text: "Learn basic home maintenance skills",
+          draft: "Remember that I want to learn basic home maintenance skills.",
+        },
+      ],
       priority: 5,
       core: true,
       review_days: 90,
@@ -105,9 +127,45 @@ const knowledgeQualityReport = {
       title: "Emergency contacts or plan",
       why: "Can make personal contingency planning easier to retrieve.",
       suggestion: "Optionally add a safe, non-secret emergency plan.",
+      prompt_starter: "Remember that an emergency step I want to save is ",
+      examples: [
+        {
+          text: "Keep a torch and radio with the emergency kit",
+          draft: "Remember that my emergency kit should include a torch and radio.",
+        },
+        {
+          text: "Use a familiar public place as a family meeting point",
+          draft: "Remember that our emergency meeting point is a familiar public place.",
+        },
+      ],
       priority: 4,
       core: false,
       review_days: 180,
+      status: "missing",
+      last_reviewed: null,
+      matched_record_ids: [],
+      matched_record_titles: [],
+    },
+    {
+      id: "active-projects",
+      domain: "planning",
+      title: "Projects you are working on",
+      why: "Helps Nova suggest useful next steps.",
+      suggestion: "Add a project you are working on.",
+      prompt_starter: "Remember that a project I am working on is ",
+      examples: [
+        {
+          text: "Organising family photos",
+          draft: "Remember that a project I am working on is organising family photos.",
+        },
+        {
+          text: "Planning a small garden",
+          draft: "Remember that a project I am working on is planning a small garden.",
+        },
+      ],
+      priority: 5,
+      core: true,
+      review_days: 90,
       status: "missing",
       last_reviewed: null,
       matched_record_ids: [],
@@ -1161,12 +1219,12 @@ describe("ChatApp", () => {
       screen.getByText(/NOVA scores its published capability checklist, not you/),
     ).toBeInTheDocument();
     expect(screen.getByText("What you want to achieve")).toBeInTheDocument();
-    expect(screen.getByText("Core")).toBeInTheDocument();
+    expect(screen.getAllByText("Core").length).toBeGreaterThan(0);
     expect(screen.getByText("Emergency contacts or plan")).toBeInTheDocument();
     expect(screen.getByText("Optional")).toBeInTheDocument();
-    expect(screen.getAllByText("Missing")).toHaveLength(2);
+    expect(screen.getAllByText("Missing")).toHaveLength(3);
     expect(
-      screen.getByLabelText("Priority 5 of 5"),
+      screen.getAllByLabelText("Priority 5 of 5")[0],
     ).toBeInTheDocument();
   });
 
@@ -1252,6 +1310,10 @@ describe("ChatApp", () => {
     const addButton = await screen.findByRole("button", {
       name: "Add What you want to achieve through chat",
     });
+    expect(
+      screen.getAllByText("Examples — you do not need to add these.").length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("A first name, such as Sam")).not.toBeInTheDocument();
     const callsBeforeClick = fetchMock.mock.calls.length;
     fireEvent.click(addButton);
 
@@ -1260,6 +1322,12 @@ describe("ChatApp", () => {
     expect(composer).toHaveFocus();
     expect(screen.getByRole("status")).toHaveTextContent(
       "Nothing has been sent or saved.",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(callsBeforeClick);
+
+    fireEvent.click(screen.getByRole("button", { name: "Build a steady exercise habit" }));
+    expect(composer).toHaveValue(
+      "Remember that I want to build a steady exercise habit.",
     );
     expect(fetchMock).toHaveBeenCalledTimes(callsBeforeClick);
   });
@@ -1304,7 +1372,7 @@ describe("ChatApp", () => {
 
     expect(screen.getByText("Optional")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message Nova" })).toHaveValue(
-      "Remember that an emergency contact or step I want to save is ",
+      "Remember that an emergency step I want to save is ",
     );
   });
 
@@ -1423,6 +1491,47 @@ describe("ChatApp", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Nothing has been sent or saved.",
     );
+    expect(writeRequested).toBe(false);
+  });
+
+  it("treats a linked example as editable draft text and makes no write", async () => {
+    const linkedDraft = "Remember that <untrusted example text> stays editable.";
+    window.history.replaceState(
+      {},
+      "",
+      `/chat.html?knowledge=active-projects&example=${encodeURIComponent(linkedDraft)}`,
+    );
+    let writeRequested = false;
+    const fetchMock = vi.fn((
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      if (init?.method && init.method !== "GET") writeRequested = true;
+      const url = input.toString();
+      if (url.endsWith("/chat/models")) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              name: "qwen3:8b",
+              size_bytes: 5_200_000_000,
+              parameter_size: "8.2B",
+              quantization_level: "Q4_K_M",
+            },
+          ]),
+        );
+      }
+      if (url.endsWith("/knowledge/quality")) {
+        return Promise.resolve(jsonResponse(knowledgeQualityReport));
+      }
+      return Promise.resolve(jsonResponse([]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    const composer = await screen.findByRole("textbox", { name: "Message Nova" });
+    await waitFor(() => expect(composer).toHaveValue(linkedDraft));
+    expect(screen.queryByText("<untrusted example text>")).not.toBeInTheDocument();
     expect(writeRequested).toBe(false);
   });
 

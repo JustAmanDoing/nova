@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.knowledge import KnowledgeExampleResponse
+
 LibrarianIssueType = Literal[
     "duplicate",
     "conflict",
@@ -53,6 +55,7 @@ class LibrarianIssueResponse(BaseModel):
     source_titles: list[str]
     suggested_action: str
     review_url: str | None
+    examples: list[KnowledgeExampleResponse] = Field(default_factory=list, max_length=3)
 
 
 class LibrarianHealthDimensionsResponse(BaseModel):

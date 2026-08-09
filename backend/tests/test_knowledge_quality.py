@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -77,12 +78,40 @@ def test_empty_quality_report_is_transparent_and_prioritised(
     assert report["core_covered"] == 0
     assert report["core_total"] == 7
     assert report["retrieval_checked"] == 0
-    assert all(
-        requirement["status"] == "missing"
-        for requirement in report["requirements"]
-    )
+    assert all(requirement["status"] == "missing" for requirement in report["requirements"])
     assert report["requirements"][0]["title"] == "Preferred name"
     assert "does not measure or score the owner" in report["limitation"]
+
+
+def test_all_requirements_expose_curated_privacy_safe_examples(tmp_path: Path) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        report = client.get("/api/v1/knowledge/quality").json()
+
+    requirements = {item["id"]: item for item in report["requirements"]}
+    assert len(requirements) == 13
+    assert all(len(item["examples"]) == 2 for item in requirements.values())
+    assert all(item["prompt_starter"].startswith("Remember that") for item in requirements.values())
+    assert all(
+        example["draft"].startswith("Remember that")
+        for item in requirements.values()
+        for example in item["examples"]
+    )
+    example_copy = " ".join(
+        example["text"] + " " + example["draft"]
+        for item in requirements.values()
+        for example in item["examples"]
+    )
+    assert not re.search(r"\b\d{6,}\b", example_copy)
+    assert "@" not in example_copy
+    assert (
+        "account numbers, passwords, or other secrets"
+        in requirements["financial-goals"]["suggestion"]
+    )
+    assert "exact address" in requirements["timezone-location"]["suggestion"]
+    assert "unnecessary medical details" in requirements["health-preferences"]["suggestion"]
+    assert "cannot send reminders yet" in requirements["vehicle-context"]["suggestion"]
+    assert "cannot send reminders yet" in requirements["home-responsibilities"]["suggestion"]
 
 
 def test_only_approved_active_records_count_toward_coverage(
@@ -168,9 +197,7 @@ def test_stale_record_remains_covered_but_reduces_freshness(
 
         report = client.get("/api/v1/knowledge/quality").json()
 
-    preferred_name = next(
-        item for item in report["requirements"] if item["id"] == "preferred-name"
-    )
+    preferred_name = next(item for item in report["requirements"] if item["id"] == "preferred-name")
     assert preferred_name["status"] == "stale"
     assert report["core_covered"] == 1
     assert report["freshness_percent"] == 0
@@ -288,6 +315,11 @@ def test_quality_report_is_read_only_and_needs_no_mutation_header(
 ) -> None:
     application = _application(tmp_path)
     with TestClient(application) as client:
+        database_path = tmp_path / "nova.db"
+        before_database = database_path.read_bytes()
         response = client.get("/api/v1/knowledge/quality")
+        after_database = database_path.read_bytes()
 
     assert response.status_code == 200
+    assert after_database == before_database
+    assert list((tmp_path / "knowledge").rglob("*")) == []

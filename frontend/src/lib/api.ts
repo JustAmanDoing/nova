@@ -182,12 +182,19 @@ export interface KnowledgeSnapshot {
 
 export type KnowledgeRequirementStatus = "covered" | "stale" | "missing";
 
+export interface KnowledgeExample {
+  text: string;
+  draft: string;
+}
+
 export interface KnowledgeRequirementQuality {
   id: string;
   domain: string;
   title: string;
   why: string;
   suggestion: string;
+  prompt_starter: string;
+  examples: KnowledgeExample[];
   priority: number;
   core: boolean;
   review_days: number;
@@ -246,6 +253,7 @@ export interface LibrarianIssue {
   source_titles: string[];
   suggested_action: string;
   review_url: string | null;
+  examples: KnowledgeExample[];
 }
 
 export interface LibrarianHealth {

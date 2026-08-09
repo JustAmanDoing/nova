@@ -711,15 +711,26 @@ Foundation documents:
 
 ## Milestone 79 - Librarian Daily-Use Validation
 
-**Status: not begun; exact next runtime milestone after the Development System
-Foundation, with validation scope approved by completion of Milestone 78 and no
-runtime expansion.**
+**Candidate status (9 August 2026): daily-use validation remains in progress in
+separate draft PR #33. A bounded Phase 1 knowledge-examples implementation is
+owner-approved and under review on a separate branch; it is not merged,
+released, installed, or owner-accepted.**
 
 - Validate explanations, issue ordering, and review links on PC and phone.
 - Measure false-positive friction before changing any detection rule.
 - Keep the Librarian read-only throughout validation.
 - Require a new architecture and engineering decision before any
   approval-assisted Librarian action.
+- Give all 13 existing knowledge checks two or three static, privacy-safe
+  examples that can prepare an editable, unsent Chat draft.
+- Keep the backend requirement catalogue authoritative and show examples only
+  for missing information or an opened missing check.
+- Preserve the generic Open handoff and every existing read-only, approval,
+  matching, scoring, priority, and issue-order boundary.
+
+Candidate review evidence:
+
+- `docs/milestone-79-knowledge-examples-candidate.md`
 
 ## Later capabilities
 

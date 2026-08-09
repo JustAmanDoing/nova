@@ -113,6 +113,9 @@ Local data/intake folder
   self-checks, and highest-value knowledge gaps without scoring the owner.
 - Lets the owner prepare an editable chat prompt for a missing or review-due
   area; preparation alone sends nothing and stores nothing.
+- Shows static, catalogue-owned examples only for missing knowledge checks or
+  an opened missing Librarian check. Choosing one prepares editable Chat text
+  and never sends, approves, or saves it automatically.
 - Provides a separate read-only-first Focus page that projects only active,
   owner-approved, checksum-verified `project` and `goal` records.
 - Provides a separate read-only Project record page that catalogues current

@@ -69,6 +69,12 @@ def test_librarian_empty_health_and_missing_review_are_transparent(
     with TestClient(application) as client:
         health = client.get("/api/v1/librarian/health")
         review = client.get("/api/v1/librarian/review")
+        home_issue = next(
+            item
+            for item in review.json()["issues"]
+            if item["review_url"].endswith("home-responsibilities")
+        )
+        home_detail = client.get(f"/api/v1/librarian/item/{home_issue['id']}")
 
     assert health.status_code == 200
     assert health.json()["active_record_count"] == 0
@@ -89,20 +95,21 @@ def test_librarian_empty_health_and_missing_review_are_transparent(
         "Money goals",
         "Food or health preferences",
     } <= titles
-    home = next(
-        item
-        for item in review.json()["issues"]
-        if item["review_url"].endswith("home-responsibilities")
-    )
-    assert home["title"] == "Home jobs and projects"
+    home = home_issue
+    assert home["title"] == "Home jobs and routines"
     assert home["summary"] == (
         "You have not saved anything about this in Nova. You can ignore this suggestion."
     )
-    assert home["reason"] == "Helps Nova remember home maintenance and projects."
+    assert home["reason"] == "Helps Nova remember home maintenance and routines."
     assert home["evidence"] == ["Area: Home.", "Optional suggestion."]
     assert home["suggested_action"] == (
-        "Add a home job or project if you want Nova to help you remember it."
+        "Add a home job or routine if it would help. Nova can remember it, "
+        "but cannot send reminders yet."
     )
+    assert len(home["examples"]) == 2
+    assert all(example["draft"].startswith("Remember that") for example in home["examples"])
+    assert home_detail.status_code == 200
+    assert home_detail.json()["issue"]["examples"] == home["examples"]
     visible_copy = " ".join(
         str(item[field])
         for item in review.json()["issues"]
@@ -168,6 +175,9 @@ def test_librarian_detects_duplicates_conflicts_and_stale_records(
     assert any(
         item["issue_type"] == "stale" and item["title"].endswith("may need checking")
         for item in issues
+    )
+    assert all(
+        item["examples"] == [] for item in issues if item["issue_type"] != "missing_coverage"
     )
 
 

@@ -63,6 +63,48 @@
   text-decoration: none;
 }
 
+.librarian-examples {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #33463b;
+  border-radius: 12px;
+  background: #0b130f;
+}
+
+.librarian-examples h3 {
+  margin-top: 0;
+}
+
+.librarian-detail .librarian-examples ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.librarian-examples a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  color: #d6e7dd;
+  border: 1px solid #4a6255;
+  border-radius: 9px;
+  text-decoration: none;
+}
+
+.librarian-examples a:hover,
+.librarian-examples a:focus-visible {
+  border-color: #8bf6b8;
+}
+
+.librarian-examples p {
+  margin: 10px 0 0;
+  color: #9caaa2;
+  font-size: 0.78rem;
+}
+
 .librarian-hero button:disabled,
 .librarian-actions button:disabled {
   cursor: wait;

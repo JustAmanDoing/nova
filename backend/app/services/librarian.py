@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.services.knowledge import (
+    KnowledgeExampleDefinition,
     KnowledgeQualityReportRecord,
     KnowledgeRecord,
     KnowledgeRequirementStatusRecord,
@@ -51,6 +52,7 @@ class LibrarianIssueRecord:
     source_titles: tuple[str, ...]
     suggested_action: str
     review_url: str | None
+    examples: tuple[KnowledgeExampleDefinition, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -453,6 +455,7 @@ class LibrarianService:
                         (),
                         requirement.suggestion,
                         f"/chat.html?knowledge={requirement.id}",
+                        requirement.examples,
                     )
                 )
 
@@ -615,6 +618,7 @@ def _issue(
     source_titles: tuple[str, ...],
     suggested_action: str,
     review_url: str | None,
+    examples: tuple[KnowledgeExampleDefinition, ...] = (),
 ) -> LibrarianIssueRecord:
     digest = hashlib.sha256(f"{issue_type}|{key}".encode()).hexdigest()[:16]
     return LibrarianIssueRecord(
@@ -630,6 +634,7 @@ def _issue(
         source_titles=source_titles,
         suggested_action=suggested_action,
         review_url=review_url,
+        examples=examples,
     )
 
 
