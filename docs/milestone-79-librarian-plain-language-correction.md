@@ -43,3 +43,14 @@ unless the owner chooses.
 
 Physical owner acceptance is still required after a protected merge and
 installation. Until then, Release 0.78.2 remains authoritative.
+
+## Remaining limitation
+
+The Emergency contacts or plan suggestion still appears because this correction
+does not add an Ignore action or change detection rules. That remains a separate
+owner decision.
+
+## Exact next action
+
+The owner reviews the wording in draft PR #34 and explicitly approves or rejects
+it. No merge or installation happens before that decision.
