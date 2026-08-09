@@ -423,6 +423,48 @@
   white-space: pre-wrap;
 }
 
+.conductor-starters {
+  display: grid;
+  max-width: 860px;
+  gap: 8px;
+  margin: 0 auto 14px;
+}
+
+.conductor-starters > span {
+  color: #8bf6b8;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.conductor-starters > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.conductor-starters button {
+  min-height: 44px;
+  padding: 8px 12px;
+  color: #dfe7e2;
+  border: 1px solid #315440;
+  border-radius: 10px;
+  background: #0e1913;
+  font: inherit;
+  cursor: pointer;
+}
+
+.conductor-starters button:hover:not(:disabled),
+.conductor-starters button:focus-visible {
+  border-color: #8bf6b8;
+}
+
+.conductor-starters button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .knowledge-sources {
   margin-top: 12px;
   padding: 11px 12px;
@@ -1058,7 +1100,8 @@
   box-shadow: 0 0 0 3px rgba(139, 246, 184, 0.1);
 }
 
-.document-sources {
+.document-sources,
+.capability-sources {
   margin-top: 10px;
   padding: 10px;
   border: 1px solid #50695c;
@@ -1066,7 +1109,8 @@
   background: #0b1710;
 }
 
-.document-sources > span {
+.document-sources > span,
+.capability-sources > span {
   color: #8bf6b8;
   font-size: 0.68rem;
   font-weight: 750;
@@ -1074,13 +1118,15 @@
   letter-spacing: 0.08em;
 }
 
-.document-sources ul {
+.document-sources ul,
+.capability-sources ul {
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
 }
 
-.document-sources li {
+.document-sources li,
+.capability-sources li {
   display: flex;
   gap: 9px;
 }
@@ -1089,20 +1135,33 @@
   color: #8bf6b8;
 }
 
-.document-sources li div {
+.document-sources li div,
+.capability-sources li div {
   display: grid;
   gap: 2px;
   min-width: 0;
 }
 
 .document-sources strong,
-.document-sources small {
+.document-sources small,
+.capability-sources strong,
+.capability-sources small,
+.capability-sources a {
   overflow-wrap: anywhere;
 }
 
-.document-sources small {
+.document-sources small,
+.capability-sources small {
   color: #9eaaa3;
   font-size: 0.68rem;
+}
+
+.capability-sources a {
+  width: fit-content;
+  min-height: 44px;
+  padding-top: 8px;
+  color: #8bf6b8;
+  font-size: 0.76rem;
 }
 
 .chat-composer:focus-within {

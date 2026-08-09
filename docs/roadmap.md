@@ -743,14 +743,37 @@ Validation evidence:
 
 - `docs/milestone-79-librarian-daily-use-validation.md`
 
-No Milestone 80 runtime scope is approved. The next gate is an evidence-led
-capability discussion, followed by architecture review, engineering review, and
-explicit owner approval before any implementation.
+## Milestone 80 - Conductor Phase 1
+
+**Status (9 August 2026): the evidence-led capability discussion and combined
+reuse, architecture, engineering, risk, test, and rollout packet are
+  owner-approved for bounded implementation. The feature-branch candidate and
+  local verification are complete; it is not merged, released, installed, or
+  physically accepted.**
+
+- Keep Chat as the visible surface and publish four explicit local status
+  requests - implemented and locally verified on the candidate branch.
+- Read existing Focus next actions, verified projects and goals, Librarian
+  review, and Project Record status without adding write authority.
+- Use exact deterministic routing and bounded output; add no model-selected
+  tools, agent framework, workflow engine, cloud provider, or new dependency.
+- Work when Ollama is unavailable while keeping a model mandatory for ordinary
+  conversation and document-context turns.
+- Persist source, generation time, capability ID, and response hash with the
+  completed assistant message through additive Migration 18.
+- Preserve every existing local-only, approval, evidence, backup, recovery,
+  and private-phone boundary.
+- Require final diff review, protected CI, owner-approved merge, guarded
+  installation, and PC/phone acceptance before completion.
+
+Review packet:
+
+- `docs/milestone-80-conductor-phase-1.md`
 
 ## Later capabilities
 
-- NOVA Conductor unified interaction direction, phased over existing services
-  before any bounded specialist-agent runtime
+- NOVA Conductor Phase 2 trackable work, only after Phase 1 is merged,
+  installed, accepted, and a measured long-running use case justifies it
 - Optional local or cloud AI provider adapters
 - Broader project and document memory beyond the approved conversational
   knowledge implemented in Milestones 55–59

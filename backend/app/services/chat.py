@@ -75,6 +75,15 @@ class DocumentSourceRecord:
 
 
 @dataclass(frozen=True)
+class CapabilitySourceRecord:
+    capability_id: str
+    source_title: str
+    source_url: str
+    generated_at: str
+    result_sha256: str
+
+
+@dataclass(frozen=True)
 class PreparedDocumentContext:
     source: DocumentSourceRecord
     content: str
@@ -91,6 +100,7 @@ class MessageRecord:
     knowledge_checked: bool = False
     sources: tuple[KnowledgeSourceRecord, ...] = ()
     document_sources: tuple[DocumentSourceRecord, ...] = ()
+    capability_sources: tuple[CapabilitySourceRecord, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -129,7 +139,9 @@ NOVA_CHAT_SYSTEM_PROMPT = (
     "used when the owner explicitly selects it for that turn; local conversation "
     "history supports New chat, Rename, Archive, recoverable Trash, and Restore; "
     "and the wider NOVA interface provides Focus plus owner-entered next actions. "
-    "Chat can explain those wider controls but does not operate them. When the "
+    "A bounded local Conductor can read open next actions, active projects and "
+    "goals, Librarian review status, and NOVA project status through explicit "
+    "requests. It does not change those services. When the "
     "owner asks how to improve, configure, or get more value from NOVA, lead with "
     "a concise summary that includes local chat, approved knowledge, remember "
     "review cards, explicit document selection, conversation organisation, and "
@@ -511,6 +523,30 @@ class ChatService:
                 document_sources_by_message.setdefault(message_id, []).append(
                     _document_source_from_row(source_row)
                 )
+            capability_sources_by_message: dict[
+                str, list[CapabilitySourceRecord]
+            ] = {}
+            capability_rows = connection.execute(
+                """
+                SELECT
+                    source.message_id,
+                    source.capability_id,
+                    source.source_title,
+                    source.source_url,
+                    source.generated_at,
+                    source.result_sha256
+                FROM chat_message_capability_sources AS source
+                JOIN chat_messages AS message ON message.id = source.message_id
+                WHERE message.conversation_id = ?
+                ORDER BY source.message_id, source.position
+                """,
+                (conversation_id,),
+            ).fetchall()
+            for source_row in capability_rows:
+                message_id = str(source_row["message_id"])
+                capability_sources_by_message.setdefault(message_id, []).append(
+                    _capability_source_from_row(source_row)
+                )
         conversation = _conversation_from_row(row)
         return ConversationRecord(
             **{
@@ -521,6 +557,11 @@ class ChatService:
                         tuple(sources_by_message.get(str(message["id"]), [])),
                         tuple(
                             document_sources_by_message.get(str(message["id"]), [])
+                        ),
+                        tuple(
+                            capability_sources_by_message.get(
+                                str(message["id"]), []
+                            )
                         ),
                     )
                     for message in messages
@@ -630,7 +671,7 @@ class ChatService:
         self,
         conversation_id: str,
         content: str,
-        model: str,
+        model: str | None,
     ) -> tuple[MessageRecord, list[dict[str, str]]]:
         conversation = self.get_conversation(conversation_id)
         if conversation.archived_at is not None or conversation.trashed_at is not None:
@@ -725,11 +766,12 @@ class ChatService:
         self,
         conversation_id: str,
         content: str,
-        model: str,
+        model: str | None,
         *,
         knowledge_checked: bool = False,
         sources: Sequence[KnowledgeSourceRecord] = (),
         document_sources: Sequence[DocumentSourceRecord] = (),
+        capability_sources: Sequence[CapabilitySourceRecord] = (),
     ) -> MessageRecord:
         return self._add_message(
             conversation_id,
@@ -739,6 +781,7 @@ class ChatService:
             knowledge_checked=knowledge_checked,
             sources=sources,
             document_sources=document_sources,
+            capability_sources=capability_sources,
         )
 
     def _add_message(
@@ -746,11 +789,12 @@ class ChatService:
         conversation_id: str,
         role: str,
         content: str,
-        model: str,
+        model: str | None,
         *,
         knowledge_checked: bool = False,
         sources: Sequence[KnowledgeSourceRecord] = (),
         document_sources: Sequence[DocumentSourceRecord] = (),
+        capability_sources: Sequence[CapabilitySourceRecord] = (),
     ) -> MessageRecord:
         message_id = str(uuid4())
         now = _now()
@@ -821,10 +865,30 @@ class ChatService:
                         document_source.character_count,
                     ),
                 )
+            for position, capability_source in enumerate(
+                capability_sources, start=1
+            ):
+                connection.execute(
+                    """
+                    INSERT INTO chat_message_capability_sources (
+                        message_id, position, capability_id, source_title,
+                        source_url, generated_at, result_sha256
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        message_id,
+                        position,
+                        capability_source.capability_id,
+                        capability_source.source_title,
+                        capability_source.source_url,
+                        capability_source.generated_at,
+                        capability_source.result_sha256,
+                    ),
+                )
             connection.execute(
                 """
                 UPDATE chat_conversations
-                SET model = ?, updated_at = ?
+                SET model = COALESCE(?, model), updated_at = ?
                 WHERE id = ?
                 """,
                 (model, now, conversation_id),
@@ -839,6 +903,7 @@ class ChatService:
             knowledge_checked=knowledge_checked,
             sources=tuple(sources),
             document_sources=tuple(document_sources),
+            capability_sources=tuple(capability_sources),
         )
 
     def _set_title(self, conversation_id: str, title: str) -> None:
@@ -985,6 +1050,7 @@ def _message_from_row(
     row: sqlite3.Row,
     sources: tuple[KnowledgeSourceRecord, ...] = (),
     document_sources: tuple[DocumentSourceRecord, ...] = (),
+    capability_sources: tuple[CapabilitySourceRecord, ...] = (),
 ) -> MessageRecord:
     return MessageRecord(
         id=str(row["id"]),
@@ -996,6 +1062,7 @@ def _message_from_row(
         knowledge_checked=bool(row["knowledge_checked"]),
         sources=sources,
         document_sources=document_sources,
+        capability_sources=capability_sources,
     )
 
 
@@ -1039,6 +1106,16 @@ def _document_source_from_row(row: sqlite3.Row) -> DocumentSourceRecord:
             str(row["document_type"]) if row["document_type"] is not None else None
         ),
         character_count=int(row["character_count"]),
+    )
+
+
+def _capability_source_from_row(row: sqlite3.Row) -> CapabilitySourceRecord:
+    return CapabilitySourceRecord(
+        capability_id=str(row["capability_id"]),
+        source_title=str(row["source_title"]),
+        source_url=str(row["source_url"]),
+        generated_at=str(row["generated_at"]),
+        result_sha256=str(row["result_sha256"]),
     )
 
 

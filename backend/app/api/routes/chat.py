@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from collections.abc import Callable, Iterator
 from dataclasses import asdict
 from typing import Annotated, Literal, cast
@@ -18,6 +19,7 @@ from app.schemas.chat import (
     RenameConversationRequest,
     SendChatMessageRequest,
 )
+from app.schemas.conductor import ConductorCapabilityResponse
 from app.services.chat import (
     ChatConflictError,
     ChatNotFoundError,
@@ -26,7 +28,9 @@ from app.services.chat import (
     DocumentContextError,
     KnowledgeSourceRecord,
     LocalModelProviderError,
+    MessageRecord,
 )
+from app.services.conductor import ConductorService
 from app.services.knowledge import (
     KnowledgeProposalError,
     KnowledgeRetrievalError,
@@ -34,6 +38,22 @@ from app.services.knowledge import (
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 LocalAction = Annotated[None, Depends(require_local_action)]
+logger = logging.getLogger(__name__)
+
+
+@router.get("/capabilities", response_model=list[ConductorCapabilityResponse])
+async def list_capabilities(request: Request) -> list[ConductorCapabilityResponse]:
+    return [
+        ConductorCapabilityResponse(
+            id=record.id,
+            label=record.label,
+            description=record.description,
+            prompt=record.prompt,
+            source_title=record.source_title,
+            source_url=record.source_url,
+        )
+        for record in _conductor(request).capabilities()
+    ]
 
 
 @router.get("/models", response_model=list[ChatModel])
@@ -197,6 +217,18 @@ def send_message(
     _local_action: LocalAction,
 ) -> StreamingResponse:
     chat = _chat(request)
+    conductor = _conductor(request)
+    capability_id = (
+        conductor.match(payload.content) if payload.document_id is None else None
+    )
+    if capability_id is None and payload.model is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Local AI is unavailable. The listed NOVA status requests still work "
+                "without it."
+            ),
+        )
     document = None
     if payload.document_id is not None:
         try:
@@ -213,6 +245,15 @@ def send_message(
         raise HTTPException(status_code=404, detail="Conversation not found.") from error
     except ChatConflictError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
+    if capability_id is not None:
+        return _conductor_response(
+            chat,
+            conductor,
+            conversation_id,
+            capability_id,
+            user_message,
+        )
+    model = cast(str, payload.model)
     try:
         knowledge_warnings: list[str] = []
         knowledge_checked = False
@@ -252,13 +293,13 @@ def send_message(
             yield _event("knowledge_warning", message=knowledge_warning)
         assistant_parts: list[str] = []
         try:
-            for content in chat.provider.stream_chat(payload.model, history):
+            for content in chat.provider.stream_chat(model, history):
                 assistant_parts.append(content)
                 yield _event("delta", content=content)
             assistant = chat.complete_turn(
                 conversation_id,
                 "".join(assistant_parts),
-                payload.model,
+                model,
                 knowledge_checked=knowledge_checked,
                 sources=knowledge_sources,
                 document_sources=(
@@ -276,6 +317,45 @@ def send_message(
 
 def _chat(request: Request) -> ChatService:
     return cast(ChatService, request.app.state.chat)
+
+
+def _conductor(request: Request) -> ConductorService:
+    return cast(ConductorService, request.app.state.conductor)
+
+
+def _conductor_response(
+    chat: ChatService,
+    conductor: ConductorService,
+    conversation_id: str,
+    capability_id: str,
+    user_message: MessageRecord,
+) -> StreamingResponse:
+    def events() -> Iterator[str]:
+        yield _event("user", message=asdict(user_message))
+        try:
+            result = conductor.execute(capability_id)
+            yield _event("capability", source=asdict(result.source))
+            yield _event("delta", content=result.content)
+            assistant = chat.complete_turn(
+                conversation_id,
+                result.content,
+                None,
+                capability_sources=[result.source],
+            )
+            yield _event("done", message=asdict(assistant))
+        except Exception:
+            logger.exception("Conductor capability %s failed", capability_id)
+            yield _event(
+                "error",
+                message=(
+                    "NOVA could not read that local capability right now. "
+                    "Nothing was changed."
+                ),
+            )
+        finally:
+            chat.end_turn(conversation_id)
+
+    return StreamingResponse(events(), media_type="application/x-ndjson")
 
 
 async def _conversation_change(

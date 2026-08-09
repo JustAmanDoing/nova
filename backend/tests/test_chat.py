@@ -182,6 +182,155 @@ def test_local_chat_streams_and_persists_conversation(tmp_path: Path) -> None:
         ]
 
 
+def test_conductor_lists_and_executes_bounded_local_capabilities(
+    tmp_path: Path,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = FailingProvider()
+        capabilities = client.get("/api/v1/chat/capabilities")
+
+        assert capabilities.status_code == 200
+        assert [item["id"] for item in capabilities.json()] == [
+            "focus.next_actions",
+            "focus.projects_goals",
+            "librarian.review",
+            "project_record.status",
+        ]
+        assert all(item["source_url"].startswith("/") for item in capabilities.json())
+
+        action_titles = [
+            "Review Milestone 80 evidence",
+            "Check private phone layout",
+            "Confirm capability evidence",
+            "Read protected CI results",
+            "Prepare owner handoff",
+            "Keep sixth item bounded",
+            "Keep seventh item bounded",
+        ]
+        for title in action_titles:
+            action = client.post(
+                "/api/v1/focus/actions",
+                headers=INTENT,
+                json={"title": title},
+            )
+            assert action.status_code == 201
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "New conversation"},
+        ).json()["id"]
+
+        prompts = {
+            "Show my open next actions": "focus.next_actions",
+            "Show my projects and goals": "focus.projects_goals",
+            "What needs review in Librarian?": "librarian.review",
+            "Show NOVA project status": "project_record.status",
+        }
+        for prompt, capability_id in prompts.items():
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": None, "content": prompt},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+            assert [event["type"] for event in events] == [
+                "user",
+                "capability",
+                "delta",
+                "done",
+            ]
+            source = events[1]["source"]
+            assert source["capability_id"] == capability_id
+            assert len(source["result_sha256"]) == 64
+            assert events[-1]["message"]["capability_sources"] == [source]
+            if capability_id == "focus.next_actions":
+                assert "- 2 more open actions" in events[2]["content"]
+                assert action_titles[4] in events[2]["content"]
+                assert action_titles[5] not in events[2]["content"]
+
+        conversation = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}"
+        ).json()
+        assert conversation["model"] is None
+        assert conversation["message_count"] == 8
+        assistant_messages = [
+            message
+            for message in conversation["messages"]
+            if message["role"] == "assistant"
+        ]
+        assert "Review Milestone 80 evidence" in assistant_messages[0]["content"]
+        assert [
+            message["capability_sources"][0]["capability_id"]
+            for message in assistant_messages
+        ] == list(prompts.values())
+
+
+def test_unmatched_offline_chat_request_fails_before_writing_history(
+    tmp_path: Path,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "New conversation"},
+        ).json()["id"]
+
+        response = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={"model": None, "content": "Show open next actions"},
+        )
+
+        assert response.status_code == 503
+        assert response.json()["detail"].startswith("Local AI is unavailable")
+        conversation = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}"
+        ).json()
+        assert conversation["message_count"] == 0
+        assert conversation["messages"] == []
+
+
+def test_conductor_failure_keeps_only_the_truthful_user_message(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "New conversation"},
+        ).json()["id"]
+
+        def fail_read(capability_id: str) -> None:
+            del capability_id
+            raise RuntimeError("private service detail")
+
+        monkeypatch.setattr(application.state.conductor, "execute", fail_read)
+        response = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={"model": None, "content": "Show NOVA project status"},
+        )
+
+        assert response.status_code == 200
+        events = [json.loads(line) for line in response.text.splitlines()]
+        assert [event["type"] for event in events] == ["user", "error"]
+        assert events[-1]["message"] == (
+            "NOVA could not read that local capability right now. Nothing was changed."
+        )
+        assert "private service detail" not in response.text
+        conversation = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}"
+        ).json()
+        assert conversation["message_count"] == 1
+        assert conversation["messages"][0]["role"] == "user"
+        assert conversation["messages"][0]["capability_sources"] == []
+
+
 def test_chat_receives_accurate_capability_guidance(tmp_path: Path) -> None:
     application = _application(tmp_path)
     with TestClient(application) as client:
