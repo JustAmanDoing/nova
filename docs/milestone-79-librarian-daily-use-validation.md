@@ -110,6 +110,14 @@ normal phone-use feedback. Release 0.78.2 remains installed and unchanged.
 Any approval-assisted Librarian action still requires a new architecture and
 engineering decision plus explicit owner approval.
 
+## Completion estimate
+
+- Accepted practical local NOVA prototype: 100 percent.
+- Broader long-term NOVA vision: approximately 86 percent, unchanged because
+  this milestone validates existing behavior rather than adding capability.
+- Milestone 79: approximately 90 percent; the technical checkpoint is complete
+  and one physical owner daily-use feedback gate remains.
+
 ## Exact next action
 
 Use Librarian once from the private phone route and report whether the four
