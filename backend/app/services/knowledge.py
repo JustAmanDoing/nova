@@ -83,12 +83,20 @@ _PROFILE_PATTERNS = (
 
 
 @dataclass(frozen=True)
+class KnowledgeExampleDefinition:
+    text: str
+    draft: str
+
+
+@dataclass(frozen=True)
 class KnowledgeRequirementDefinition:
     id: str
     domain: str
     title: str
     why: str
     suggestion: str
+    prompt_starter: str
+    examples: tuple[KnowledgeExampleDefinition, ...]
     priority: int
     core: bool
     review_days: int
@@ -103,6 +111,17 @@ _KNOWLEDGE_REQUIREMENTS = (
         title="Preferred name",
         why="Lets Nova address you consistently without guessing.",
         suggestion="Tell Nova the name you want it to use.",
+        prompt_starter="Remember that the name I want you to use is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="A first name, such as Sam",
+                draft="Remember that the name I want you to use is Sam.",
+            ),
+            KnowledgeExampleDefinition(
+                text="A nickname, such as Sunny",
+                draft="Remember that the nickname I want you to use is Sunny.",
+            ),
+        ),
         priority=5,
         core=True,
         review_days=365,
@@ -114,6 +133,17 @@ _KNOWLEDGE_REQUIREMENTS = (
         title="How you like replies",
         why="Helps Nova answer in the way you prefer.",
         suggestion="Say whether you want short, detailed, or step-by-step replies.",
+        prompt_starter="Remember that I like replies that are ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="Short answers with the key steps first",
+                draft="Remember that I prefer short answers with the key steps first.",
+            ),
+            KnowledgeExampleDefinition(
+                text="Step-by-step help for unfamiliar tasks",
+                draft="Remember that I prefer step-by-step help for unfamiliar tasks.",
+            ),
+        ),
         priority=4,
         core=True,
         review_days=180,
@@ -130,6 +160,17 @@ _KNOWLEDGE_REQUIREMENTS = (
         title="What you want to achieve",
         why="Helps Nova focus on what matters to you.",
         suggestion="Add something you want Nova to help you achieve.",
+        prompt_starter="Remember that something I want to achieve is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="Build a steady exercise habit",
+                draft="Remember that I want to build a steady exercise habit.",
+            ),
+            KnowledgeExampleDefinition(
+                text="Learn basic home maintenance skills",
+                draft="Remember that I want to learn basic home maintenance skills.",
+            ),
+        ),
         priority=5,
         core=True,
         review_days=90,
@@ -142,6 +183,17 @@ _KNOWLEDGE_REQUIREMENTS = (
         title="Projects you are working on",
         why="Helps Nova suggest useful next steps.",
         suggestion="Add a project you are working on.",
+        prompt_starter="Remember that a project I am working on is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="Organising family photos",
+                draft="Remember that a project I am working on is organising family photos.",
+            ),
+            KnowledgeExampleDefinition(
+                text="Planning a small garden",
+                draft="Remember that a project I am working on is planning a small garden.",
+            ),
+        ),
         priority=5,
         core=True,
         review_days=90,
@@ -157,6 +209,20 @@ _KNOWLEDGE_REQUIREMENTS = (
             "Add your time zone or general area. You do not need to give an "
             "exact address."
         ),
+        prompt_starter="Remember that my time zone or general area is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="Brisbane time",
+                draft="Remember that my time zone is Australia/Brisbane.",
+            ),
+            KnowledgeExampleDefinition(
+                text="A general area, such as regional Queensland",
+                draft=(
+                    "Remember that I am based in regional Queensland, without "
+                    "saving my exact address."
+                ),
+            ),
+        ),
         priority=4,
         core=True,
         review_days=365,
@@ -168,6 +234,20 @@ _KNOWLEDGE_REQUIREMENTS = (
         title="Your work and schedule",
         why="Helps Nova make plans that fit around your work.",
         suggestion="Add the working hours or job details that affect your plans.",
+        prompt_starter="Remember that my work or schedule includes ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="I usually work weekdays",
+                draft="Remember that I usually work weekdays and plan personal jobs for weekends.",
+            ),
+            KnowledgeExampleDefinition(
+                text="My work involves regular driving",
+                draft=(
+                    "Remember that my work involves regular driving, so practical "
+                    "mobile steps help."
+                ),
+            ),
+        ),
         priority=4,
         core=True,
         review_days=180,
@@ -186,6 +266,17 @@ _KNOWLEDGE_REQUIREMENTS = (
         title="Your devices and software",
         why="Helps Nova give instructions that work on your devices.",
         suggestion="Add the main devices or programs you want Nova to help with.",
+        prompt_starter="Remember that a device or program I use is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="A Windows 11 desktop PC",
+                draft="Remember that my main computer runs Windows 11.",
+            ),
+            KnowledgeExampleDefinition(
+                text="An Android phone",
+                draft="Remember that I use an Android phone for mobile instructions.",
+            ),
+        ),
         priority=3,
         core=True,
         review_days=180,
@@ -207,6 +298,17 @@ _KNOWLEDGE_REQUIREMENTS = (
         suggestion=(
             "Add only the family or household details that are useful for planning."
         ),
+        prompt_starter="Remember that someone I plan with is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="My partner and I share grocery planning",
+                draft="Remember that my partner and I share grocery planning.",
+            ),
+            KnowledgeExampleDefinition(
+                text="Our household prefers quiet weekend mornings",
+                draft="Remember that our household prefers quiet weekend mornings.",
+            ),
+        ),
         priority=3,
         core=False,
         review_days=365,
@@ -226,8 +328,22 @@ _KNOWLEDGE_REQUIREMENTS = (
         title="Vehicle details and maintenance",
         why="Helps Nova give advice that fits your vehicle.",
         suggestion=(
-            "Add your vehicle or a maintenance reminder if you want Nova to "
-            "help with it."
+            "Add useful vehicle or maintenance information. Nova can remember "
+            "it, but cannot send reminders yet."
+        ),
+        prompt_starter="Remember that my vehicle or maintenance information is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="My car uses 95-octane fuel",
+                draft="Remember that my car uses 95-octane fuel.",
+            ),
+            KnowledgeExampleDefinition(
+                text="Service it every 10,000 kilometres",
+                draft=(
+                    "Remember that my car's service interval is every 10,000 "
+                    "kilometres. You can remember this, but cannot send reminders yet."
+                ),
+            ),
         ),
         priority=3,
         core=False,
@@ -237,9 +353,29 @@ _KNOWLEDGE_REQUIREMENTS = (
     KnowledgeRequirementDefinition(
         id="home-responsibilities",
         domain="home",
-        title="Home jobs and projects",
-        why="Helps Nova remember home maintenance and projects.",
-        suggestion="Add a home job or project if you want Nova to help you remember it.",
+        title="Home jobs and routines",
+        why="Helps Nova remember home maintenance and routines.",
+        suggestion=(
+            "Add a home job or routine if it would help. Nova can remember it, "
+            "but cannot send reminders yet."
+        ),
+        prompt_starter="Remember that a home job or routine I want help with is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="Bin night is Thursday",
+                draft=(
+                    "Remember that bin night is Thursday. You can remember this, "
+                    "but cannot send reminders yet."
+                ),
+            ),
+            KnowledgeExampleDefinition(
+                text="Check the smoke alarms twice a year",
+                draft=(
+                    "Remember that I check the smoke alarms twice a year. You can "
+                    "remember this, but cannot send reminders yet."
+                ),
+            ),
+        ),
         priority=2,
         core=False,
         review_days=180,
@@ -258,7 +394,18 @@ _KNOWLEDGE_REQUIREMENTS = (
         why="Helps Nova support your planning without storing banking details.",
         suggestion=(
             "Add a general money goal if you want help planning it. Do not "
-            "include account numbers or passwords."
+            "include account numbers, passwords, or other secrets."
+        ),
+        prompt_starter="Remember that a money goal I want help planning is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="Build a three-month emergency fund",
+                draft="Remember that my money goal is to build a three-month emergency fund.",
+            ),
+            KnowledgeExampleDefinition(
+                text="Save for a reliable used car",
+                draft="Remember that my money goal is to save for a reliable used car.",
+            ),
         ),
         priority=3,
         core=False,
@@ -272,7 +419,21 @@ _KNOWLEDGE_REQUIREMENTS = (
         why="Helps Nova tailor general plans when you choose to save this.",
         suggestion=(
             "Add a food or health preference if it would help with planning. "
-            "Avoid private medical details."
+            "Avoid unnecessary medical details."
+        ),
+        prompt_starter="Remember that a food or health preference useful for planning is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="I prefer vegetarian meal ideas",
+                draft="Remember that I prefer vegetarian meal ideas.",
+            ),
+            KnowledgeExampleDefinition(
+                text="I prefer low-impact exercise ideas",
+                draft=(
+                    "Remember that I prefer low-impact exercise ideas, without "
+                    "saving unnecessary medical details."
+                ),
+            ),
         ),
         priority=2,
         core=False,
@@ -291,8 +452,22 @@ _KNOWLEDGE_REQUIREMENTS = (
         title="Emergency contacts or plan",
         why="Helps Nova find the emergency steps or contacts you choose to save.",
         suggestion=(
-            "Add emergency contacts or steps only if you want them here. Do "
-            "not include private details you would rather keep elsewhere."
+            "Add general emergency steps only if you want them here. Do not "
+            "include passwords, account numbers, exact addresses, or other secrets."
+        ),
+        prompt_starter="Remember that an emergency step I want to save is ",
+        examples=(
+            KnowledgeExampleDefinition(
+                text="Keep a torch and radio with the emergency kit",
+                draft="Remember that my emergency kit should include a torch and radio.",
+            ),
+            KnowledgeExampleDefinition(
+                text="Use a familiar public place as a family meeting point",
+                draft=(
+                    "Remember that our emergency meeting point is a familiar public "
+                    "place; I will add only the general place, not an exact address."
+                ),
+            ),
         ),
         priority=4,
         core=False,
@@ -393,6 +568,8 @@ class KnowledgeRequirementStatusRecord:
     title: str
     why: str
     suggestion: str
+    prompt_starter: str
+    examples: tuple[KnowledgeExampleDefinition, ...]
     priority: int
     core: bool
     review_days: int
@@ -716,6 +893,8 @@ class KnowledgeService:
                     title=definition.title,
                     why=definition.why,
                     suggestion=definition.suggestion,
+                    prompt_starter=definition.prompt_starter,
+                    examples=definition.examples,
                     priority=definition.priority,
                     core=definition.core,
                     review_days=definition.review_days,

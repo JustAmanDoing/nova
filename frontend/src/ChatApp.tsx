@@ -50,27 +50,6 @@ type DraftMessage = Pick<
   | "document_sources"
 >;
 
-const KNOWLEDGE_PROMPT_STARTERS: Record<string, string> = {
-  "preferred-name": "Remember that my name is ",
-  "response-style": "Remember that I like replies that are ",
-  "current-goals": "Remember that something I want to achieve is ",
-  "active-projects": "Remember that a project I am working on is ",
-  "timezone-location": "Remember that my time zone or general area is ",
-  "work-context": "Remember that my work or schedule includes ",
-  "technology-environment":
-    "Remember that a device or program I use is ",
-  "household-context":
-    "Remember that someone I plan with is ",
-  "vehicle-context": "Remember that my vehicle or maintenance reminder is ",
-  "home-responsibilities":
-    "Remember that a home job or project I want help with is ",
-  "financial-goals": "Remember that a money goal I want help planning is ",
-  "health-preferences":
-    "Remember that a food or health preference useful for planning is ",
-  "emergency-plan":
-    "Remember that an emergency contact or step I want to save is ",
-};
-
 function ChatApp() {
   const [models, setModels] = useState<ChatModel[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
@@ -283,10 +262,19 @@ function ChatApp() {
       guidedQueryHandledRef.current = true;
       const parameters = new URLSearchParams(window.location.search);
       const requirementId = parameters.get("knowledge");
+      const exampleDraft = parameters.get("example");
       const recordId = parameters.get("record");
 
-      if (requirementId && KNOWLEDGE_PROMPT_STARTERS[requirementId]) {
-        setDraft(KNOWLEDGE_PROMPT_STARTERS[requirementId]);
+      const requirement = knowledgeQuality?.requirements.find(
+        (item) => item.id === requirementId,
+      );
+      if (requirement) {
+        setDraft(
+          exampleDraft !== null
+            ? exampleDraft.slice(0, 4000)
+            : requirement.prompt_starter ??
+              `Remember that ${requirement.title.toLowerCase()} is `,
+        );
         setNotice(
           "Prepared an editable prompt. Nothing has been sent or saved.",
         );
@@ -313,7 +301,7 @@ function ChatApp() {
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [knowledgeRecords, loading]);
+  }, [knowledgeQuality, knowledgeRecords, loading]);
 
   async function handleNewConversation() {
     if (generating) return;
@@ -609,9 +597,13 @@ function ChatApp() {
     }
   }
 
-  function handlePrepareKnowledge(requirement: KnowledgeRequirementQuality) {
+  function handlePrepareKnowledge(
+    requirement: KnowledgeRequirementQuality,
+    exampleDraft?: string,
+  ) {
     setDraft(
-      KNOWLEDGE_PROMPT_STARTERS[requirement.id] ??
+      exampleDraft ??
+        requirement.prompt_starter ??
         `Remember that ${requirement.title.toLowerCase()} is `,
     );
     setNotice(
@@ -1182,7 +1174,10 @@ function KnowledgeHealth({
   report: KnowledgeQualityReport | null;
   error: string | null;
   actionsDisabled: boolean;
-  onPrepare: (requirement: KnowledgeRequirementQuality) => void;
+  onPrepare: (
+    requirement: KnowledgeRequirementQuality,
+    exampleDraft?: string,
+  ) => void;
   onReview: (requirement: KnowledgeRequirementQuality) => void;
 }) {
   if (error) {
@@ -1291,6 +1286,24 @@ function KnowledgeHealth({
                   </span>
                 </div>
                 <p>{requirement.suggestion}</p>
+                {requirement.status === "missing" && requirement.examples?.length ? (
+                  <div className="knowledge-examples">
+                    <strong>Examples — you do not need to add these.</strong>
+                    <ul>
+                      {requirement.examples.map((example) => (
+                        <li key={example.text}>
+                          <button
+                            type="button"
+                            disabled={actionsDisabled}
+                            onClick={() => onPrepare(requirement, example.draft)}
+                          >
+                            {example.text}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
                 {requirement.status === "stale" &&
                 requirement.matched_record_titles[0] ? (
                   <p className="knowledge-gap-record">

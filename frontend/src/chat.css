@@ -713,6 +713,55 @@
   opacity: 0.55;
 }
 
+.knowledge-examples {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+}
+
+.knowledge-examples > strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #b8c5be;
+  font-size: 0.68rem;
+}
+
+.knowledge-gaps li .knowledge-examples ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knowledge-gaps li .knowledge-examples li {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.knowledge-examples button {
+  min-height: 44px;
+  width: 100%;
+  padding: 8px 10px;
+  color: #cfe0d7;
+  border: 1px solid #42564b;
+  border-radius: 8px;
+  background: #101a14;
+  text-align: left;
+  cursor: pointer;
+}
+
+.knowledge-examples button:hover:not(:disabled),
+.knowledge-examples button:focus-visible {
+  border-color: #8bf6b8;
+}
+
+.knowledge-examples button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .knowledge-health-complete {
   margin: 10px 0 0;
 }

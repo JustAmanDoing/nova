@@ -16,6 +16,7 @@ const issue = {
   source_titles: ["Response style"],
   suggested_action: "Review the source before changing anything.",
   review_url: "/chat.html?record=record-1",
+  examples: [],
 };
 
 const health = {
@@ -168,6 +169,74 @@ describe("LibrarianApp", () => {
       .toHaveAttribute("href", issue.review_url);
     expect(screen.queryByText(/integrity-verified|immutable|SHA-256|deterministic/i))
       .not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.every(([, init]) => !init?.method)).toBe(true);
+  });
+
+  it("shows curated examples only inside missing-check details", async () => {
+    const missingIssue = {
+      ...issue,
+      id: "lib-missing-home",
+      issue_type: "missing_coverage",
+      priority: "low",
+      title: "Home jobs and routines",
+      review_url: "/chat.html?knowledge=home-responsibilities",
+      examples: [
+        {
+          text: "Bin night is Thursday",
+          draft: "Remember that bin night is Thursday. You can remember this, but cannot send reminders yet.",
+        },
+        {
+          text: "Check the smoke alarms twice a year",
+          draft: "Remember that I check the smoke alarms twice a year. You can remember this, but cannot send reminders yet.",
+        },
+      ],
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/librarian/health")) {
+        return Promise.resolve(jsonResponse(health));
+      }
+      if (url.endsWith("/librarian/review")) {
+        return Promise.resolve(
+          jsonResponse({ ...review, total: 1, issues: [missingIssue] }),
+        );
+      }
+      if (url.endsWith(`/librarian/item/${missingIssue.id}`)) {
+        return Promise.resolve(
+          jsonResponse({
+            ...detail,
+            issue: missingIssue,
+            sources: [],
+            revisions: [],
+            events: [],
+          }),
+        );
+      }
+      void init;
+      return Promise.resolve(jsonResponse({ detail: "not found" }, 404));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<LibrarianApp />);
+
+    expect(await screen.findByText(missingIssue.title)).toBeInTheDocument();
+    expect(screen.queryByText("Bin night is Thursday")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Why this is here" }));
+
+    const exampleLink = await screen.findByRole("link", {
+      name: "Bin night is Thursday",
+    });
+    expect(
+      screen.getByRole("heading", {
+        name: "Examples — you do not need to add these.",
+      }),
+    ).toBeInTheDocument();
+    expect(exampleLink).toHaveAttribute(
+      "href",
+      `${missingIssue.review_url}&example=${encodeURIComponent(missingIssue.examples[0].draft)}`,
+    );
+    expect(screen.getByRole("link", { name: "Open review in Chat" }))
+      .toHaveAttribute("href", missingIssue.review_url);
     expect(fetchMock.mock.calls.every(([, init]) => !init?.method)).toBe(true);
   });
 
