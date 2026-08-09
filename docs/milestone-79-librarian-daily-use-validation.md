@@ -97,6 +97,18 @@ has no duplicate, conflict, stale, missing-file, broken-reference, or checksum
 issue, so those states remain covered by automated tests rather than a
 synthetic mutation of owner data.
 
+## Owner feedback checkpoint
+
+On 9 August 2026, the owner confirmed that the Emergency plan suggestion is
+not needed. This is measured false-positive friction for this owner: the
+suggestion is technically accurate against the optional checklist, but is not
+useful in normal use.
+
+No emergency-plan knowledge was added merely to clear the queue, and no
+detection rule was changed from this single observation. Financial goals, Home
+responsibilities, Vehicle context, evidence clarity, ordering, and the review
+handoff remain to be assessed through normal phone use.
+
 The private route works, but the existing Windows phone-status control still
 cannot prove route ownership because its original Serve ownership record is
 absent. The control remains fail-closed and no network setting was changed.
@@ -115,12 +127,13 @@ engineering decision plus explicit owner approval.
 - Accepted practical local NOVA prototype: 100 percent.
 - Broader long-term NOVA vision: approximately 86 percent, unchanged because
   this milestone validates existing behavior rather than adding capability.
-- Milestone 79: approximately 90 percent; the technical checkpoint is complete
-  and one physical owner daily-use feedback gate remains.
+- Milestone 79: approximately 90 percent; the technical checkpoint is complete,
+  one noisy suggestion has been identified, and the remaining physical owner
+  feedback is still pending.
 
 ## Exact next action
 
-Use Librarian once from the private phone route and report whether the four
-optional items are useful as shown or identify any item that feels noisy,
-unclear, or wrongly ordered. Do not add knowledge merely to complete this
-validation.
+Review Financial goals, Home responsibilities, and Vehicle context from the
+private phone route, then report whether each is useful or noisy and whether
+View evidence and Review behave as expected. Do not add knowledge merely to
+complete this validation.
