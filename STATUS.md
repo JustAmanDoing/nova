@@ -9,13 +9,13 @@
 ---
 record_version: 1
 verification: VERIFIED
-verified_at: 2026-08-10T19:21:51+10:00
-current_milestone: Milestone 80 - Conductor Phase 1 candidate in progress; continuity draft PR is verified and feature work remains paused
+verified_at: 2026-08-11T09:51:27+10:00
+current_milestone: Milestone 80 - Conductor Phase 1 candidate in progress; continuity is integrated and product work remains paused
 integrated_branch: main
-integrated_commit: 1905e442699d923c2ea6a70b62e17712684f330b
-active_branch: agent/engineering-continuity
-active_commit: f8be9d7121881643790c6292803960ba45c7b1c7
-pull_request: 39
+integrated_commit: 0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7
+active_branch: agent/milestone-80-conductor-phase-1
+active_commit: bce194bbe3154ce1ec2c895d779a55cbaa72d43c
+pull_request: 38
 release: v0.78.2
 installed_commit: 93daa9806590c950c94044e637a44125f5739ec0
 ---
@@ -50,8 +50,8 @@ Milestone 79 is complete and integrated on `main`.
   starters and evidence cards, regression coverage, and CI smoke coverage.
 - The canonical GitHub status branch, mandatory repository instructions,
   engineering workflow, live fail-closed resume check, and Windows structural
-  regression guard are implemented and published. Milestone 80 product work
-  remains paused pending continuity review and integration.
+  regression guard are merged into `main` through PR #39. Milestone 80 product
+  work remains paused pending an explicit next direction.
 
 ## Checks and tests
 
@@ -78,15 +78,15 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   `CURRENT STATUS NOT VERIFIED`.
 - Draft PR #39 protected CI passed on the exact continuity commit: Windows
   controls, Backend quality, Frontend quality, and Production runtime.
+- PR #39 was merged into `main` at
+  `0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7` after explicit owner approval.
 
 ## Branch and commit
 
 - Integrated branch: `main`
-- Integrated commit: `1905e442699d923c2ea6a70b62e17712684f330b`
-- Active continuity branch: `agent/engineering-continuity`
-- Active continuity commit: `f8be9d7121881643790c6292803960ba45c7b1c7`
-- Paused Milestone 80 branch: `agent/milestone-80-conductor-phase-1` at
-  `bce194bbe3154ce1ec2c895d779a55cbaa72d43c`
+- Integrated continuity commit: `0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7`
+- Active Milestone 80 branch: `agent/milestone-80-conductor-phase-1`
+- Active Milestone 80 commit: `bce194bbe3154ce1ec2c895d779a55cbaa72d43c`
 - Actual Windows checkout: clean `agent/fix-knowledge-gap-refresh` at
   `b3bd610cbd0536fd99c26001d1211b47d92dee0a`; after fetch, that local branch is
   behind its remote by four commits. Its local `main` remains stale at
@@ -95,9 +95,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 
 ## Pull request and release state
 
-- Draft PR #39, **Establish GitHub-backed engineering continuity**, is open
-  against `main` at the exact continuity commit. It remains draft and blocked
-  from merging until explicit owner approval; all four protected CI jobs passed.
+- PR #39, **Establish GitHub-backed engineering continuity**, merged into
+  `main` at `0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7`; all four protected CI jobs
+  passed before merge.
 - Draft PR #38, **Add bounded Conductor status routing**, remains open and
   mergeable against `main`; its protected CI is successful.
 - Merge, release, Windows installation, and physical acceptance are not
@@ -111,11 +111,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 
 ## Blockers and risks
 
-- Engineering continuity is operational on GitHub and locally verified, but
-  its repository instructions are not integrated on `main` until owner review
-  and explicit merge approval.
-- The actual Windows checkout is clean but stale and on an older branch; align
-  it deliberately before local feature engineering resumes.
+- The continuity workflow is operational and integrated. The actual Windows
+  checkout remains clean but stale on an older branch and must be aligned
+  deliberately before local feature engineering resumes.
 - The GitHub App remains read-only for mutations, but GitHub CLI authentication
   is restored with repository and workflow scopes. The continuity read path
   remains public and read-only, so it does not depend on that credential.
@@ -127,9 +125,10 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 
 ## Exact next action
 
-Review draft PR #39 and, only with explicit owner approval, merge the
-continuity workflow into `main`. Do not resume Milestone 80 product work or
-merge PR #38.
+Perform an independent final review of the exact current PR #38 diff and its
+evidence, then request explicit owner approval before merging, releasing, or
+installing it. Do not add more Milestone 80 product scope without a separate
+direction.
 
 ## Session closeout requirement
 
