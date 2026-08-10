@@ -9,12 +9,12 @@
 ---
 record_version: 1
 verification: VERIFIED
-verified_at: 2026-08-11T09:51:27+10:00
-current_milestone: Milestone 80 - Conductor Phase 1 candidate in progress; continuity is integrated and product work remains paused
+verified_at: 2026-08-11T09:57:09+10:00
+current_milestone: Milestone 80 - Conductor Phase 1 candidate refreshed on current main; awaiting independent final review
 integrated_branch: main
 integrated_commit: 0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7
 active_branch: agent/milestone-80-conductor-phase-1
-active_commit: bce194bbe3154ce1ec2c895d779a55cbaa72d43c
+active_commit: 12c47e40932e3343104edf732b4c59799812bc59
 pull_request: 38
 release: v0.78.2
 installed_commit: 93daa9806590c950c94044e637a44125f5739ec0
@@ -80,13 +80,16 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   controls, Backend quality, Frontend quality, and Production runtime.
 - PR #39 was merged into `main` at
   `0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7` after explicit owner approval.
+- PR #38 was rebased onto current `main` without conflicts. The refreshed head
+  passed GitHub Actions run 31444210954: Windows controls, Backend quality,
+  Frontend quality, and Production runtime.
 
 ## Branch and commit
 
 - Integrated branch: `main`
 - Integrated continuity commit: `0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7`
 - Active Milestone 80 branch: `agent/milestone-80-conductor-phase-1`
-- Active Milestone 80 commit: `bce194bbe3154ce1ec2c895d779a55cbaa72d43c`
+- Active Milestone 80 commit: `12c47e40932e3343104edf732b4c59799812bc59`
 - Actual Windows checkout: clean `agent/fix-knowledge-gap-refresh` at
   `b3bd610cbd0536fd99c26001d1211b47d92dee0a`; after fetch, that local branch is
   behind its remote by four commits. Its local `main` remains stale at
@@ -99,9 +102,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   `main` at `0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7`; all four protected CI jobs
   passed before merge.
 - Draft PR #38, **Add bounded Conductor status routing**, remains open and
-  draft against `main`. Its exact-head protected CI is successful, but its base
-  commit predates the continuity merge and GitHub currently reports an unknown
-  merge state. Those checks are not evidence for a refreshed candidate.
+  draft against current `main` at
+  `12c47e40932e3343104edf732b4c59799812bc59`. Its refreshed exact-head
+  protected CI is successful; GitHub has no pending required check.
 - Merge, release, Windows installation, and physical acceptance are not
   approved.
 - Current installed release: NOVA 0.78.2 at installed commit
@@ -119,8 +122,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - The GitHub App remains read-only for mutations, but GitHub CLI authentication
   is restored with repository and workflow scopes. The continuity read path
   remains public and read-only, so it does not depend on that credential.
-- PR #38 must be updated or rebased onto current `main` and rerun through
-  protected CI before it can be independently reviewed or considered for merge.
+- PR #38 still requires a fresh independent final review before owner merge
+  approval. Passing CI does not replace that review, release evidence,
+  installation, or physical acceptance.
 - PR #38 documentation and description still say protected CI is required even
   though the exact-head run passed. Correct that evidence only after continuity
   is operational.
@@ -129,10 +133,10 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 
 ## Exact next action
 
-With a separate scoped instruction, update or rebase draft PR #38 onto current
-`main` and rerun protected CI. Then perform an independent final review and
-request explicit owner approval before merging, releasing, or installing it.
-Do not add more Milestone 80 product scope without a separate direction.
+Perform a fresh independent final review of draft PR #38 at
+`12c47e40932e3343104edf732b4c59799812bc59`. Then request explicit owner
+approval before merging, releasing, or installing it. Do not add more
+Milestone 80 product scope without a separate direction.
 
 ## Session closeout requirement
 
