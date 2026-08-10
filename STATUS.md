@@ -99,7 +99,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   `main` at `0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7`; all four protected CI jobs
   passed before merge.
 - Draft PR #38, **Add bounded Conductor status routing**, remains open and
-  mergeable against `main`; its protected CI is successful.
+  draft against `main`. Its exact-head protected CI is successful, but its base
+  commit predates the continuity merge and GitHub currently reports an unknown
+  merge state. Those checks are not evidence for a refreshed candidate.
 - Merge, release, Windows installation, and physical acceptance are not
   approved.
 - Current installed release: NOVA 0.78.2 at installed commit
@@ -117,6 +119,8 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - The GitHub App remains read-only for mutations, but GitHub CLI authentication
   is restored with repository and workflow scopes. The continuity read path
   remains public and read-only, so it does not depend on that credential.
+- PR #38 must be updated or rebased onto current `main` and rerun through
+  protected CI before it can be independently reviewed or considered for merge.
 - PR #38 documentation and description still say protected CI is required even
   though the exact-head run passed. Correct that evidence only after continuity
   is operational.
@@ -125,10 +129,10 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 
 ## Exact next action
 
-Perform an independent final review of the exact current PR #38 diff and its
-evidence, then request explicit owner approval before merging, releasing, or
-installing it. Do not add more Milestone 80 product scope without a separate
-direction.
+With a separate scoped instruction, update or rebase draft PR #38 onto current
+`main` and rerun protected CI. Then perform an independent final review and
+request explicit owner approval before merging, releasing, or installing it.
+Do not add more Milestone 80 product scope without a separate direction.
 
 ## Session closeout requirement
 
