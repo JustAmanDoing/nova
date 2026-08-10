@@ -3,6 +3,33 @@
 These instructions apply to the whole repository. Keep them concise enough for
 Codex to load with any broader user or workspace instructions.
 
+## Mandatory continuity gate
+
+Before making any current-status claim or starting engineering work:
+
+1. Read the canonical `STATUS.md` from the `project-status` branch on GitHub.
+2. Run `scripts/Test-NovaContinuity.ps1` when a Windows shell is available.
+3. Reconcile the record with current repository refs, the actual local
+   checkout, the active pull request and exact-head CI, release/tag state, and
+   runtime evidence for any installation claim.
+
+The repository and verified runtime are authoritative for implementation and
+installation truth. The status record is the canonical shared handoff, not a
+substitute for evidence. Do not use chat memory, a ChatGPT project mirror,
+packaged project files, or a stale local checkout to infer current status.
+
+If the record cannot be read, required evidence cannot be checked, or a claim
+does not reconcile, stop before feature work and report exactly:
+
+`CURRENT STATUS NOT VERIFIED`
+
+At the end of every NOVA work session, update the same `STATUS.md` on the
+`project-status` branch in a focused commit and push it to GitHub. Include the
+current milestone, completed work, checks/tests, integrated and active branch,
+exact commits, PR/CI/release/install/acceptance state, blockers/risks, and one
+exact next action. Never create a competing active status file or issue. Follow
+[the engineering continuity workflow](docs/engineering-continuity.md).
+
 ## Source-of-truth order
 
 Before making claims or changes, inspect the current state instead of relying
@@ -184,7 +211,8 @@ Every completion report must include:
 - current project completion estimate; and
 - one exact next action.
 
-At the end of each completed work session, update the relevant repository
-status, approved decisions, release and commit evidence, unresolved issues, and
-exact next milestone. Do not rewrite historical evidence to describe an
-unmerged candidate as released or installed.
+At the end of each completed work session, update the canonical active status
+record and relevant historical evidence with approved decisions, release and
+commit evidence, unresolved issues, and the exact next milestone. Do not
+rewrite historical evidence to describe an unmerged candidate as released or
+installed.

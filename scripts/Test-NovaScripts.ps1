@@ -8,6 +8,7 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $Controller = Join-Path $PSScriptRoot "Nova.ps1"
 $ProjectRecordControl = Join-Path $PSScriptRoot "Update-NovaProjectRecord.ps1"
 $ProjectSourceImport = Join-Path $PSScriptRoot "Import-NovaProjectSource.ps1"
+$ContinuityControl = Join-Path $PSScriptRoot "Test-NovaContinuity.ps1"
 $tokens = $null
 $parseErrors = $null
 
@@ -22,7 +23,11 @@ if ($parseErrors.Count -gt 0) {
     throw "Nova.ps1 has syntax errors: $($messages -join '; ')"
 }
 
-foreach ($script in @($ProjectRecordControl, $ProjectSourceImport)) {
+foreach ($script in @(
+    $ProjectRecordControl,
+    $ProjectSourceImport,
+    $ContinuityControl
+)) {
     $scriptTokens = $null
     $scriptErrors = $null
     [System.Management.Automation.Language.Parser]::ParseFile(
@@ -33,6 +38,41 @@ foreach ($script in @($ProjectRecordControl, $ProjectSourceImport)) {
     if ($scriptErrors.Count -gt 0) {
         $messages = $scriptErrors | ForEach-Object { $_.Message }
         throw "$([System.IO.Path]::GetFileName($script)) has syntax errors: $($messages -join '; ')"
+    }
+}
+
+$continuityContent = Get-Content -Raw -LiteralPath $ContinuityControl
+foreach ($requiredContinuityControl in @(
+    "project-status",
+    "STATUS.md",
+    "CURRENT STATUS NOT VERIFIED",
+    "integrated_commit",
+    "active_commit",
+    "/git/ref/heads/",
+    "/pulls/"
+)) {
+    if ($continuityContent -notmatch [regex]::Escape($requiredContinuityControl)) {
+        throw "The continuity control is missing: $requiredContinuityControl"
+    }
+}
+
+$agentsContent = Get-Content -Raw -LiteralPath (Join-Path $ProjectRoot "AGENTS.md")
+$continuityGuide = Get-Content -Raw -LiteralPath (
+    Join-Path $ProjectRoot "docs\engineering-continuity.md"
+)
+if ($agentsContent -notmatch [regex]::Escape("Mandatory continuity gate")) {
+    throw "AGENTS.md is missing the mandatory continuity gate."
+}
+foreach ($requiredContinuityInstruction in @(
+    "project-status",
+    "Test-NovaContinuity.ps1",
+    "CURRENT STATUS NOT VERIFIED"
+)) {
+    if (
+        $agentsContent -notmatch [regex]::Escape($requiredContinuityInstruction) `
+        -or $continuityGuide -notmatch [regex]::Escape($requiredContinuityInstruction)
+    ) {
+        throw "The continuity instructions are missing: $requiredContinuityInstruction"
     }
 }
 
