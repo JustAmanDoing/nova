@@ -9,13 +9,13 @@
 ---
 record_version: 1
 verification: VERIFIED
-verified_at: 2026-08-10T09:47:04+10:00
-current_milestone: Milestone 80 - Conductor Phase 1 candidate in progress; continuity operational and feature work remains paused
+verified_at: 2026-08-10T19:21:51+10:00
+current_milestone: Milestone 80 - Conductor Phase 1 candidate in progress; continuity draft PR is verified and feature work remains paused
 integrated_branch: main
 integrated_commit: 1905e442699d923c2ea6a70b62e17712684f330b
 active_branch: agent/engineering-continuity
 active_commit: f8be9d7121881643790c6292803960ba45c7b1c7
-pull_request: none
+pull_request: 39
 release: v0.78.2
 installed_commit: 93daa9806590c950c94044e637a44125f5739ec0
 ---
@@ -76,6 +76,8 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   draft PR #38.
 - A deliberately missing status ref failed closed with
   `CURRENT STATUS NOT VERIFIED`.
+- Draft PR #39 protected CI passed on the exact continuity commit: Windows
+  controls, Backend quality, Frontend quality, and Production runtime.
 
 ## Branch and commit
 
@@ -93,9 +95,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 
 ## Pull request and release state
 
-- The continuity branch is pushed but has no pull request. The GitHub App can
-  read but returned 403 for issue, branch, and pull-request mutations; local
-  `gh` authentication reports an invalid token. No credential was changed.
+- Draft PR #39, **Establish GitHub-backed engineering continuity**, is open
+  against `main` at the exact continuity commit. It remains draft and blocked
+  from merging until explicit owner approval; all four protected CI jobs passed.
 - Draft PR #38, **Add bounded Conductor status routing**, remains open and
   mergeable against `main`; its protected CI is successful.
 - Merge, release, Windows installation, and physical acceptance are not
@@ -110,14 +112,13 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 ## Blockers and risks
 
 - Engineering continuity is operational on GitHub and locally verified, but
-  its repository instructions are not integrated on `main` until owner review,
-  draft PR creation, protected CI, and explicit merge approval.
+  its repository instructions are not integrated on `main` until owner review
+  and explicit merge approval.
 - The actual Windows checkout is clean but stale and on an older branch; align
   it deliberately before local feature engineering resumes.
-- Local GitHub CLI authentication reports an invalid token and the GitHub App
-  lacks write permission. The continuity read path works through GitHub's
-  public read-only API and does not require that credential, but draft PR
-  creation is blocked until GitHub CLI authentication is restored.
+- The GitHub App remains read-only for mutations, but GitHub CLI authentication
+  is restored with repository and workflow scopes. The continuity read path
+  remains public and read-only, so it does not depend on that credential.
 - PR #38 documentation and description still say protected CI is required even
   though the exact-head run passed. Correct that evidence only after continuity
   is operational.
@@ -126,10 +127,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 
 ## Exact next action
 
-Restore GitHub CLI authentication, open a draft pull request from
-`agent/engineering-continuity` at
-`f8be9d7121881643790c6292803960ba45c7b1c7` to `main`, and let protected CI run.
-Do not resume Milestone 80 product work or merge either branch.
+Review draft PR #39 and, only with explicit owner approval, merge the
+continuity workflow into `main`. Do not resume Milestone 80 product work or
+merge PR #38.
 
 ## Session closeout requirement
 
