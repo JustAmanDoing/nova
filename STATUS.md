@@ -10,12 +10,12 @@
 record_version: 1
 verification: VERIFIED
 verified_at: 2026-08-11T11:23:00+10:00
-current_milestone: Milestone 80 released and installed; mobile Chat layout fix under draft review
+current_milestone: Milestone 80 released and installed; mobile Chat layout fix installed, physical phone confirmation pending
 integrated_branch: main
-integrated_commit: e4e647e1085f37ede172bd7a498e74efbcc7280c
-active_branch: agent/fix-mobile-chat-layout
-active_commit: f76ee252a1566945b3900d7791b33d1de9eec605
-pull_request: 41
+integrated_commit: 86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535
+active_branch: main
+active_commit: 86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535
+pull_request: none
 release: v0.80.0
 installed_commit: e4e647e1085f37ede172bd7a498e74efbcc7280c
 ---
@@ -73,6 +73,11 @@ not yet marked complete.
 - Draft PR #41 fixes the reported phone overflow: the Chat screen now keeps
   only Nova, Chats, and New chat in its mobile header, hides desktop page links
   at that breakpoint, and corrects invalid mobile width expressions.
+- PR #41 was merged and installed through the guarded updater. The updater
+  created verified backup `nova-20260811T012723.002135Z.db` with SHA-256
+  `ef926e972f358469b8c4b1c51d4a0b77df717e8833e14434eec3f669589400a8`,
+  fast-forwarded the clean Windows checkout, rebuilt both services, and
+  reported NOVA 0.80.0 ready.
 
 ## Checks and tests
 
@@ -139,13 +144,11 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 ## Branch and commit
 
 - Integrated branch: `main`
-- Integrated `main` commit: `e4e647e1085f37ede172bd7a498e74efbcc7280c`
-  (includes the Milestone 80 implementation merge
-  `2ea7b1d85f343029bda5e0cd39c908a209aff524` and the plan merge)
+- Integrated `main` commit: `86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535`
+  (includes the Milestone 80 implementation, release evidence plan, and the
+  mobile Chat layout fix)
 - Active branch and commit: `main` at
-  `e4e647e1085f37ede172bd7a498e74efbcc7280c`
-- Active review branch and commit: `agent/fix-mobile-chat-layout` at
-  `f76ee252a1566945b3900d7791b33d1de9eec605`
+  `86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535`
 - Actual Windows checkout: clean `main` at
   `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
 
@@ -160,9 +163,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - PR #40, **Add Milestone 80 release evidence plan**, passed all four protected
   checks and was merged into `main` after explicit owner approval at
   `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
-- PR #41, **Fix mobile Chat layout**, is open as a draft on
-  `agent/fix-mobile-chat-layout` at
-  `f76ee252a1566945b3900d7791b33d1de9eec605`; all four protected checks passed.
+- PR #41, **Fix mobile Chat layout**, passed all four protected checks and was
+  merged after explicit owner approval at
+  `86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535`.
 - Release `v0.80.0`, **NOVA 0.80.0 — Bounded Conductor status routing**, is
   published from `e4e647e1085f37ede172bd7a498e74efbcc7280c`:
   https://github.com/JustAmanDoing/nova/releases/tag/v0.80.0
@@ -183,14 +186,13 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - The no-model document-context acceptance probe returned 422 validation before
   model execution rather than the expected 503. This does not authorize a
   behavioral conclusion about the unavailable-model document path.
-- PR #41 must pass protected checks, receive owner merge approval, and be
-  installed through the guarded updater before the phone layout is changed live.
+- The live mobile layout still needs owner confirmation on the physical phone.
 
 ## Exact next action
 
-Review draft PR #41. After its checks pass, explicitly approve or adjust its
-merge and guarded update; then confirm the focused Chat header on the physical
-private phone before recording final Milestone 80 owner acceptance.
+Open Chat on the physical private phone and confirm the focused header shows
+Nova, Chats, and New chat without overflow or overlap. Then record final owner
+acceptance in the Milestone 80 release report.
 
 ## Session closeout requirement
 
