@@ -9,15 +9,15 @@
 ---
 record_version: 1
 verification: VERIFIED
-verified_at: 2026-08-11T10:35:36+10:00
-current_milestone: Milestone 80 - implementation and release evidence plan merged; release, installation, and acceptance pending explicit operational approval
+verified_at: 2026-08-11T10:50:00+10:00
+current_milestone: Milestone 80 - released and installed; technical PC and private-route acceptance passed, physical owner phone acceptance pending
 integrated_branch: main
 integrated_commit: e4e647e1085f37ede172bd7a498e74efbcc7280c
 active_branch: main
 active_commit: e4e647e1085f37ede172bd7a498e74efbcc7280c
 pull_request: none
-release: v0.78.2
-installed_commit: 93daa9806590c950c94044e637a44125f5739ec0
+release: v0.80.0
+installed_commit: e4e647e1085f37ede172bd7a498e74efbcc7280c
 ---
 
 ## Verification state
@@ -34,10 +34,11 @@ not begin feature work.
 
 ## Current milestone
 
-Milestone 80 bounded Conductor Phase 1 implementation and its release and
-installation evidence plan are merged into `main`. Release, guarded Windows
-installation, and physical PC/private-phone acceptance are not started or
-approved. The merged plan does not change NOVA runtime behavior.
+Milestone 80 bounded Conductor Phase 1 is released as NOVA 0.80.0 and installed
+from `main`. The guarded Windows update, local PC endpoint acceptance, and
+private Tailscale route acceptance passed. Physical handset UI observation and
+owner acceptance have not been captured in this session, so the milestone is
+not yet marked complete.
 
 ## Completed work
 
@@ -57,6 +58,18 @@ approved. The merged plan does not change NOVA runtime behavior.
   It defines the explicit approval bundle, existing guarded updater path,
   no-destructive rollback boundary, runtime/security/data-preservation proof,
   and PC/private-phone acceptance evidence required before completion.
+- Release `v0.80.0` was published from `main` commit
+  `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
+- The actual Windows checkout was safely switched from its stale clean branch
+  to `main`, then NOVA's existing backup-first, fast-forward-only updater
+  installed that exact commit. The updater created verified backup
+  `nova-20260811T004350.018805Z.db` with SHA-256
+  `016389d51c9c1976583186d80249fc834d809e961edc4b5e8754ba09a001b432`.
+- Four exact no-model status requests passed through both the loopback PC API
+  and NOVA's private Tailscale route. Each stored one bounded assistant result
+  with a source title, generated time, and 64-character SHA-256 evidence that
+  survived a conversation reload. No-model unmatched request returned 503;
+  database integrity passed after acceptance.
 
 ## Checks and tests
 
@@ -102,6 +115,17 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   GitHub Actions run 31446577504 passed: Windows controls, Backend quality,
   Frontend quality, and Production runtime all completed successfully before
   the plan merged.
+- Post-install health reported NOVA 0.80.0. The Windows checkout is clean at
+  `e4e647e1085f37ede172bd7a498e74efbcc7280c` and exactly matches tag `v0.80.0`.
+  Docker rebuilt both services; the backend was healthy and the dashboard was
+  ready. The active database passed read-only integrity before and after the
+  update and acceptance.
+- Private Tailscale Serve remained healthy at NOVA 0.80.0 and Funnel remained
+  off. The four capabilities passed on both `127.0.0.1` and the private HTTPS
+  route. The local model service was online; an unmatched no-model request
+  correctly returned 503. A selected-document no-model probe was rejected by
+  request validation with 422 before model execution, so it is recorded as a
+  limitation rather than a successful unavailable-model test.
 
 ## Branch and commit
 
@@ -111,11 +135,8 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   `2ea7b1d85f343029bda5e0cd39c908a209aff524` and the plan merge)
 - Active branch and commit: `main` at
   `e4e647e1085f37ede172bd7a498e74efbcc7280c`
-- Actual Windows checkout: clean `agent/fix-knowledge-gap-refresh` at
-  `b3bd610cbd0536fd99c26001d1211b47d92dee0a`; after fetch, that local branch is
-  behind its remote by four commits. Its local `main` remains stale at
-  `29e6b092077db672a7cdd36bb691b3afc0d25c4e` and must not be used for current
-  status.
+- Actual Windows checkout: clean `main` at
+  `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
 
 ## Pull request and release state
 
@@ -128,36 +149,33 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - PR #40, **Add Milestone 80 release evidence plan**, passed all four protected
   checks and was merged into `main` after explicit owner approval at
   `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
-- No Milestone 80 release, Windows installation, or physical acceptance is
-  approved.
-- Current installed release: NOVA 0.78.2 at installed commit
-  `93daa9806590c950c94044e637a44125f5739ec0`.
-- Release tag `v0.78.2` resolves to repository commit
-  `0dcb6f34869ee595286e56fcc9a04b091e0e4716`; later accepted installation and
-  documentation commits are recorded above.
-- No NOVA 0.80.0 release exists in the verified evidence.
+- Release `v0.80.0`, **NOVA 0.80.0 — Bounded Conductor status routing**, is
+  published from `e4e647e1085f37ede172bd7a498e74efbcc7280c`:
+  https://github.com/JustAmanDoing/nova/releases/tag/v0.80.0
+- Current installed release: NOVA 0.80.0 at
+  `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
 
 ## Blockers and risks
 
 - The continuity workflow is operational and integrated. The actual Windows
-  checkout remains clean but stale on an older branch and must be aligned
-  deliberately before local feature engineering resumes.
+  checkout is clean and aligned to the released `main` commit.
 - The GitHub App remains read-only for mutations, but GitHub CLI authentication
   is restored with repository and workflow scopes. The continuity read path
   remains public and read-only, so it does not depend on that credential.
-- Release publication, guarded Windows installation, exact merged-main runtime
-  verification, physical PC/private-phone acceptance, and release evidence
-  remain outstanding. Passing CI and the independent review do not replace
-  those gates.
-- Physical PC/private-phone acceptance, guarded installation, release evidence,
-  release/tag approval, and owner installation approval remain outstanding.
+- Physical handset UI observation, owner acceptance, and a separate Milestone
+  80 release report remain outstanding. The private route was exercised from
+  the PC but no physical phone screenshot or owner-observed UI evidence was
+  captured in this session.
+- The no-model document-context acceptance probe returned 422 validation before
+  model execution rather than the expected 503. This does not authorize a
+  behavioral conclusion about the unavailable-model document path.
 
 ## Exact next action
 
-Explicitly approve or adjust the operational bundle defined by the merged plan:
-tag/publish the exact approved Milestone 80 commit/version if still correct,
-run the guarded Windows update, and perform PC/private-phone acceptance. Do
-not begin that work until this separate approval is explicit.
+On the physical private phone, open Chat and run the four published starters,
+then confirm their source/evidence cards and links render correctly after a
+reload. Record the owner observation and create the separate Milestone 80
+release report; only then decide whether to mark the milestone complete.
 
 ## Session closeout requirement
 
