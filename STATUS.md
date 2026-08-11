@@ -9,13 +9,13 @@
 ---
 record_version: 1
 verification: VERIFIED
-verified_at: 2026-08-11T10:07:41+10:00
-current_milestone: Milestone 80 - Conductor Phase 1 candidate passed independent final review; awaiting owner merge approval
+verified_at: 2026-08-11T10:31:11+10:00
+current_milestone: Milestone 80 - Conductor Phase 1 implementation merged; release, installation, and acceptance pending
 integrated_branch: main
-integrated_commit: 0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7
-active_branch: agent/milestone-80-conductor-phase-1
-active_commit: 12c47e40932e3343104edf732b4c59799812bc59
-pull_request: 38
+integrated_commit: 2ea7b1d85f343029bda5e0cd39c908a209aff524
+active_branch: main
+active_commit: 2ea7b1d85f343029bda5e0cd39c908a209aff524
+pull_request: none
 release: v0.78.2
 installed_commit: 93daa9806590c950c94044e637a44125f5739ec0
 ---
@@ -89,13 +89,15 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   evidence links, additive evidence persistence, bounded output, and truthful
   failure behavior. The review did not authorize merge, release, installation,
   or physical acceptance.
+- PR #38 was marked ready and merged into `main` after explicit owner approval
+  at `2ea7b1d85f343029bda5e0cd39c908a209aff524`.
 
 ## Branch and commit
 
 - Integrated branch: `main`
-- Integrated continuity commit: `0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7`
-- Active Milestone 80 branch: `agent/milestone-80-conductor-phase-1`
-- Active Milestone 80 commit: `12c47e40932e3343104edf732b4c59799812bc59`
+- Integrated Milestone 80 commit: `2ea7b1d85f343029bda5e0cd39c908a209aff524`
+- Active branch and commit: `main` at
+  `2ea7b1d85f343029bda5e0cd39c908a209aff524`
 - Actual Windows checkout: clean `agent/fix-knowledge-gap-refresh` at
   `b3bd610cbd0536fd99c26001d1211b47d92dee0a`; after fetch, that local branch is
   behind its remote by four commits. Its local `main` remains stale at
@@ -107,10 +109,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - PR #39, **Establish GitHub-backed engineering continuity**, merged into
   `main` at `0a4d66a8c9abe4a1421ab3ac9c6b316bf8d45fe7`; all four protected CI jobs
   passed before merge.
-- Draft PR #38, **Add bounded Conductor status routing**, remains open and
-  draft against current `main` at
-  `12c47e40932e3343104edf732b4c59799812bc59`. Its refreshed exact-head
-  protected CI is successful; GitHub has no pending required check.
+- PR #38, **Add bounded Conductor status routing**, merged into `main` at
+  `2ea7b1d85f343029bda5e0cd39c908a209aff524` after all four refreshed
+  protected checks and explicit owner approval.
 - Merge, release, Windows installation, and physical acceptance are not
   approved.
 - Current installed release: NOVA 0.78.2 at installed commit
@@ -128,9 +129,10 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - The GitHub App remains read-only for mutations, but GitHub CLI authentication
   is restored with repository and workflow scopes. The continuity read path
   remains public and read-only, so it does not depend on that credential.
-- PR #38 now requires explicit owner merge approval. Passing CI and the
-  independent review do not replace release evidence, installation, or
-  physical acceptance.
+- Release publication, guarded Windows installation, exact merged-main runtime
+  verification, physical PC/private-phone acceptance, and release evidence
+  remain outstanding. Passing CI and the independent review do not replace
+  those gates.
 - PR #38 documentation and description still say protected CI is required even
   though the exact-head run passed. Correct that evidence only after continuity
   is operational.
@@ -139,9 +141,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 
 ## Exact next action
 
-With explicit owner approval, merge draft PR #38 at
-`12c47e40932e3343104edf732b4c59799812bc59`. Do not release, install, or claim
-physical acceptance; those remain separate later gates.
+Prepare the Milestone 80 release and installation evidence plan for owner
+approval. Do not tag, publish, install, or claim physical acceptance until that
+approval is explicit.
 
 ## Session closeout requirement
 
