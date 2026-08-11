@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import AppShell from "./AppShell";
+
 import {
   getProjectArchive,
   getProjectArchiveDocument,
@@ -86,26 +88,16 @@ export default function ProjectArchiveApp() {
   }
 
   return (
-    <main className="archive-shell">
-      <nav className="nav chat-nav" aria-label="Primary navigation">
-        <a className="brand" href="/">
-          <span className="brand-mark" aria-hidden="true">N</span>
-          Nova
-        </a>
-        <div className="chat-nav-links">
-          <a className="chat-nav-link" href="/chat.html">Chat</a>
-          <a className="chat-nav-link" href="/focus.html">Focus</a>
-          <a className="chat-nav-link active" href="/archive.html" aria-current="page">
-            Record
-          </a>
-          <a className="chat-nav-link" href="/librarian.html">Librarian</a>
-          <a className="chat-nav-link" href="/">Intake</a>
-        </div>
+    <AppShell
+      activeWorkspace="record"
+      contentClassName="archive-shell"
+      status={(
         <span className="archive-local-status">
           <span aria-hidden="true" />
           Local source record
         </span>
-      </nav>
+      )}
+    >
 
       <header className="archive-hero">
         <div>
@@ -245,7 +237,7 @@ export default function ProjectArchiveApp() {
           )}
         </aside>
       </div>
-    </main>
+    </AppShell>
   );
 }
 

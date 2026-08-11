@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import AppShell from "./AppShell";
+
 import {
   getLibrarianHealth,
   getLibrarianItem,
@@ -115,30 +117,16 @@ export default function LibrarianApp() {
   }
 
   return (
-    <main className="librarian-shell">
-      <nav className="nav chat-nav" aria-label="Primary navigation">
-        <a className="brand" href="/">
-          <span className="brand-mark" aria-hidden="true">N</span>
-          Nova
-        </a>
-        <div className="chat-nav-links">
-          <a className="chat-nav-link" href="/chat.html">Chat</a>
-          <a className="chat-nav-link" href="/focus.html">Focus</a>
-          <a className="chat-nav-link" href="/archive.html">Record</a>
-          <a
-            className="chat-nav-link active"
-            href="/librarian.html"
-            aria-current="page"
-          >
-            Librarian
-          </a>
-          <a className="chat-nav-link" href="/">Intake</a>
-        </div>
+    <AppShell
+      activeWorkspace="librarian"
+      contentClassName="librarian-shell"
+      status={(
         <span className="librarian-local-status">
           <span aria-hidden="true" />
           Suggestions only
         </span>
-      </nav>
+      )}
+    >
 
       <header className="librarian-hero">
         <div>
@@ -327,7 +315,7 @@ export default function LibrarianApp() {
         <strong>The Librarian only makes suggestions.</strong>
         <p>{health?.limitation ?? "It never changes or removes your saved information."}</p>
       </footer>
-    </main>
+    </AppShell>
   );
 }
 

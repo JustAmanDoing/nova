@@ -59,10 +59,14 @@
   display: none;
 }
 
+.mobile-chat-controls {
+  display: none;
+}
+
 .chat-layout {
   display: grid;
   grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
-  min-height: calc(100vh - 77px);
+  min-height: 100vh;
 }
 
 .conversation-sidebar {
@@ -1237,6 +1241,7 @@
 
   .chat-layout {
     grid-template-columns: 1fr;
+    min-height: calc(100dvh - 58px);
   }
 
   .conversation-sidebar {
@@ -1277,14 +1282,16 @@
     width: calc(100% - 24px);
   }
 
-  .chat-nav {
+  .mobile-chat-controls {
     position: sticky;
-    z-index: 50;
-    top: 0;
+    z-index: 40;
+    top: 58px;
+    display: flex;
     min-height: 64px;
     gap: 7px;
     padding: 10px 0;
     justify-content: space-between;
+    border-bottom: 1px solid #202924;
     background: rgba(9, 12, 11, 0.94);
     backdrop-filter: blur(14px);
   }
@@ -1376,7 +1383,7 @@
   .conversation-sidebar.mobile-open {
     position: fixed;
     z-index: 70;
-    inset: 74px 12px max(12px, env(safe-area-inset-bottom));
+    inset: 132px 12px max(12px, env(safe-area-inset-bottom));
     display: flex;
     width: auto;
     min-height: 0;
@@ -1416,7 +1423,7 @@
   }
 
   .chat-stage {
-    height: calc(100dvh - 84px);
+    height: calc(100dvh - 134px);
     min-height: 0;
     padding: 10px 0;
     overflow: hidden;
