@@ -54,6 +54,7 @@ def test_new_database_records_ordered_migration_history(tmp_path: Path) -> None:
         "learning_state",
         "chat_conversations",
         "chat_messages",
+        "chat_message_capability_sources",
         "next_actions",
         "next_action_events",
         "schema_migrations",
@@ -181,7 +182,7 @@ def test_conversation_organisation_migration_preserves_existing_history(
 ) -> None:
     database_path = tmp_path / "nova.db"
     with closing(sqlite3.connect(database_path)) as connection:
-        migrate_database(connection, MIGRATIONS[:-1])
+        migrate_database(connection, MIGRATIONS[:-2])
         connection.execute(
             """
             INSERT INTO chat_conversations (
@@ -237,6 +238,52 @@ def test_conversation_organisation_migration_preserves_existing_history(
     assert conversation == ("Existing history", "qwen3:8b", None, None)
     assert message == ("Existing private message",)
     assert events == [("created", "active", "2026-07-31T00:00:00+00:00")]
+
+
+def test_conductor_evidence_migration_preserves_existing_chat(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "nova.db"
+    with closing(sqlite3.connect(database_path)) as connection:
+        migrate_database(connection, MIGRATIONS[:-1])
+        connection.execute(
+            """
+            INSERT INTO chat_conversations (
+                id, title, model, created_at, updated_at
+            ) VALUES ('existing-conversation', 'History', 'qwen3:8b', ?, ?)
+            """,
+            ("2026-08-09T00:00:00+00:00", "2026-08-09T00:01:00+00:00"),
+        )
+        connection.execute(
+            """
+            INSERT INTO chat_messages (
+                id, conversation_id, role, content, model, created_at
+            ) VALUES (
+                'existing-message', 'existing-conversation', 'user',
+                'Existing private message', 'qwen3:8b', ?
+            )
+            """,
+            ("2026-08-09T00:01:00+00:00",),
+        )
+        connection.commit()
+
+    IntakeService(tmp_path / "intake", database_path).initialize()
+
+    with closing(sqlite3.connect(database_path)) as connection:
+        message = connection.execute(
+            "SELECT content FROM chat_messages WHERE id = 'existing-message'"
+        ).fetchone()
+        table = connection.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name = 'chat_message_capability_sources'
+            """
+        ).fetchone()
+        version = connection.execute("SELECT version FROM schema_meta").fetchone()
+
+    assert message == ("Existing private message",)
+    assert table == ("chat_message_capability_sources",)
+    assert version == (18,)
 
 
 def test_unreadable_database_is_refused_before_migration(tmp_path: Path) -> None:

@@ -11,6 +11,10 @@ The current MVP can:
 - Keep conversation and message history in Nova's local SQLite database
 - Stop an in-progress reply without storing an invented or partial assistant answer
 - Report local-model failure clearly while keeping saved conversations available
+- Ask four explicit NOVA status questions in Chat without an AI model, using
+  existing Focus, Librarian, and Project Record data
+- Keep each local status answer bounded and show its source, check time, and
+  response hash after conversation reload
 - Warn when proposed knowledge appears to duplicate an active approved record
 - Require explicit confirmation before keeping likely duplicate records separately
 - Update approved knowledge by creating a new immutable Markdown revision
@@ -152,6 +156,15 @@ Open:
 The **Chat** page uses the Ollama service already installed on the Windows host.
 Model discovery and replies remain local. Conversation history is stored in
 Nova's SQLite database and is therefore included in verified database backups.
+
+Milestone 80 adds the first bounded **Conductor** slice. Chat publishes four
+exact local status requests for open next actions, verified projects and goals,
+Librarian review, and NOVA project status. These deterministic reads work even
+when Ollama is unavailable, return at most five items per section, and retain
+source, check-time, and response-hash evidence with the assistant message.
+Ordinary conversation and document-context turns still require a selected
+local model. The Conductor adds no write action, agent framework, hidden tool,
+background work, or external provider.
 
 Milestone 55 adds bounded, deterministic conversation-to-knowledge capture.
 An explicit **Remember that...** request, or a limited high-value profile
@@ -633,6 +646,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 79 Librarian daily-use validation](docs/milestone-79-librarian-daily-use-validation.md)
 - [Milestone 79 knowledge examples Phase 1 candidate](docs/milestone-79-knowledge-examples-candidate.md)
 - [Milestone 79 knowledge examples Phase 1 acceptance](docs/milestone-79-knowledge-examples-acceptance.md)
+- [Milestone 80 Conductor Phase 1 review packet](docs/milestone-80-conductor-phase-1.md)
 - [NOVA Conductor interaction north star](docs/conductor-interaction-north-star.md)
 - [Milestone 69 implementation record](docs/milestone-69-implementation.md)
 - [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)

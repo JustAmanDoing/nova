@@ -167,6 +167,55 @@ jobs:
             | jq --exit-status \
                 '.limitation | contains("does not infer priority")' \
             > /dev/null
+          capabilities="$(
+            curl --fail --silent --show-error \
+              http://127.0.0.1:8000/api/v1/chat/capabilities
+          )"
+          test "$(printf '%s' "$capabilities" | jq 'length')" = '4'
+          printf '%s' "$capabilities" \
+            | jq --exit-status \
+                'map(.id) == [
+                  "focus.next_actions",
+                  "focus.projects_goals",
+                  "librarian.review",
+                  "project_record.status"
+                ]' \
+            > /dev/null
+          conversation_id="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'X-Nova-Intent: local-user-action' \
+              --data '{"title":"CI Conductor"}' \
+              http://127.0.0.1:8000/api/v1/chat/conversations \
+              | jq --raw-output '.id'
+          )"
+          conductor_events="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'X-Nova-Intent: local-user-action' \
+              --data '{"model":null,"content":"Show my open next actions"}' \
+              "http://127.0.0.1:8000/api/v1/chat/conversations/$conversation_id/messages"
+          )"
+          printf '%s' "$conductor_events" \
+            | jq --slurp --exit-status \
+                'map(.type) == ["user", "capability", "delta", "done"]
+                 and .[1].source.capability_id == "focus.next_actions"
+                 and (.[3].message.capability_sources | length) == 1' \
+            > /dev/null
+          saved_conversation="$(
+            curl --fail --silent --show-error \
+              "http://127.0.0.1:8000/api/v1/chat/conversations/$conversation_id"
+          )"
+          printf '%s' "$saved_conversation" \
+            | jq --exit-status \
+                '.model == null
+                 and .message_count == 2
+                 and (.messages | map(select(.role == "assistant"))
+                   | .[0].capability_sources[0].capability_id)
+                   == "focus.next_actions"' \
+            > /dev/null
           response_headers="$(
             curl --fail --silent --show-error --head \
               http://127.0.0.1:5173/

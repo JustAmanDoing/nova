@@ -40,6 +40,23 @@ const documentSource = {
   character_count: 31,
 };
 
+const conductorCapability = {
+  id: "focus.next_actions",
+  label: "Open next actions",
+  description: "Show the owner's current open Next actions from Focus.",
+  prompt: "Show my open next actions",
+  source_title: "Focus",
+  source_url: "/focus.html#next-actions",
+};
+
+const capabilitySource = {
+  capability_id: "focus.next_actions",
+  source_title: "Focus",
+  source_url: "/focus.html#next-actions",
+  generated_at: "2026-08-09T20:00:00Z",
+  result_sha256: "c".repeat(64),
+};
+
 const knowledgeRecord = {
   id: "record-1",
   candidate_id: "candidate-1",
@@ -677,6 +694,9 @@ describe("ChatApp", () => {
             jsonResponse({ detail: "Ollama is unavailable." }, 503),
           );
         }
+        if (url.endsWith("/chat/capabilities")) {
+          return Promise.resolve(jsonResponse([conductorCapability]));
+        }
         if (url.endsWith("/knowledge/quality")) {
           return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
@@ -722,7 +742,137 @@ describe("ChatApp", () => {
     );
     expect(screen.getByText("Saved while local")).toBeInTheDocument();
     expect(screen.getByText("1 message")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Message Nova" })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "Message Nova" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Open next actions" }),
+    ).toBeEnabled();
+  });
+
+  it("runs a listed NOVA status request without an AI model and shows evidence", async () => {
+    let turnCompleted = false;
+    const savedMessages = [
+      {
+        id: "user-1",
+        conversation_id: conversation.id,
+        role: "user",
+        content: conductorCapability.prompt,
+        model: null,
+        created_at: "2026-08-09T20:00:00Z",
+        knowledge_checked: false,
+        sources: [],
+        document_sources: [],
+        capability_sources: [],
+      },
+      {
+        id: "assistant-1",
+        conversation_id: conversation.id,
+        role: "assistant",
+        content: "Open next actions\n- Review Milestone 80 evidence",
+        model: null,
+        created_at: "2026-08-09T20:00:01Z",
+        knowledge_checked: false,
+        sources: [],
+        document_sources: [],
+        capability_sources: [capabilitySource],
+      },
+    ];
+    const fetchMock = vi.fn(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) {
+          return Promise.resolve(jsonResponse({ detail: "Ollama is unavailable." }, 503));
+        }
+        if (url.endsWith("/chat/capabilities")) {
+          return Promise.resolve(jsonResponse([conductorCapability]));
+        }
+        if (url.endsWith("/chat/documents")) return Promise.resolve(jsonResponse([]));
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
+        if (url.includes("/knowledge/candidates")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (
+          url.endsWith("/chat/conversations/conversation-1/messages") &&
+          init?.method === "POST"
+        ) {
+          expect(JSON.parse(String(init.body))).toEqual({
+            model: null,
+            content: conductorCapability.prompt,
+            document_id: null,
+          });
+          turnCompleted = true;
+          return Promise.resolve(
+            new Response(
+              [
+                JSON.stringify({ type: "user", message: savedMessages[0] }),
+                JSON.stringify({ type: "capability", source: capabilitySource }),
+                JSON.stringify({
+                  type: "delta",
+                  content: "Open next actions\n- Review Milestone 80 evidence",
+                }),
+                JSON.stringify({ type: "done", message: savedMessages[1] }),
+                "",
+              ].join("\n"),
+              { headers: { "Content-Type": "application/x-ndjson" } },
+            ),
+          );
+        }
+        if (url.endsWith("/chat/conversations/conversation-1")) {
+          return Promise.resolve(
+            jsonResponse({
+              ...conversation,
+              title: turnCompleted ? conductorCapability.prompt : conversation.title,
+              message_count: turnCompleted ? 2 : 0,
+              messages: turnCompleted ? savedMessages : [],
+            }),
+          );
+        }
+        if (url.includes("/chat/conversations?status=")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/chat/conversations")) {
+          return Promise.resolve(
+            jsonResponse([
+              {
+                ...conversation,
+                message_count: turnCompleted ? 2 : 0,
+              },
+            ]),
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    const starter = await screen.findByRole("button", {
+      name: "Open next actions",
+    });
+    await waitFor(() => expect(starter).toBeEnabled());
+    fireEvent.click(starter);
+    expect(screen.getByRole("textbox", { name: "Message Nova" })).toHaveValue(
+      conductorCapability.prompt,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByRole("button", { name: "Stop" });
+    await screen.findByRole("button", { name: "Send" });
+
+    expect(
+      screen.getByText(/Review Milestone 80 evidence/),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("NOVA capability evidence")).toHaveTextContent(
+      "Evidence cccccccccccc…",
+    );
+    expect(screen.getByRole("link", { name: "Open Focus" })).toHaveAttribute(
+      "href",
+      "/focus.html#next-actions",
+    );
   });
 
   it("requires explicit local approval before saving proposed knowledge", async () => {

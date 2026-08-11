@@ -12,6 +12,7 @@ from app.api.router import api_router
 from app.core.config import Settings, get_settings
 from app.services.backup import BackupService
 from app.services.chat import ChatService, OllamaProvider
+from app.services.conductor import ConductorService
 from app.services.intake import IntakeService
 from app.services.knowledge import KnowledgeService
 from app.services.librarian import LibrarianService
@@ -88,6 +89,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             operation_lock=operation_lock,
         )
         project_archive = ProjectArchiveService(resolved_settings.archive_path)
+        conductor = ConductorService(
+            knowledge=knowledge,
+            librarian=librarian,
+            next_actions=next_actions,
+            project_archive=project_archive,
+        )
         application.state.intake = intake
         application.state.backups = backups
         application.state.chat = chat
@@ -95,6 +102,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.librarian = librarian
         application.state.next_actions = next_actions
         application.state.project_archive = project_archive
+        application.state.conductor = conductor
         watcher = asyncio.create_task(
             watch_intake(intake, resolved_settings.intake_scan_seconds)
         )

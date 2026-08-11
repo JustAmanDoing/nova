@@ -14,6 +14,7 @@ import {
   getChatConversations,
   getChatDocuments,
   getChatModels,
+  getConductorCapabilities,
   getKnowledgeCandidates,
   getKnowledgeQuality,
   getKnowledgeRecords,
@@ -25,12 +26,14 @@ import {
   trashChatConversation,
   updateKnowledgeRecord,
   type ChatConversationSummary,
+  type ChatCapabilitySource,
   type ChatDocumentOption,
   type ChatDocumentSource,
   type ChatKnowledgeSource,
   type ChatMessage,
   type ChatModel,
   type ChatStreamEvent,
+  type ConductorCapability,
   type KnowledgeCandidate,
   type KnowledgeKind,
   type KnowledgeQualityReport,
@@ -48,11 +51,13 @@ type DraftMessage = Pick<
   | "knowledge_checked"
   | "sources"
   | "document_sources"
+  | "capability_sources"
 >;
 
 function ChatApp() {
   const [models, setModels] = useState<ChatModel[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
+  const [capabilities, setCapabilities] = useState<ConductorCapability[]>([]);
   const [documents, setDocuments] = useState<ChatDocumentOption[]>([]);
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
@@ -155,6 +160,7 @@ function ChatApp() {
     const controller = new AbortController();
     Promise.allSettled([
       getChatModels(controller.signal),
+      getConductorCapabilities(controller.signal),
       getChatDocuments(controller.signal),
       getChatConversations(controller.signal),
       getChatConversations(controller.signal, "archived"),
@@ -166,6 +172,7 @@ function ChatApp() {
       .then(
         async ([
           modelResult,
+          capabilityResult,
           documentResult,
           conversationResult,
           archivedResult,
@@ -181,6 +188,11 @@ function ChatApp() {
           setSelectedModel(modelResult.value[0]?.name ?? "");
         } else {
           failures.push(errorMessage(modelResult.reason));
+        }
+        if (capabilityResult.status === "fulfilled") {
+          setCapabilities(capabilityResult.value);
+        } else {
+          failures.push(errorMessage(capabilityResult.reason));
         }
         if (documentResult.status === "fulfilled") {
           setDocuments(documentResult.value);
@@ -416,7 +428,7 @@ function ChatApp() {
   async function handleSend(event: FormEvent) {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || !selectedModel || generating) return;
+    if (!content || generating) return;
     setDraft("");
     setNotice(null);
     setGenerating(true);
@@ -436,24 +448,26 @@ function ChatApp() {
           id: userId,
           role: "user",
           content,
-          model: selectedModel,
+          model: selectedModel || null,
           knowledge_checked: false,
           sources: [],
           document_sources: [],
+          capability_sources: [],
         },
         {
           id: assistantId,
           role: "assistant",
           content: "",
-          model: selectedModel,
+          model: selectedModel || null,
           knowledge_checked: false,
           sources: [],
           document_sources: [],
+          capability_sources: [],
         },
       ]);
       await streamChatMessage(
         conversationId,
-        selectedModel,
+        selectedModel || null,
         content,
         (streamEvent) => {
           if (streamEvent.type === "knowledge_warning") {
@@ -528,6 +542,18 @@ function ChatApp() {
             ? {
                 ...message,
                 document_sources: [event.source],
+              }
+            : message,
+        ),
+      );
+    }
+    if (event.type === "capability") {
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantId
+            ? {
+                ...message,
+                capability_sources: [event.source],
               }
             : message,
         ),
@@ -877,7 +903,7 @@ function ChatApp() {
           <section className="chat-workspace" aria-labelledby="chat-title">
           <header className="chat-heading">
             <div>
-              <p className="eyebrow">Milestone 65 · Projects &amp; Goals</p>
+              <p className="eyebrow">Milestone 80 · Conductor Phase 1</p>
               <h2 id="chat-title">Talk with Nova.</h2>
             </div>
             <label>
@@ -918,7 +944,8 @@ function ChatApp() {
                 <p>
                   Nova can use owner-approved local knowledge and show the exact
                   record it considered. Say “Remember that…” to prepare a review
-                  card. Nova never silently saves personal facts.
+                  card, or use a local status request below. Nova never silently
+                  saves personal facts.
                 </p>
               </div>
             ) : (
@@ -940,11 +967,35 @@ function ChatApp() {
                     message.document_sources?.length ? (
                       <DocumentSources sources={message.document_sources} />
                     ) : null}
+                    {message.role === "assistant" &&
+                    message.capability_sources?.length ? (
+                      <CapabilitySources sources={message.capability_sources} />
+                    ) : null}
                   </div>
                 </article>
               ))
             )}
           </div>
+          {capabilities.length ? (
+            <section className="conductor-starters" aria-label="Local NOVA status requests">
+              <span>Ask NOVA locally</span>
+              <div>
+                {capabilities.map((capability) => (
+                  <button
+                    type="button"
+                    key={capability.id}
+                    disabled={generating || selectedConversationStatus !== "active"}
+                    onClick={() => {
+                      setDraft(capability.prompt);
+                      composerRef.current?.focus();
+                    }}
+                  >
+                    {capability.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
           {showJumpToLatest ? (
             <button
               type="button"
@@ -967,7 +1018,11 @@ function ChatApp() {
                 id="chat-document"
                 value={selectedDocumentId}
                 onChange={(event) => setSelectedDocumentId(event.target.value)}
-                disabled={generating || selectedConversationStatus !== "active"}
+                disabled={
+                  models.length === 0 ||
+                  generating ||
+                  selectedConversationStatus !== "active"
+                }
               >
                 <option value="">None selected</option>
                 {documents.map((document) => (
@@ -992,11 +1047,10 @@ function ChatApp() {
               placeholder={
                 models.length
                   ? "Message Nova…"
-                  : "Start Ollama to chat with Nova"
+                  : "Ask a local NOVA status request…"
               }
               rows={2}
               disabled={
-                models.length === 0 ||
                 generating ||
                 selectedConversationStatus !== "active"
               }
@@ -1010,7 +1064,7 @@ function ChatApp() {
                 type="submit"
                 disabled={
                   !draft.trim() ||
-                  !selectedModel ||
+                  (!selectedModel && Boolean(selectedDocumentId)) ||
                   selectedConversationStatus !== "active"
                 }
               >
@@ -1400,6 +1454,38 @@ function DocumentSources({ sources }: { sources: ChatDocumentSource[] }) {
       </ul>
     </section>
   );
+}
+
+function CapabilitySources({ sources }: { sources: ChatCapabilitySource[] }) {
+  return (
+    <section className="capability-sources" aria-label="NOVA capability evidence">
+      <span>Read from NOVA</span>
+      <ul>
+        {sources.map((source) => (
+          <li key={`${source.capability_id}-${source.result_sha256}`}>
+            <div>
+              <strong>{source.source_title}</strong>
+              <small>
+                Checked{" "}
+                <time dateTime={source.generated_at}>
+                  {formatDateTime(source.generated_at)}
+                </time>
+              </small>
+              <small>Evidence {source.result_sha256.slice(0, 12)}…</small>
+              <a href={source.source_url}>Open {source.source_title}</a>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 const KNOWLEDGE_KIND_LABELS: Record<KnowledgeKind, string> = {

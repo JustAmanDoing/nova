@@ -27,6 +27,24 @@ export interface ChatMessage {
   knowledge_checked: boolean;
   sources: ChatKnowledgeSource[];
   document_sources: ChatDocumentSource[];
+  capability_sources: ChatCapabilitySource[];
+}
+
+export interface ConductorCapability {
+  id: string;
+  label: string;
+  description: string;
+  prompt: string;
+  source_title: string;
+  source_url: string;
+}
+
+export interface ChatCapabilitySource {
+  capability_id: string;
+  source_title: string;
+  source_url: string;
+  generated_at: string;
+  result_sha256: string;
 }
 
 export interface ChatKnowledgeSource {
@@ -98,6 +116,7 @@ export type ChatStreamEvent =
       sources: ChatKnowledgeSource[];
     }
   | { type: "document"; source: ChatDocumentSource }
+  | { type: "capability"; source: ChatCapabilitySource }
   | { type: "knowledge_warning"; message: string }
   | { type: "error"; message: string };
 
@@ -719,7 +738,7 @@ export async function getChatConversationEvents(
 
 export async function streamChatMessage(
   conversationId: string,
-  model: string,
+  model: string | null,
   content: string,
   onEvent: (event: ChatStreamEvent) => void,
   signal?: AbortSignal,
@@ -762,6 +781,12 @@ export async function streamChatMessage(
     if (done) break;
   }
   if (buffer.trim()) onEvent(JSON.parse(buffer) as ChatStreamEvent);
+}
+
+export async function getConductorCapabilities(
+  signal?: AbortSignal,
+): Promise<ConductorCapability[]> {
+  return request<ConductorCapability[]>("/api/v1/chat/capabilities", { signal });
 }
 
 export async function getKnowledgeCandidates(

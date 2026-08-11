@@ -92,6 +92,14 @@ The owner and ChatGPT approve the product outcome and reviewed scope. Approval
 must be explicit. Approval of a discussion, architecture direction, or nearby
 milestone does not silently authorize a broader implementation.
 
+For a bounded milestone, present the capability decision, reuse check,
+architecture, engineering plan, risks, tests, and rollout together whenever
+they are ready. Ask once for approval of that complete implementation scope;
+do not make the owner repeat equivalent approvals for each section. Further
+approval is required only when unavoidable: a material scope or authority
+change, protected merge, release or live installation, destructive action, or
+physical owner acceptance.
+
 ### 6. Codex implementation
 
 Codex on the Windows PC implements only the approved scope on the approved

@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.conductor import ChatCapabilitySource
+
 
 class ChatModel(BaseModel):
     name: str
@@ -53,6 +55,7 @@ class ChatMessage(BaseModel):
     knowledge_checked: bool = False
     sources: list[ChatKnowledgeSource] = Field(default_factory=list)
     document_sources: list[ChatDocumentSource] = Field(default_factory=list)
+    capability_sources: list[ChatCapabilitySource] = Field(default_factory=list)
 
 
 class ChatConversationSummary(BaseModel):
@@ -90,6 +93,6 @@ class ChatConversationEvent(BaseModel):
 
 
 class SendChatMessageRequest(BaseModel):
-    model: str = Field(min_length=1, max_length=200)
+    model: str | None = Field(default=None, min_length=1, max_length=200)
     content: str = Field(min_length=1, max_length=20_000)
     document_id: str | None = Field(default=None, min_length=1, max_length=200)

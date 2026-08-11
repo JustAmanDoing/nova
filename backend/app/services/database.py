@@ -587,6 +587,29 @@ def _conversation_organisation(connection: sqlite3.Connection) -> None:
     _execute_all(connection, statements)
 
 
+def _conductor_capability_evidence(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE chat_message_capability_sources (
+            message_id TEXT NOT NULL
+                REFERENCES chat_messages(id) ON DELETE CASCADE,
+            position INTEGER NOT NULL CHECK (position >= 1),
+            capability_id TEXT NOT NULL,
+            source_title TEXT NOT NULL,
+            source_url TEXT NOT NULL,
+            generated_at TEXT NOT NULL,
+            result_sha256 TEXT NOT NULL CHECK (length(result_sha256) = 64),
+            PRIMARY KEY (message_id, position)
+        )
+        """,
+        """
+        CREATE INDEX ix_chat_message_capability_sources_capability
+        ON chat_message_capability_sources (capability_id, generated_at)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -620,6 +643,11 @@ MIGRATIONS: tuple[Migration, ...] = (
         17,
         "conversation-organisation",
         _conversation_organisation,
+    ),
+    Migration(
+        18,
+        "conductor-capability-evidence",
+        _conductor_capability_evidence,
     ),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version

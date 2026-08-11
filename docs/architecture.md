@@ -28,8 +28,12 @@ React chat page
         ├── approved-only knowledge retrieval
         │     ├── path containment + current SHA-256 verification
         │     └── exact persisted [K#] source evidence
+        ├── exact Conductor capability routing
+        │     ├── Focus next actions and verified projects/goals
+        │     ├── read-only Librarian review
+        │     └── read-only Project Record status
         └── Nova-owned provider adapter
-              └── Ollama on the Windows host
+              └── optional Ollama on the Windows host
 ```
 
 It does not bypass or extend the guarded file workflow.
@@ -97,6 +101,8 @@ Local data/intake folder
 
 - Provides a separate local chat page with model selection, streamed replies,
   local conversation history, and stop generation.
+- Lists four exact local status requests that remain usable without Ollama and
+  shows their source, check time, result hash, and owning NOVA page.
 - Shows editable knowledge proposals with explicit **Approve & save** and
   **Don't save** controls.
 - Makes pending state explicit: a proposal is not permanent knowledge.
@@ -157,6 +163,13 @@ Local data/intake folder
 
 - Discovers models and streams replies through a small Nova-owned Ollama
   adapter rather than coupling the application to a provider-specific UI.
+- Publishes a static four-item Conductor registry and routes only its exact
+  normalized phrases to existing read-only domain-service methods.
+- Bounds Conductor lists to five items per section and persists capability ID,
+  fixed local source, generation time, and result SHA-256 with the completed
+  assistant message.
+- Keeps ordinary chat and selected-document turns model-dependent; an
+  unmatched model-free request fails before chat history is changed.
 - Stores conversations and complete user/assistant messages locally in SQLite.
 - Detects only bounded, deterministic explicit-memory and high-value profile
   patterns; the language model does not decide what becomes permanent.
