@@ -1415,15 +1415,35 @@
     white-space: nowrap;
   }
 
+  .chat-stage {
+    height: calc(100dvh - 84px);
+    min-height: 0;
+    padding: 10px 0;
+    overflow: hidden;
+  }
+
   .chat-workspace {
-    height: max(560px, calc(100dvh - 320px));
-    min-height: 560px;
-    grid-template-rows: auto minmax(180px, 1fr) auto auto auto;
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
   }
 
   .chat-heading {
+    gap: 8px;
+    padding-bottom: 10px;
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .chat-heading .eyebrow {
+    display: none;
+  }
+
+  .chat-heading h2 {
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 750;
+    letter-spacing: 0;
   }
 
   .chat-heading select {
@@ -1431,22 +1451,54 @@
   }
 
   .chat-transcript {
-    padding: 20px 0;
+    padding: 20px 4px;
+  }
+
+  .chat-welcome {
+    max-width: 340px;
+  }
+
+  .chat-welcome p {
+    font-size: 0.88rem;
+  }
+
+  .conductor-starters {
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 0 2px;
+  }
+
+  .conductor-starters > span {
+    display: none;
+  }
+
+  .conductor-starters > div {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .conductor-starters button {
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
   }
 
   .jump-to-latest {
     right: 8px;
-    bottom: 188px;
+    bottom: 146px;
   }
 
   .chat-composer {
-    position: sticky;
-    z-index: 20;
-    bottom: calc(8px + env(safe-area-inset-bottom));
+    position: static;
     grid-template-columns: minmax(0, 1fr) auto;
-    box-shadow:
-      0 -18px 34px rgba(5, 9, 7, 0.88),
-      0 20px 60px rgba(0, 0, 0, 0.35);
+    box-shadow: none;
+  }
+
+  .chat-boundary,
+  .chat-stage > .knowledge-review {
+    display: none;
   }
 
   .knowledge-fields {
