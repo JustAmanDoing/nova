@@ -146,7 +146,8 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   Frontend quality, and Production runtime all completed successfully.
 - For draft PR #42 commit `d746325b04aca265fa0770d27816e76107c36ae8`,
   `git diff --check` and the isolated Docker production frontend build passed.
-  GitHub Actions run 31460982831 is in progress.
+  GitHub Actions run 31460982831 passed: Windows controls, Backend quality,
+  Frontend quality, and Production runtime all completed successfully.
 
 ## Branch and commit
 
@@ -177,7 +178,7 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   `86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535`.
 - PR #42, **Reshape mobile Chat workspace**, is open as a draft on
   `agent/fix-mobile-chat-overlap` at
-  `d746325b04aca265fa0770d27816e76107c36ae8`; protected checks are in progress.
+  `d746325b04aca265fa0770d27816e76107c36ae8`; all four protected checks passed.
 - Release `v0.80.0`, **NOVA 0.80.0 — Bounded Conductor status routing**, is
   published from `e4e647e1085f37ede172bd7a498e74efbcc7280c`:
   https://github.com/JustAmanDoing/nova/releases/tag/v0.80.0
