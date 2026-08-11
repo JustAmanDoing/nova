@@ -647,6 +647,7 @@ for private vulnerability reporting and the local security boundary.
 - [Milestone 79 knowledge examples Phase 1 candidate](docs/milestone-79-knowledge-examples-candidate.md)
 - [Milestone 79 knowledge examples Phase 1 acceptance](docs/milestone-79-knowledge-examples-acceptance.md)
 - [Milestone 80 Conductor Phase 1 review packet](docs/milestone-80-conductor-phase-1.md)
+- [Milestone 80 release and installation evidence plan](docs/milestone-80-release-installation-plan.md)
 - [NOVA Conductor interaction north star](docs/conductor-interaction-north-star.md)
 - [Milestone 69 implementation record](docs/milestone-69-implementation.md)
 - [Milestone 69 architecture review](docs/milestone-69-architecture-review.md)
