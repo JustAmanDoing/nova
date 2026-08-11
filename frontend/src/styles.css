@@ -1130,7 +1130,7 @@ tbody tr:last-child td {
 
 @media (max-width: 560px) {
   .shell {
-    width: min(100% - 24px, 1180px);
+    width: min(calc(100% - 24px), 1180px);
   }
 
   .nav {
