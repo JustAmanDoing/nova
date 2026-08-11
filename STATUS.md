@@ -133,7 +133,8 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   `git diff --check` passed and `docker compose build frontend` passed using
   NOVA's pinned production TypeScript and Vite build. Local lint/test commands
   were unavailable because this dedicated worktree has no host `node_modules`.
-  GitHub Actions run 31449109902 is in progress.
+  GitHub Actions run 31449109902 passed: Windows controls, Backend quality,
+  Frontend quality, and Production runtime all completed successfully.
 
 ## Branch and commit
 
@@ -161,7 +162,7 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
 - PR #41, **Fix mobile Chat layout**, is open as a draft on
   `agent/fix-mobile-chat-layout` at
-  `f76ee252a1566945b3900d7791b33d1de9eec605`; protected checks are in progress.
+  `f76ee252a1566945b3900d7791b33d1de9eec605`; all four protected checks passed.
 - Release `v0.80.0`, **NOVA 0.80.0 — Bounded Conductor status routing**, is
   published from `e4e647e1085f37ede172bd7a498e74efbcc7280c`:
   https://github.com/JustAmanDoing/nova/releases/tag/v0.80.0
