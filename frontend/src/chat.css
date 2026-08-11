@@ -1228,7 +1228,7 @@
 
 @media (max-width: 800px) {
   .chat-shell {
-    width: min(100% - 24px, 1440px);
+    width: min(calc(100% - 24px), 1440px);
   }
 
   .chat-provider {
@@ -1273,6 +1273,10 @@
 }
 
 @media (max-width: 560px) {
+  .chat-shell {
+    width: calc(100% - 24px);
+  }
+
   .chat-nav {
     position: sticky;
     z-index: 50;
@@ -1280,6 +1284,7 @@
     min-height: 64px;
     gap: 7px;
     padding: 10px 0;
+    justify-content: space-between;
     background: rgba(9, 12, 11, 0.94);
     backdrop-filter: blur(14px);
   }
@@ -1313,7 +1318,7 @@
   }
 
   .chat-nav-links {
-    margin-left: auto;
+    display: none;
   }
 
   .chat-nav-link {
@@ -1350,10 +1355,6 @@
   }
 
   .conversation-list {
-    display: none;
-  }
-
-  .chat-nav-link.active {
     display: none;
   }
 
