@@ -10,12 +10,12 @@
 record_version: 1
 verification: VERIFIED
 verified_at: 2026-08-11T11:23:00+10:00
-current_milestone: Milestone 80 released and installed; ChatGPT-style mobile Chat workspace under draft review
+current_milestone: Milestone 80 released and installed; ChatGPT-style mobile Chat workspace installed, physical phone confirmation pending
 integrated_branch: main
-integrated_commit: 86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535
-active_branch: agent/fix-mobile-chat-overlap
-active_commit: d746325b04aca265fa0770d27816e76107c36ae8
-pull_request: 42
+integrated_commit: c0bee2a89ec9f88c0cf004227bb3b56fc007ccaf
+active_branch: main
+active_commit: c0bee2a89ec9f88c0cf004227bb3b56fc007ccaf
+pull_request: none
 release: v0.80.0
 installed_commit: e4e647e1085f37ede172bd7a498e74efbcc7280c
 ---
@@ -82,6 +82,11 @@ not yet marked complete.
   conversations remain in the Chats drawer, the transcript is the scrollable
   middle area, the composer is the bottom grid row, quick requests are compact
   suggestions, and Librarian health stays on its own page.
+- PR #42 was merged and installed through NOVA's guarded updater. The updater
+  created verified backup `nova-20260811T075742.735561Z.db` with SHA-256
+  `b54cd304feaadc6cbaf58e25a72d691f57af0dc4274f7ac7da7bd8c65e6961f1`,
+  fast-forwarded the clean checkout, rebuilt services, and reported NOVA 0.80.0
+  ready.
 
 ## Checks and tests
 
@@ -152,13 +157,11 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 ## Branch and commit
 
 - Integrated branch: `main`
-- Integrated `main` commit: `86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535`
+- Integrated `main` commit: `c0bee2a89ec9f88c0cf004227bb3b56fc007ccaf`
   (includes the Milestone 80 implementation, release evidence plan, and the
   mobile Chat layout fix)
 - Active branch and commit: `main` at
-  `86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535`
-- Active review branch and commit: `agent/fix-mobile-chat-overlap` at
-  `d746325b04aca265fa0770d27816e76107c36ae8`
+  `c0bee2a89ec9f88c0cf004227bb3b56fc007ccaf`
 - Actual Windows checkout: clean `main` at
   `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
 
@@ -176,9 +179,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - PR #41, **Fix mobile Chat layout**, passed all four protected checks and was
   merged after explicit owner approval at
   `86ea9a423e1b0a9708d0d98a7d5dc22a7a7df535`.
-- PR #42, **Reshape mobile Chat workspace**, is open as a draft on
-  `agent/fix-mobile-chat-overlap` at
-  `d746325b04aca265fa0770d27816e76107c36ae8`; all four protected checks passed.
+- PR #42, **Reshape mobile Chat workspace**, passed all four protected checks
+  and was merged after explicit owner approval at
+  `c0bee2a89ec9f88c0cf004227bb3b56fc007ccaf`.
 - Release `v0.80.0`, **NOVA 0.80.0 — Bounded Conductor status routing**, is
   published from `e4e647e1085f37ede172bd7a498e74efbcc7280c`:
   https://github.com/JustAmanDoing/nova/releases/tag/v0.80.0
@@ -200,14 +203,13 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   model execution rather than the expected 503. This does not authorize a
   behavioral conclusion about the unavailable-model document path.
 - The live mobile layout still needs owner confirmation on the physical phone.
-- PR #42 needs protected checks, explicit merge approval, and a guarded update
-  before the redesigned Chat workspace is live.
+- The redesigned Chat workspace needs physical phone confirmation.
 
 ## Exact next action
 
-Review draft PR #42. After checks pass, explicitly approve or adjust its merge
-and guarded update; then confirm that phone Chat has the Chats drawer, a
-scrollable conversation above, and the composer at the bottom.
+On the physical phone, open Chat and confirm Chats opens the conversation
+drawer, the conversation scrolls above, and the composer remains at the bottom
+without overlap. Record owner acceptance after that check.
 
 ## Session closeout requirement
 
