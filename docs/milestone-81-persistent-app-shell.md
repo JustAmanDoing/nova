@@ -2,8 +2,8 @@
 
 **Status (11 August 2026): owner-approved implementation is complete on the
 feature branch, locally verified, independently diff-reviewed, and published
-as draft PR #43. The candidate is not merged, released, installed, or
-physically accepted.**
+as draft PR #43. All four protected checks passed on the reviewed candidate.
+The candidate is not merged, released, installed, or physically accepted.**
 
 ## Approved decision
 
@@ -50,6 +50,8 @@ Local verification on 11 August 2026:
   history overlay, usable model/composer controls, and no horizontal overflow.
 - Independent `main...HEAD` diff and whitespace review - passed with no
   blocking defect or scope expansion found.
+- Protected CI on draft PR #43 - passed: Frontend quality, Backend quality,
+  Windows controls, and Production runtime.
 
 The existing Intake test suite still emits known React `act(...)` warnings in
 two asynchronous state tests. All affected tests pass, and this candidate does
@@ -70,6 +72,6 @@ not change those state flows.
 
 ## Exact next action
 
-Wait for all protected checks on draft PR #43, resolve any verified failure,
-then report the evidence before asking the owner to approve moving the PR out
-of draft.
+Owner reviews draft PR #43 and its evidence, then explicitly approves or
+declines moving it out of draft. Merge, release, and installation remain
+separate later approval gates.
