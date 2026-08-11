@@ -9,13 +9,13 @@
 ---
 record_version: 1
 verification: VERIFIED
-verified_at: 2026-08-11T10:50:00+10:00
-current_milestone: Milestone 80 - released and installed; technical PC and private-route acceptance passed, physical owner phone acceptance pending
+verified_at: 2026-08-11T11:23:00+10:00
+current_milestone: Milestone 80 released and installed; mobile Chat layout fix under draft review
 integrated_branch: main
 integrated_commit: e4e647e1085f37ede172bd7a498e74efbcc7280c
-active_branch: main
-active_commit: e4e647e1085f37ede172bd7a498e74efbcc7280c
-pull_request: none
+active_branch: agent/fix-mobile-chat-layout
+active_commit: f76ee252a1566945b3900d7791b33d1de9eec605
+pull_request: 41
 release: v0.80.0
 installed_commit: e4e647e1085f37ede172bd7a498e74efbcc7280c
 ---
@@ -70,6 +70,9 @@ not yet marked complete.
   with a source title, generated time, and 64-character SHA-256 evidence that
   survived a conversation reload. No-model unmatched request returned 503;
   database integrity passed after acceptance.
+- Draft PR #41 fixes the reported phone overflow: the Chat screen now keeps
+  only Nova, Chats, and New chat in its mobile header, hides desktop page links
+  at that breakpoint, and corrects invalid mobile width expressions.
 
 ## Checks and tests
 
@@ -126,6 +129,11 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   correctly returned 503. A selected-document no-model probe was rejected by
   request validation with 422 before model execution, so it is recorded as a
   limitation rather than a successful unavailable-model test.
+- For draft PR #41 commit `f76ee252a1566945b3900d7791b33d1de9eec605`,
+  `git diff --check` passed and `docker compose build frontend` passed using
+  NOVA's pinned production TypeScript and Vite build. Local lint/test commands
+  were unavailable because this dedicated worktree has no host `node_modules`.
+  GitHub Actions run 31449109902 is in progress.
 
 ## Branch and commit
 
@@ -135,6 +143,8 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   `2ea7b1d85f343029bda5e0cd39c908a209aff524` and the plan merge)
 - Active branch and commit: `main` at
   `e4e647e1085f37ede172bd7a498e74efbcc7280c`
+- Active review branch and commit: `agent/fix-mobile-chat-layout` at
+  `f76ee252a1566945b3900d7791b33d1de9eec605`
 - Actual Windows checkout: clean `main` at
   `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
 
@@ -149,6 +159,9 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - PR #40, **Add Milestone 80 release evidence plan**, passed all four protected
   checks and was merged into `main` after explicit owner approval at
   `e4e647e1085f37ede172bd7a498e74efbcc7280c`.
+- PR #41, **Fix mobile Chat layout**, is open as a draft on
+  `agent/fix-mobile-chat-layout` at
+  `f76ee252a1566945b3900d7791b33d1de9eec605`; protected checks are in progress.
 - Release `v0.80.0`, **NOVA 0.80.0 — Bounded Conductor status routing**, is
   published from `e4e647e1085f37ede172bd7a498e74efbcc7280c`:
   https://github.com/JustAmanDoing/nova/releases/tag/v0.80.0
@@ -169,13 +182,14 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - The no-model document-context acceptance probe returned 422 validation before
   model execution rather than the expected 503. This does not authorize a
   behavioral conclusion about the unavailable-model document path.
+- PR #41 must pass protected checks, receive owner merge approval, and be
+  installed through the guarded updater before the phone layout is changed live.
 
 ## Exact next action
 
-On the physical private phone, open Chat and run the four published starters,
-then confirm their source/evidence cards and links render correctly after a
-reload. Record the owner observation and create the separate Milestone 80
-release report; only then decide whether to mark the milestone complete.
+Review draft PR #41. After its checks pass, explicitly approve or adjust its
+merge and guarded update; then confirm the focused Chat header on the physical
+private phone before recording final Milestone 80 owner acceptance.
 
 ## Session closeout requirement
 
