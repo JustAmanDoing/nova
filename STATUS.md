@@ -9,20 +9,20 @@
 ---
 record_version: 1
 verification: VERIFIED
-verified_at: 2026-08-11T10:31:11+10:00
-current_milestone: Milestone 80 - Conductor Phase 1 implementation merged; release, installation, and acceptance pending
+verified_at: 2026-08-11T10:35:36+10:00
+current_milestone: Milestone 80 - implementation merged; release and installation evidence plan under draft review
 integrated_branch: main
 integrated_commit: 2ea7b1d85f343029bda5e0cd39c908a209aff524
-active_branch: main
-active_commit: 2ea7b1d85f343029bda5e0cd39c908a209aff524
-pull_request: none
+active_branch: agent/milestone-80-release-plan
+active_commit: 9d9a37449f5e9c171e739b25021cfc6e1c0a8b08
+pull_request: 40
 release: v0.78.2
 installed_commit: 93daa9806590c950c94044e637a44125f5739ec0
 ---
 
 ## Verification state
 
-**CURRENT STATUS VERIFIED** on 10 August 2026 (Australia/Brisbane).
+**CURRENT STATUS VERIFIED** on 11 August 2026 (Australia/Brisbane).
 
 Verified against the GitHub repository, draft PR #38 and its exact-head
 protected Actions run, plus the actual Windows checkout at
@@ -34,9 +34,10 @@ not begin feature work.
 
 ## Current milestone
 
-Milestone 80 is in progress. Its bounded Conductor Phase 1 implementation is a
-candidate only. It is not merged, released, installed, or owner-accepted.
-Milestone 79 is complete and integrated on `main`.
+Milestone 80 bounded Conductor Phase 1 implementation is merged into `main`.
+Release, guarded Windows installation, and physical PC/private-phone acceptance
+are not started or approved. Draft PR #40 contains the evidence plan for a
+separate owner review; it does not change NOVA runtime behavior.
 
 ## Completed work
 
@@ -52,6 +53,10 @@ Milestone 79 is complete and integrated on `main`.
   engineering workflow, live fail-closed resume check, and Windows structural
   regression guard are merged into `main` through PR #39. Milestone 80 product
   work remains paused pending an explicit next direction.
+- Draft PR #40 adds the Milestone 80 release and installation evidence plan.
+  It defines the explicit approval bundle, existing guarded updater path,
+  no-destructive rollback boundary, runtime/security/data-preservation proof,
+  and PC/private-phone acceptance evidence required before completion.
 
 ## Checks and tests
 
@@ -91,13 +96,18 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   or physical acceptance.
 - PR #38 was marked ready and merged into `main` after explicit owner approval
   at `2ea7b1d85f343029bda5e0cd39c908a209aff524`.
+- For draft PR #40 commit `9d9a37449f5e9c171e739b25021cfc6e1c0a8b08`, the
+  canonical GitHub resume check passed before work, `git diff --check` passed,
+  and every linked local control/path in the new plan was verified present.
+  GitHub Actions run 31446577504 is in progress for Windows controls, Backend
+  quality, Frontend quality, and Production runtime.
 
 ## Branch and commit
 
 - Integrated branch: `main`
 - Integrated Milestone 80 commit: `2ea7b1d85f343029bda5e0cd39c908a209aff524`
-- Active branch and commit: `main` at
-  `2ea7b1d85f343029bda5e0cd39c908a209aff524`
+- Active branch and commit: `agent/milestone-80-release-plan` at
+  `9d9a37449f5e9c171e739b25021cfc6e1c0a8b08` (documentation-only draft)
 - Actual Windows checkout: clean `agent/fix-knowledge-gap-refresh` at
   `b3bd610cbd0536fd99c26001d1211b47d92dee0a`; after fetch, that local branch is
   behind its remote by four commits. Its local `main` remains stale at
@@ -112,7 +122,11 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - PR #38, **Add bounded Conductor status routing**, merged into `main` at
   `2ea7b1d85f343029bda5e0cd39c908a209aff524` after all four refreshed
   protected checks and explicit owner approval.
-- Merge, release, Windows installation, and physical acceptance are not
+- PR #40, **Add Milestone 80 release evidence plan**, is open as a draft on
+  `agent/milestone-80-release-plan` at
+  `9d9a37449f5e9c171e739b25021cfc6e1c0a8b08`; its protected checks are in
+  progress. It needs review and explicit merge approval before integration.
+- No Milestone 80 release, Windows installation, or physical acceptance is
   approved.
 - Current installed release: NOVA 0.78.2 at installed commit
   `93daa9806590c950c94044e637a44125f5739ec0`.
@@ -133,17 +147,17 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   verification, physical PC/private-phone acceptance, and release evidence
   remain outstanding. Passing CI and the independent review do not replace
   those gates.
-- PR #38 documentation and description still say protected CI is required even
-  though the exact-head run passed. Correct that evidence only after continuity
-  is operational.
+- Draft PR #40 checks must pass and the owner must explicitly approve its merge
+  before its documentation is integrated.
 - Physical PC/private-phone acceptance, guarded installation, release evidence,
-  owner merge approval, and owner installation approval remain outstanding.
+  release/tag approval, and owner installation approval remain outstanding.
 
 ## Exact next action
 
-Prepare the Milestone 80 release and installation evidence plan for owner
-approval. Do not tag, publish, install, or claim physical acceptance until that
-approval is explicit.
+Review draft PR #40 and explicitly approve or request changes to the release
+and installation evidence plan. Do not tag, publish, install, or claim physical
+acceptance until the plan is merged and the separate operational approval bundle
+is explicit.
 
 ## Session closeout requirement
 
