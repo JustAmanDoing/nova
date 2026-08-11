@@ -99,8 +99,8 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
 - For draft PR #40 commit `9d9a37449f5e9c171e739b25021cfc6e1c0a8b08`, the
   canonical GitHub resume check passed before work, `git diff --check` passed,
   and every linked local control/path in the new plan was verified present.
-  GitHub Actions run 31446577504 is in progress for Windows controls, Backend
-  quality, Frontend quality, and Production runtime.
+  GitHub Actions run 31446577504 passed: Windows controls, Backend quality,
+  Frontend quality, and Production runtime all completed successfully.
 
 ## Branch and commit
 
@@ -124,8 +124,8 @@ For continuity commit `f8be9d7121881643790c6292803960ba45c7b1c7`:
   protected checks and explicit owner approval.
 - PR #40, **Add Milestone 80 release evidence plan**, is open as a draft on
   `agent/milestone-80-release-plan` at
-  `9d9a37449f5e9c171e739b25021cfc6e1c0a8b08`; its protected checks are in
-  progress. It needs review and explicit merge approval before integration.
+  `9d9a37449f5e9c171e739b25021cfc6e1c0a8b08`; all four protected checks passed.
+  It needs review and explicit merge approval before integration.
 - No Milestone 80 release, Windows installation, or physical acceptance is
   approved.
 - Current installed release: NOVA 0.78.2 at installed commit
