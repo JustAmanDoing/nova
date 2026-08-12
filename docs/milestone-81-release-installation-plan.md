@@ -6,8 +6,14 @@
 
 **Proposed release:** `v0.81.0`
 
-**Status:** Release preparation only. This document and its version changes do
-not authorize merging the preparation pull request, creating a tag or GitHub
+**Status:** Prepared and independently reviewed in draft PR #45. The backend
+package, API-reported version, frontend package, and health endpoint test are
+aligned to `0.81.0`. The first preparation CI run exposed one stale `0.80.0`
+health-test assertion; it was corrected, and protected run `31552602819` passed
+Backend quality, Frontend quality, Windows controls, and Production runtime on
+the corrected code and test. The current PR checks remain authoritative after
+any later evidence-only edit. This document and its version changes do not
+authorize merging the preparation pull request, creating a tag or GitHub
 release, changing the Windows installation, or recording owner acceptance.
 
 ## Purpose
@@ -27,7 +33,7 @@ the approved Library workspace has been implemented.
 `0.81.0` is the proposed version because this is the first release for
 Milestone 81 and it changes the primary user interface across the existing
 workspaces. The preparation change aligns the backend package, API-reported
-version, and frontend package version to `0.81.0`.
+version, frontend package version, and health endpoint test to `0.81.0`.
 
 The tag must point to the exact protected-`main` commit produced after the
 release-preparation pull request merges. Do not tag the earlier product merge
@@ -47,13 +53,43 @@ Before this plan was prepared:
 - the authoritative Google Drive `NOVA Handoff` recorded Milestone 81 as
   integrated but unreleased, uninstalled, and not physically accepted.
 
-The release-preparation pull request must receive fresh exact-head protected CI
-because it changes version declarations and release evidence.
+Preparation verification then established:
+
+- initial PR #45 run `31552463699` passed Frontend quality, Windows controls,
+  and Production runtime but correctly failed Backend quality because the
+  health endpoint test still expected `0.80.0`;
+- commit `78f1aa16d5fcf78caf0ffdd3a9154f70933139e8` aligned that test with the
+  proposed release version; and
+- protected run `31552602819` then passed Backend quality, Frontend quality,
+  Windows controls, and Production runtime.
+
+Any later PR head must receive its own protected checks. The pull request and
+GitHub Actions, not this narrative, are authoritative for the final exact-head
+result.
+
+## Independent preparation review
+
+The finished preparation diff was reviewed against current protected `main`:
+
+- it changes only three version declarations, one corresponding health test,
+  the Milestone 81 evidence, and this release/install plan;
+- the backend package, API response, frontend package, and test all agree on
+  `0.81.0`;
+- it adds no endpoint, schema migration, dependency, provider, agent, plugin,
+  data authority, storage boundary, or network exposure;
+- neither tag nor GitHub release `v0.81.0` existed at review time;
+- the planned installation uses NOVA's existing updater, which rejects local
+  changes, creates and validates the pre-update backup before downloading,
+  uses `git pull --ff-only`, and performs normal rebuild/readiness checks;
+- the plan keeps the release, installation, physical acceptance, and Handoff
+  update behind explicit owner authority; and
+- no remaining blocking scope, privacy, recovery, versioning, or installation
+  issue was found.
 
 ## Owner approval bundle
 
-One explicit owner approval may authorize this bounded sequence after the
-release-preparation pull request has passed review and exact-head CI:
+One explicit owner approval may authorize this bounded sequence after all
+required checks remain green on the current release-preparation PR head:
 
 1. mark the release-preparation pull request ready and merge it into protected
    `main`;
@@ -66,7 +102,9 @@ release-preparation pull request has passed review and exact-head CI:
 
 Approval is limited to this exact scope. Stop and return to the owner if the
 version, commit, release contents, updater behavior, network boundary, data
-state, or acceptance scope differs.
+state, or acceptance scope differs. The owner's later physical observation
+still determines whether acceptance passes; approval to run the checks is not
+an advance acceptance result.
 
 ## Release notes prepared for review
 
@@ -93,11 +131,12 @@ file Library workspace is not included.
 
 Record and reconcile these facts before any tag or live change:
 
-- Google Drive `NOVA Handoff` still names this release preparation as the exact
-  next action;
+- Google Drive `NOVA Handoff` still names this release and installation bundle
+  as the exact next action;
 - protected `main`, the preparation pull request, its exact head, and all
   required Actions results agree;
-- all three version declarations report `0.81.0`;
+- all three production version declarations and the health test report
+  `0.81.0`;
 - tag `v0.81.0` and a release with that tag do not already exist;
 - the real Windows checkout is on `main`, clean, fetched, and can fast-forward
   to the approved exact release commit;
@@ -217,8 +256,8 @@ Milestone 81 is complete only after all of the following are proven:
 
 ## Exact next action
 
-Complete exact-head CI and independent review of the release-preparation pull
-request. If both pass, present one explicit owner approval request covering the
-preparation merge, `v0.81.0` publication, guarded Windows installation, and
-physical PC/private-phone acceptance. Do not execute any of those actions before
-that approval.
+Confirm all required protected checks remain green on the current PR #45 head,
+then present one explicit owner approval request covering the preparation merge,
+verification of merged `main`, `v0.81.0` publication, guarded Windows
+installation, and physical PC/private-phone acceptance. Do not execute any of
+those actions before that approval.
