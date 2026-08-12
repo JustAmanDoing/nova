@@ -13,6 +13,7 @@
   min-height: 100vh;
   flex-direction: column;
   padding: 22px 14px 18px;
+  overflow-y: auto;
   border-right: 1px solid #202924;
   background: #0b0f0d;
 }
