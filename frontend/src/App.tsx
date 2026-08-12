@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import AppShell from "./AppShell";
+
 import {
   backupChecksumDownloadUrl,
   backupDownloadUrl,
@@ -387,22 +389,11 @@ function App() {
   }
 
   return (
-    <main className="shell">
-      <nav className="nav" aria-label="Primary navigation">
-        <a className="brand" href="/">
-          <span className="brand-mark" aria-hidden="true">N</span>
-          Nova
-        </a>
-        <div className="chat-nav-links">
-          <a className="chat-nav-link" href="/chat.html">Chat</a>
-          <a className="chat-nav-link" href="/focus.html">Focus</a>
-          <a className="chat-nav-link" href="/archive.html">Record</a>
-          <a className="chat-nav-link" href="/librarian.html">Librarian</a>
-          <a className="chat-nav-link active" href="/" aria-current="page">
-            Intake
-          </a>
-        </div>
-        <div className="nav-status">
+    <AppShell
+      activeWorkspace="intake"
+      contentClassName="shell"
+      status={(
+        <div className="nav-status app-shell-service-status">
           <Status state={service} />
           <span className="phase">
             {service.kind === "online"
@@ -410,7 +401,8 @@ function App() {
               : "Intake MVP"}
           </span>
         </div>
-      </nav>
+      )}
+    >
 
       <section className="hero">
         <div>
@@ -567,7 +559,7 @@ function App() {
           onRestore={handleRestore}
         />
       </section>
-    </main>
+    </AppShell>
   );
 }
 

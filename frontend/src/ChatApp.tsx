@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import AppShell from "./AppShell";
+
 import {
   archiveChatConversation,
   createKnowledgeSnapshot,
@@ -675,21 +677,17 @@ function ChatApp() {
   }
 
   return (
-    <main className="chat-shell">
-      <nav className="nav chat-nav" aria-label="Primary navigation">
-        <a className="brand" href="/">
-          <span className="brand-mark" aria-hidden="true">N</span>
-          Nova
-        </a>
-        <div className="chat-nav-links">
-          <a className="chat-nav-link active" href="/chat.html" aria-current="page">
-            Chat
-          </a>
-          <a className="chat-nav-link" href="/focus.html">Focus</a>
-          <a className="chat-nav-link" href="/archive.html">Record</a>
-          <a className="chat-nav-link" href="/librarian.html">Librarian</a>
-          <a className="chat-nav-link" href="/">Intake</a>
-        </div>
+    <AppShell
+      activeWorkspace="chat"
+      contentClassName="chat-shell"
+      status={(
+        <span className={`chat-provider ${models.length ? "online" : "offline"}`}>
+          <span aria-hidden="true" />
+          {models.length ? "Local AI ready" : "Local AI unavailable"}
+        </span>
+      )}
+    >
+      <div className="mobile-chat-controls" aria-label="Chat controls">
         <button
           type="button"
           className="mobile-chat-history-toggle"
@@ -707,11 +705,7 @@ function ChatApp() {
         >
           New chat
         </button>
-        <span className={`chat-provider ${models.length ? "online" : "offline"}`}>
-          <span aria-hidden="true" />
-          {models.length ? "Local AI ready" : "Local AI unavailable"}
-        </span>
-      </nav>
+      </div>
 
       {mobileHistoryOpen ? (
         <button
@@ -1157,7 +1151,7 @@ function ChatApp() {
 
         </section>
       </div>
-    </main>
+    </AppShell>
   );
 }
 

@@ -770,6 +770,25 @@ Review packet:
 
 - `docs/milestone-80-conductor-phase-1.md`
 
+## Milestone 81 - Persistent App Shell and Workspaces
+
+**Status (11 August 2026): owner-approved implementation is complete and
+locally verified on the feature branch. It is not merged, released, installed,
+or physically accepted.**
+
+- Reuse the existing five frontend entry points inside one shared app shell.
+- Provide persistent desktop side navigation and a responsive phone drawer.
+- Keep ChatGPT-style conversation history, transcript, and composer regions
+  distinct inside the Chat workspace.
+- Preserve every backend, storage, approval, privacy, and network boundary.
+- Add no dependency, router, provider, agent, plugin, or unrelated feature.
+- Require independent review, protected CI, owner-approved merge, guarded
+  installation, and physical PC/private-phone acceptance.
+
+Implementation evidence:
+
+- `docs/milestone-81-persistent-app-shell.md`
+
 ## Later capabilities
 
 - NOVA Conductor Phase 2 trackable work, only after Phase 1 is merged,

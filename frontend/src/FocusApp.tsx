@@ -1,5 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 
+import AppShell from "./AppShell";
+
 import {
   completeNextAction,
   createNextAction,
@@ -104,30 +106,16 @@ function FocusApp() {
   const planningUnavailable = Boolean(planningError && !overview);
 
   return (
-    <main className="focus-shell">
-      <nav className="nav chat-nav" aria-label="Primary navigation">
-        <a className="brand" href="/">
-          <span className="brand-mark" aria-hidden="true">N</span>
-          Nova
-        </a>
-        <div className="chat-nav-links">
-          <a className="chat-nav-link" href="/chat.html">Chat</a>
-          <a
-            className="chat-nav-link active"
-            href="/focus.html"
-            aria-current="page"
-          >
-            Focus
-          </a>
-          <a className="chat-nav-link" href="/archive.html">Record</a>
-          <a className="chat-nav-link" href="/librarian.html">Librarian</a>
-          <a className="chat-nav-link" href="/">Intake</a>
-        </div>
+    <AppShell
+      activeWorkspace="focus"
+      contentClassName="focus-shell"
+      status={(
         <span className="focus-local-status">
           <span aria-hidden="true" />
           Local and owner controlled
         </span>
-      </nav>
+      )}
+    >
 
       <header className="focus-hero">
         <div>
@@ -207,7 +195,7 @@ function FocusApp() {
           retained. {overview?.limitation} {actions?.limitation}
         </p>
       </details>
-    </main>
+    </AppShell>
   );
 }
 
