@@ -1,102 +1,126 @@
 # NOVA Engineering Continuity
 
-**Established:** 10 August 2026
+**Established:** 10 August 2026  
+**Revised:** 12 August 2026
 
-**Scope:** development governance and read-only verification; no NOVA runtime
-or Milestone 80 product behavior changes
+**Scope:** development governance and cross-device continuity; no NOVA runtime
+or product behavior change
 
-## Canonical shared status
+## Single authoritative project-status record
 
-NOVA has one active status record:
+NOVA has one current project-status and cross-device continuity record:
 
-`https://github.com/JustAmanDoing/nova/blob/project-status/STATUS.md`
+**Google Drive document: `NOVA Handoff`**
 
-It lives on the dedicated `project-status` branch so a session can publish its
-handoff immediately without pretending that unmerged feature work is on
-`main`, modifying product code, or waiting for a product pull request to merge.
-Every status update is still a Git commit with reviewable history.
+Only that document determines:
 
-Repository code, commits, tags, pull requests, CI, and verified runtime evidence
-remain authoritative for their respective facts. `STATUS.md` is the canonical
-cross-device index of those facts. It must never override contradictory
-evidence.
+- the latest completed milestone;
+- current work;
+- blockers and unresolved issues;
+- approved decisions affecting current work; and
+- the exact next action.
 
-Historical milestone and release documents remain evidence. Chat memory,
-ChatGPT project mirrors, exports, archives, installed project-record packages,
-and local tracking refs are not current-status sources.
+GitHub remains authoritative for code, pull requests, commits, Actions results,
+tags, releases, and technical history. The verified Windows runtime and physical
+checks remain authoritative for installation, health, local operation, private
+phone access, and owner acceptance. Those sources support and verify the
+Handoff; they do not replace it as the answer to “Where are we up to with
+NOVA?”
 
-## Startup and resume workflow
+The former GitHub-first status path is retired. Do not use the `project-status`
+branch, `STATUS.md`, or `scripts/Test-NovaContinuity.ps1` to determine current
+project status. `CURRENT_SPRINT` and `DAILY_SUMMARY` are also retired and must
+not be recreated as active project-status documents.
+
+Historical milestone, release, architecture, and engineering documents remain
+valid evidence for the work they record. Chat memory, ChatGPT project mirrors,
+exports, archives, packaged project files, and stale local checkouts are never
+current-status authorities.
+
+## Start-of-session workflow
 
 Every ChatGPT, Codex Remote, PC, or phone-controlled NOVA engineering session
-must complete this gate before status claims or engineering work:
+must complete this sequence before making a current-status claim or starting
+work:
 
-1. Fetch `STATUS.md` from GitHub's `project-status` branch, not a local cached
-   copy.
-2. Confirm `verification: VERIFIED`, the verification timestamp, all required
-   fields and sections, and the exact next action.
-3. Resolve the named integrated and active branches and confirm their exact
-   commit SHAs.
-4. Resolve the named pull request when present; confirm state, draft status,
-   base branch, head branch, and exact head SHA. Check exact-head CI separately.
-5. Inspect the actual local checkout before local changes. A clean checkout may
+1. Locate and read the exact Google Drive document named `NOVA Handoff`.
+2. Use its completed milestone, current work, blockers, approved decisions, and
+   exact next action as the project-status baseline.
+3. Inspect GitHub and the relevant runtime only for the supporting facts needed
+   by the requested work.
+4. Reconcile supporting evidence without creating or promoting another status
+   record.
+5. Inspect the actual local checkout before local changes; a clean checkout may
    still be stale or on the wrong branch.
-6. Verify tags/releases and physical runtime evidence before claiming a release
-   is published, installed, healthy, or accepted.
-7. Continue only when the record and current evidence reconcile.
 
-On Windows, the standard read-only gate is:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-NovaContinuity.ps1
-```
-
-The script uses GitHub's public read-only API for this public repository. It
-does not require the local GitHub CLI credential, mutate the checkout, or alter
-NOVA. It validates the record schema, required sections, branch SHAs, and PR
-head/base state. Exact CI, release publication, local checkout, and runtime
-claims still require their named evidence because no single API response proves
-all of them.
-
-If GitHub is unavailable, a required ref or PR does not resolve, the record is
-marked unverified, or evidence conflicts, stop and report:
+If `NOVA Handoff` cannot be located or read, stop before project-status claims
+or engineering work and report exactly:
 
 `CURRENT STATUS NOT VERIFIED`
 
-Do not fall back to memory or stale files and do not start feature work.
+Do not fall back to GitHub status text, chat memory, local archives, or old
+project files.
+
+A discrepancy does not transfer authority away from the Handoff. Investigate
+whether code, release, runtime, acceptance, or the Handoff itself needs a
+verified correction. Record the resolved current state in the Handoff and keep
+supporting technical evidence in the system that owns it.
 
 ## End-of-session workflow
 
-Every session that inspects, changes, verifies, reviews, merges, releases,
-installs, accepts, or blocks NOVA work must update the same canonical record
-before completion:
+Every engineering session that materially changes, verifies, reviews, merges,
+releases, installs, accepts, or blocks NOVA work must update `NOVA Handoff`
+before reporting completion:
 
-1. Reconcile the final repository and external evidence.
-2. Replace, rather than append to, the active facts in `STATUS.md`.
-3. Include current milestone, completed work, exact checks/tests, integrated and
-   active branches, exact commits, PR and exact-head CI state, release/install/
-   acceptance state, blockers/risks, and one executable next action.
-4. Set `verification: UNVERIFIED` whenever the required facts cannot be proven.
-5. Commit only the status change on `project-status` with a clear message such
-   as `Update canonical NOVA status after continuity setup`.
-6. Push the branch and read the file back from GitHub. Run the continuity check
-   against the published record.
+1. Reconcile the final repository, CI, release, runtime, acceptance, and owner-
+   decision evidence relevant to the session.
+2. Update the Handoff’s active state rather than creating a new status document.
+3. Record the resulting milestone state, completed work, checks, branch, exact
+   commit, pull-request and release/install state, blockers or risks, current
+   completion estimate, and one exact next action.
+4. Read the Google Doc back after the write.
+5. Verify that the returned text contains the intended current state and does
+   not retain a contradictory active status.
+6. Only then report the work session complete.
 
-Do not create another active status issue, document, or branch. Milestone and
-release evidence documents may be added normally, but they must point back to
-the canonical record for the current handoff.
+This update is mandatory and must not depend on an owner reminder.
 
-## Authority and change boundaries
+## Authority boundaries
 
-- `main` is the canonical integrated code line.
-- Feature branches and pull requests are authoritative for proposed code.
-- GitHub Actions proves only the exact commit and jobs it ran.
-- GitHub releases and tags prove publication, not installation.
-- The guarded Windows installation and physical PC/phone checks prove installed
-  runtime state and owner acceptance.
-- `project-status/STATUS.md` is the canonical shared resume record that links
-  those sources together.
+- **Google Drive `NOVA Handoff`:** current project status and cross-device
+  continuity.
+- **Protected `main`:** integrated source code.
+- **Feature branches and pull requests:** proposed code and review state.
+- **GitHub Actions:** checks run against an exact commit; passing CI proves only
+  those checks.
+- **GitHub tags and releases:** publication evidence, not installation.
+- **Verified Windows runtime and physical PC/phone checks:** installation,
+  health, and owner acceptance.
+- **Approved repository documents:** architecture, engineering decisions,
+  operations, milestone evidence, and historical technical records.
+- **Chat discussion:** proposals and owner decisions pending durable recording.
 
-Passing the continuity gate does not authorize a merge, release, installation,
-scope expansion, data mutation, network change, dependency, provider, plugin,
-agent, or autonomous action. Existing owner approvals and NOVA's development
-playbook continue to govern those actions.
+No source may silently claim authority outside its boundary. Do not create a
+second active status issue, branch, file, document, database record, or summary.
+
+## Retired continuity artifacts
+
+The following names may remain in historical commits, superseded documents, or
+compatibility checks, but they are not active status sources:
+
+- `project-status/STATUS.md`
+- `scripts/Test-NovaContinuity.ps1`
+- `NOVA - CURRENT_SPRINT`
+- `NOVA - DAILY_SUMMARY`
+
+Any retained compatibility artifact must clearly state that it is retired and
+must direct users to Google Drive `NOVA Handoff`. It must not calculate, publish,
+or validate the current milestone or next action.
+
+## Approval and safety boundary
+
+Reading or updating the Handoff does not authorize a merge, release,
+installation, scope expansion, data mutation, destructive action, network
+change, dependency, provider, plugin, agent, or autonomous runtime action.
+Existing owner approvals and NOVA’s development playbook continue to govern
+those actions.
