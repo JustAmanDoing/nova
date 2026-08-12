@@ -209,14 +209,21 @@
   }
 
   .app-shell-sidebar {
+    visibility: hidden;
     width: min(294px, calc(100vw - 48px));
     padding-top: 14px;
+    pointer-events: none;
     transform: translateX(-105%);
-    transition: transform 180ms ease;
+    transition:
+      transform 180ms ease,
+      visibility 0s linear 180ms;
   }
 
   .app-shell-sidebar.open {
+    visibility: visible;
+    pointer-events: auto;
     transform: translateX(0);
+    transition: transform 180ms ease;
   }
 
   .app-shell-backdrop {

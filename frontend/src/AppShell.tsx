@@ -116,7 +116,7 @@ export default function AppShell({
         <div className="app-shell-status">
           {status}
           <p>Private by default</p>
-          <span>Workspace data stays on this PC unless you explicitly choose otherwise.</span>
+          <span>Workspace data stays local and private unless you explicitly choose otherwise.</span>
         </div>
       </aside>
 

@@ -4,9 +4,12 @@
 feature branch and has been reconciled with protected `main` at
 `aff23ba19d3cb5b9c32839e2a84d9ae62b15c7a2` through merge commit
 `9f3a575d10c5537d37b9e95f2e1aefcbb4373fda`. Local verification and the
-initial independent diff review are complete. Exact-head protected CI and a
-fresh final independent review are still required on the reconciled candidate.
-The candidate is not merged, released, installed, or physically accepted.**
+initial independent diff review are complete. The final review corrected the
+closed mobile drawer so its hidden links cannot receive pointer or keyboard
+focus, and made the privacy wording accurately describe NOVA's local/private
+boundary. Exact-head protected CI and final verification are still required on
+the corrected candidate. The candidate is not merged, released, installed, or
+physically accepted.**
 
 ## Approved decision
 
@@ -54,7 +57,7 @@ Local verification on 11 August 2026:
 - Initial independent `main...HEAD` diff and whitespace review - passed with no
   blocking defect or scope expansion found.
 
-Reconciliation on 12 August 2026:
+Reconciliation and final review on 12 August 2026:
 
 - Current `main` was four commits ahead because PR #44 replaced the former
   GitHub-first continuity workflow with Google Drive `NOVA Handoff` as the sole
@@ -63,7 +66,12 @@ Reconciliation on 12 August 2026:
   compatibility checker only; none overlaps the Milestone 81 product files.
 - Current `main` was merged into the feature branch without changing the
   Milestone 81 product diff.
-- Protected CI must pass on the final reconciled head. The pull-request checks,
+- The mobile drawer previously remained focusable while translated off-screen.
+  The final review corrected this with delayed `visibility` and pointer-event
+  handling, while preserving the opening and closing animation.
+- The shell privacy note now says data stays local and private rather than
+  inaccurately saying it never leaves the PC; private phone use remains valid.
+- Protected CI must pass on the final corrected head. The pull-request checks,
   not this historical document, are authoritative for that exact-head result.
 
 The existing Intake test suite still emits known React `act(...)` warnings in
@@ -76,6 +84,11 @@ not change those state flows.
   client-side routing or change workspace data ownership.
 - The shell is visually persistent between workspaces, while switching an
   entry point still performs a normal page navigation.
+- This milestone exposes only the five workspaces NOVA already implements. The
+  approved dedicated owner file **Library** workspace is not implemented by
+  this PR; **Librarian** is knowledge-health guidance, not the file Library.
+  Library remains a separate implementation step under the approved product
+  direction.
 - Local browser review used the built static frontend without the NOVA backend,
   so expected unavailable/404 states were visible while layout was assessed.
 - Physical PC and private-phone acceptance remain required after reviewed
@@ -88,7 +101,7 @@ not change those state flows.
 
 ## Exact next action
 
-Run protected CI on the final reconciled PR head and complete a fresh
-independent final review. If both pass, request the owner's explicit approval
-to mark PR #43 ready and merge it. Release, installation, and physical
-acceptance remain separate later gates.
+Run protected CI on the final corrected PR head and complete the final evidence
+check. If it passes, request the owner's explicit approval to mark PR #43 ready
+and merge it. Release, installation, physical acceptance, and the dedicated
+Library workspace remain separate later gates.
