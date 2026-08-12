@@ -5,8 +5,13 @@ merged through PR #43 into protected `main` at
 `d88fd00c950291ff79b5b9922e6dc2d4249ecca6`. Exact-candidate protected CI run
 `31549576713` and post-merge protected-`main` run `31550946912` both passed
 Backend quality, Frontend quality, Windows controls, and Production runtime.
-Release preparation proposes NOVA `0.81.0` on a separate branch. The milestone
-is integrated but is not yet released, installed, or physically accepted.**
+Draft release-preparation PR #45 proposes NOVA `0.81.0`, aligns the release
+version declarations and health test, and adds the guarded release and
+installation plan. Its first CI run exposed one stale `0.80.0` health-test
+assertion; that release-preparation defect was corrected, and run `31552602819`
+passed all four protected jobs on the corrected code and test. The current PR
+head must remain green before owner approval. Milestone 81 is integrated but is
+not yet released, installed, or physically accepted.**
 
 ## Approved decision
 
@@ -97,10 +102,12 @@ not change those state flows.
 
 ## Release preparation
 
-The proposed release is NOVA `0.81.0`. The release-preparation branch aligns the
-backend package, API-reported version, and frontend package version, and adds a
-bounded release and guarded-installation plan. It does not authorize a merge,
-tag, GitHub release, Windows update, or owner acceptance.
+The proposed release is NOVA `0.81.0`. Draft PR #45 aligns the backend package,
+API-reported version, frontend package version, and health endpoint test, and
+adds a bounded release and guarded-installation plan. The reviewed preparation
+changes no endpoint behavior, schema, dependency, provider, agent, storage
+boundary, or network exposure. It does not authorize a merge, tag, GitHub
+release, Windows update, or owner acceptance.
 
 Release and installation plan:
 
@@ -108,8 +115,8 @@ Release and installation plan:
 
 ## Exact next action
 
-Complete exact-head protected CI and independent review of the Milestone 81
-release-preparation pull request. If both pass, request one explicit owner
-approval covering the preparation merge, `v0.81.0` publication, guarded Windows
-installation, and physical PC/private-phone acceptance. Do not execute those
-actions before approval.
+Confirm all required protected checks remain green on the current PR #45 head,
+then obtain one explicit owner approval covering the preparation merge,
+verification of merged `main`, `v0.81.0` publication, guarded Windows
+installation, and physical PC/private-phone acceptance. Do not execute any of
+those actions before approval.
