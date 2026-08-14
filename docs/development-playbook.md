@@ -2,18 +2,18 @@
 
 **Recorded:** 9 August 2026
 
-**Status:** Development System Foundation; documentation and governance only
+**Scope:** development process governance; not a current-project-status authority
 
 ## Purpose
 
 This playbook defines how NOVA moves from an idea to an owner-accepted Windows
-installation. It is inserted before further runtime work so phone-controlled
-development remains consistent, reviewable, and safe.
+installation. It is stable process guidance, not a statement of NOVA's current
+milestone or project status.
 
-It does not change the NOVA runtime, authorize a product agent, or begin
-Milestone 79. A future product-facing Conductor remains a separate product
-architecture decision; development agents and Remote controls are engineering
-tools, not NOVA runtime authority.
+It does not change the NOVA runtime or authorize a product agent. A future
+product-facing Conductor remains a separate product architecture decision;
+development agents and Remote controls are engineering tools, not NOVA runtime
+authority.
 
 ## Required flow
 
@@ -30,7 +30,7 @@ Discuss
   -> Owner-approved merge
   -> Install
   -> Owner acceptance
-  -> Project-state update
+  -> Project-state update when state changed
 ```
 
 No arrow is implied by the previous step. Each gate must produce its own
@@ -88,9 +88,10 @@ criteria. It records the reuse decision and remaining custom code.
 
 ### 5. Owner approval
 
-The owner and ChatGPT approve the product outcome and reviewed scope. Approval
-must be explicit. Approval of a discussion, architecture direction, or nearby
-milestone does not silently authorize a broader implementation.
+The engineering lead and ChatGPT may recommend a product outcome and reviewed
+scope; **the owner alone grants product approval**. Approval must be explicit.
+Approval of a discussion, architecture direction, or nearby milestone does not
+silently authorize a broader implementation.
 
 For a bounded milestone, present the capability decision, reuse check,
 architecture, engineering plan, risks, tests, and rollout together whenever
@@ -158,16 +159,20 @@ phone workflow. Synthetic tests support acceptance but do not replace it.
 
 ### 13. Project-state update
 
+When authoritative project state changed, update the live Google Drive
+`NOVA Handoff` following [the engineering continuity workflow](engineering-continuity.md).
 Record the accepted release and commit, verification, owner decision, remaining
-limitations, unresolved issues, current completion estimate, exact next action,
-and exact next milestone. Preserve history; do not rewrite a proposal as an
+limitations, unresolved issues, current completion estimate, and exact next
+action that are still relevant to current continuity. Read the Handoff back and
+verify it. Do not create a duplicate status document, create a no-op Handoff
+revision for a session with no state change, or rewrite a proposal as an
 accepted release.
 
 ## Responsibilities
 
 | Participant | Primary responsibility | Authority boundary |
 | --- | --- | --- |
-| Owner + ChatGPT | Product discussion, priorities, user experience, and explicit product approval | May approve, stop, defer, or redirect product work; discussion alone does not change code or runtime |
+| Owner + ChatGPT | Product discussion, priorities, user experience, and preparation of product decisions | The owner may approve, stop, defer, or redirect product work; ChatGPT recommends and records but does not grant owner approval; discussion alone does not change code or runtime |
 | Engineering lead | Architecture, current-capability research, reuse analysis, technical choices, engineering review, risk review, and acceptance design | Recommends technical direction but does not grant owner approval or merge authority |
 | Codex on Windows PC | Bounded implementation, tests, builds, repository verification, draft PR publication, and evidence collection | Acts only inside approved scope and host permissions; stops at approval gates |
 | ChatGPT/Codex Remote on phone | Primary remote control surface for starting, steering, approving, and reviewing PC chats | Inherits the connected PC chat's tools, credentials, sandbox, and approvals; it is not a second execution authority |
