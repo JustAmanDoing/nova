@@ -1,126 +1,129 @@
 # NOVA Engineering Continuity
 
 **Established:** 10 August 2026  
-**Revised:** 12 August 2026
+**Revised:** 14 August 2026
 
-**Scope:** development governance and cross-device continuity; no NOVA runtime
-or product behavior change
+**Scope:** development governance and cross-device continuity procedure. This document is not a current-project-status authority; the live Google Drive **NOVA Handoff** is.
 
-## Single authoritative project-status record
+## Canonical current-status record
 
 NOVA has one current project-status and cross-device continuity record:
 
 **Google Drive document: `NOVA Handoff`**
 
-Only that document determines:
+Only that live document determines:
 
-- the latest completed milestone;
-- current work;
-- blockers and unresolved issues;
-- approved decisions affecting current work; and
-- the exact next action.
+- the latest owner-accepted milestone;
+- the active milestone and current work;
+- current blockers and unresolved items;
+- owner decisions affecting active work;
+- the current completion estimate; and
+- the exact next action or owner question.
 
-GitHub remains authoritative for code, pull requests, commits, Actions results,
-tags, releases, and technical history. The verified Windows runtime and physical
-checks remain authoritative for installation, health, local operation, private
-phone access, and owner acceptance. Those sources support and verify the
-Handoff; they do not replace it as the answer to “Where are we up to with
-NOVA?”
+The Handoff is not the authority for every fact in the project. Use the system that owns each fact:
 
-The former GitHub-first status path is retired. Do not use the `project-status`
-branch, `STATUS.md`, or `scripts/Test-NovaContinuity.ps1` to determine current
-project status. `CURRENT_SPRINT` and `DAILY_SUMMARY` are also retired and must
-not be recreated as active project-status documents.
+- **Protected `main`, branches, pull requests, commits, Actions, tags, releases, and repository history:** code, proposed code, review state, technical checks, publication, and technical history.
+- **Verified Windows runtime and physical PC/phone checks:** installation, health, local operation, private phone access, and owner acceptance.
+- **Approved repository documents:** stable architecture, engineering policy, operations, specifications, milestone evidence, and historical technical records.
+- **Chat discussion:** proposals, analysis, and owner decisions pending durable recording when they affect current project state.
 
-Historical milestone, release, architecture, and engineering documents remain
-valid evidence for the work they record. Chat memory, ChatGPT project mirrors,
-exports, archives, packaged project files, and stale local checkouts are never
-current-status authorities.
+Those sources support the Handoff within their own boundaries; they do not replace it as the answer to “Where are we up to with NOVA?”
+
+Do not create or promote a second active status document, issue, branch, local file, database record, or summary.
 
 ## Start-of-session workflow
 
-Every ChatGPT, Codex Remote, PC, or phone-controlled NOVA engineering session
-must complete this sequence before making a current-status claim or starting
-work:
+Every ChatGPT, Codex Remote, PC, or phone-controlled NOVA engineering session must complete this sequence before making a current-status claim or starting status-dependent engineering work:
 
-1. Locate and read the exact Google Drive document named `NOVA Handoff`.
-2. Use its completed milestone, current work, blockers, approved decisions, and
-   exact next action as the project-status baseline.
-3. Inspect GitHub and the relevant runtime only for the supporting facts needed
-   by the requested work.
-4. Reconcile supporting evidence without creating or promoting another status
-   record.
-5. Inspect the actual local checkout before local changes; a clean checkout may
-   still be stale or on the wrong branch.
+1. Perform a fresh read of the canonical Google Drive `NOVA Handoff` through the connected Google Drive tool.
+2. Establish the last owner-accepted milestone, active work, blockers, unresolved items, completion estimate, and exact next action from that read.
+3. Inspect GitHub, approved repository documents, and relevant runtime or physical evidence only for facts needed by the requested work.
+4. Reconcile discrepancies without creating another project-status authority.
+5. Inspect the actual local checkout before local changes; a clean checkout may still be stale or on the wrong branch.
 
-If `NOVA Handoff` cannot be located or read, stop before project-status claims
-or engineering work and report exactly:
+If `NOVA Handoff` cannot be located or read, stop before project-status claims or status-dependent engineering work and report exactly:
 
 `CURRENT STATUS NOT VERIFIED`
 
-Do not fall back to GitHub status text, chat memory, local archives, or old
-project files.
+Do not fall back to GitHub status text, chat memory, local archives, packaged project files, or old project mirrors.
 
-A discrepancy does not transfer authority away from the Handoff. Investigate
-whether code, release, runtime, acceptance, or the Handoff itself needs a
-verified correction. Record the resolved current state in the Handoff and keep
-supporting technical evidence in the system that owns it.
+A discrepancy does not transfer authority away from the Handoff. Investigate whether code, release, runtime, acceptance evidence, a stable project document, or the Handoff itself needs a verified correction. Record the resolved current project state in the Handoff and keep supporting technical evidence in the system that owns it.
 
-## End-of-session workflow
+## Handoff content discipline
 
-Every engineering session that materially changes, verifies, reviews, merges,
-releases, installs, accepts, or blocks NOVA work must update `NOVA Handoff`
-before reporting completion:
+The Handoff must stay useful as a live continuity record rather than becoming another historical archive.
 
-1. Reconcile the final repository, CI, release, runtime, acceptance, and owner-
-   decision evidence relevant to the session.
-2. Update the Handoff’s active state rather than creating a new status document.
-3. Record the resulting milestone state, completed work, checks, branch, exact
-   commit, pull-request and release/install state, blockers or risks, current
-   completion estimate, and one exact next action.
-4. Read the Google Doc back after the write.
-5. Verify that the returned text contains the intended current state and does
-   not retain a contradictory active status.
-6. Only then report the work session complete.
+Its active state should make these facts easy to identify:
 
-This update is mandatory and must not depend on an owner reminder.
+1. latest owner-accepted milestone;
+2. active milestone and workstream;
+3. current blocker or unresolved evidence;
+4. current completion estimate;
+5. last completed step relevant to the active work; and
+6. one exact next action or one exact owner question.
 
-## Authority boundaries
+The **EXACT NEXT ACTION** section must contain one current actionable step or question. A roadmap, multi-stage process, historical date sequence, or complete milestone plan must not be stored there. Put durable process in its approved repository document and keep dated decisions clearly historical so they cannot compete with the live next action.
 
-- **Google Drive `NOVA Handoff`:** current project status and cross-device
-  continuity.
-- **Protected `main`:** integrated source code.
-- **Feature branches and pull requests:** proposed code and review state.
-- **GitHub Actions:** checks run against an exact commit; passing CI proves only
-  those checks.
-- **GitHub tags and releases:** publication evidence, not installation.
-- **Verified Windows runtime and physical PC/phone checks:** installation,
-  health, and owner acceptance.
-- **Approved repository documents:** architecture, engineering decisions,
-  operations, milestone evidence, and historical technical records.
-- **Chat discussion:** proposals and owner decisions pending durable recording.
+When project state changes, edit or replace the existing active-state wording instead of appending another contradictory “current” snapshot. Historical release hashes, old test runs, prior blockers, and superseded sequencing should remain in their authoritative history unless they are still necessary to interpret the present state.
 
-No source may silently claim authority outside its boundary. Do not create a
-second active status issue, branch, file, document, database record, or summary.
+The Handoff may retain concise supporting identifiers such as the current integrated commit, release, or installed version when they materially help continuity, but detailed historical evidence belongs in GitHub, runtime evidence, or approved historical documents.
+
+## When the Handoff must change
+
+Update the Handoff when authoritative project state changes, including when any of the following changes materially:
+
+- active or accepted milestone state;
+- an owner decision affecting current work;
+- a blocker, unresolved item, or blocker resolution;
+- review or verification evidence that changes confidence, acceptance, or the next work;
+- branch, commit, pull-request, release, installation, or physical-acceptance state relevant to current work;
+- completion estimate; or
+- exact next action or owner question.
+
+A pure read-only inspection, review, or verification that discovers no new decision, blocker, material evidence, status change, completion-estimate change, or next-action change must **not** create a no-op Handoff revision merely to prove the session occurred.
+
+## Handoff write and verification workflow
+
+When an update is required:
+
+1. Reconcile the final repository, CI, release, runtime, acceptance, and owner-decision evidence relevant to the state change.
+2. Update the existing active state in `NOVA Handoff`; do not create a new status document or append a competing current-state block.
+3. Record only the current state needed for continuity, including the exact next action or question.
+4. Perform a fresh Google Drive readback after the write.
+5. Verify that the intended state is present and that no contradictory active status remains.
+6. Only then report the state update as complete.
+
+A write is not verified merely because the information exists in chat, model memory, cached content, another file, or an earlier connector response.
+
+## Stale project-status artifact hygiene
+
+The owner has issued a standing instruction to remove redundant project-status artifacts once they are verified stale or superseded rather than retaining parallel active copies.
+
+For this rule, a **stale project-status artifact** means an artifact whose project-status function has been superseded and whose content is no longer uniquely required to preserve evidence, recovery, legal/security history, or another authoritative role.
+
+Before removal, verify all of the following:
+
+1. the target is not the canonical Google Drive `NOVA Handoff`;
+2. no active process still treats it as authoritative;
+3. its unique evidence, if any, is preserved in the system that owns that evidence;
+4. removal will not damage recovery, auditability, legal/security history, or an approved historical record; and
+5. the exact target is unambiguous.
+
+Prefer reversible removal where the platform supports it. Permanent deletion is permitted under this standing instruction only for this verified redundant project-status class. A historical milestone document, Git commit, release record, audit event, backup, or unique engineering evidence is not stale merely because it is old.
 
 ## Retired continuity artifacts
 
-The following names may remain in historical commits, superseded documents, or
-compatibility checks, but they are not active status sources:
+The following names may remain in historical Git commits, superseded references, or compatibility history, but they are not active status sources and must not be recreated as project-status authorities:
 
 - `project-status/STATUS.md`
 - `scripts/Test-NovaContinuity.ps1`
 - `NOVA - CURRENT_SPRINT`
 - `NOVA - DAILY_SUMMARY`
 
-Any retained compatibility artifact must clearly state that it is retired and
-must direct users to Google Drive `NOVA Handoff`. It must not calculate, publish,
-or validate the current milestone or next action.
+Any compatibility reference that remains in active code or documentation must clearly identify these artifacts as retired and direct current-status questions to Google Drive `NOVA Handoff`.
 
 ## Approval and safety boundary
 
-Reading or updating the Handoff does not authorize a merge, release,
-installation, scope expansion, data mutation, destructive action, network
-change, dependency, provider, plugin, agent, or autonomous runtime action.
-Existing owner approvals and NOVA’s development playbook continue to govern
-those actions.
+Reading or updating the Handoff does not authorize a merge, release, installation, product-scope expansion, data mutation, destructive action outside the verified stale-status class above, network change, dependency, provider, plugin, agent, or autonomous runtime action.
+
+The engineering lead recommends technical direction. The owner retains approval authority for product scope, architecture acceptance, protected merge, release, live installation, material authority changes, destructive operations outside standing pre-approved classes, and physical acceptance.
