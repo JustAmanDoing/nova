@@ -31,6 +31,12 @@ Those sources support the Handoff within their own boundaries; they do not repla
 
 Do not create or promote a second active status document, issue, branch, local file, database record, or summary.
 
+### Historical and future-document semantics
+
+Roadmaps, milestone records, release/install plans, acceptance reports, architecture/engineering reviews, and files whose names contain `status` may preserve wording such as `Status`, `Current limitations`, `Exact next action`, or `Exact next milestone`. That wording is a **historical snapshot scoped to the document's recorded date or milestone**, not live project status. Never execute or report it as current unless the live Handoff explicitly identifies it as the current action.
+
+Future-upgrade, concept, idea-bank, or speculative architecture documents are proposal sources only. Their existence or a historical approval note does not make them current architecture and does not authorize implementation. A material future idea must pass the current Architecture Review, Engineering Review, and owner-approval process before it becomes an active NOVA decision.
+
 ## Start-of-session workflow
 
 Every ChatGPT, Codex Remote, PC, or phone-controlled NOVA engineering session must complete this sequence before making a current-status claim or starting status-dependent engineering work:
