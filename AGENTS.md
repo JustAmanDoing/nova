@@ -16,6 +16,8 @@ When authoritative project state changes, update the existing active fields in *
 
 The Handoff's **EXACT NEXT ACTION** must contain one current actionable step or one current owner question. Roadmaps, process sequences, historical dates, and durable policy belong in their owning documents or clearly historical decision sections; they must not compete with the live next action.
 
+The retired compatibility sentinel `scripts/Test-NovaContinuity.ps1` must never be used to determine current status. If invoked, it must fail closed and redirect to the live Google Drive Handoff.
+
 Standing owner instruction for stale project-status artifacts: once a redundant project-status artifact is verified stale or superseded, remove it rather than retain a parallel active copy. This standing approval applies only after verifying that the target is not the canonical Handoff and is not uniquely required for evidence, recovery, legal/security history, or another authoritative role. Prefer reversible removal where available. Historical Git commits and unique evidence are not stale merely because they are old.
 
 ## Source-of-truth boundaries
