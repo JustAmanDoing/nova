@@ -1,5 +1,7 @@
 # Milestone 78 - The Librarian Implementation Status
 
+> **Historical milestone record — not current NOVA project status.** This file preserves Milestone 78 evidence as recorded on 5 August 2026. Any `Current`, `Exact next action`, or `Exact next milestone` wording below is historical and is superseded for live continuity by the Google Drive `NOVA Handoff`.
+
 **Status date:** 5 August 2026
 
 **Status:** Complete and owner-accepted
