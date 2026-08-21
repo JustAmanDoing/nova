@@ -108,6 +108,23 @@ def test_tolls_are_saved_by_name_and_normal_conversation_can_correct_them(
     assert shift.toll_points == ("Murarrie",)
 
 
+def test_bare_toll_names_are_separate_entries_only_during_an_open_shift(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+    assert service.match("Gateway") is None
+
+    service.execute(service.match("loading started 5:15"))  # type: ignore[arg-type]
+    gateway = service.execute(service.match("Gateway"))  # type: ignore[arg-type]
+    kuraby = service.execute(service.match("Kuraby"))  # type: ignore[arg-type]
+
+    assert gateway.content == "Saved: toll Murarrie."
+    assert kuraby.content == "Saved: toll Kuraby/Compton Road."
+    shift = service.get_shift()
+    assert shift is not None
+    assert shift.toll_points == ("Murarrie", "Kuraby/Compton Road")
+
+
 def test_toll_entry_order_is_stable_when_one_message_records_multiple_tolls(
     tmp_path: Path,
 ) -> None:

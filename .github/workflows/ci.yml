@@ -241,6 +241,60 @@ jobs:
                  and .[2].content == "Saved: loading start 5:15."
                  and .[3].message.content == "Saved: loading start 5:15."' \
             > /dev/null
+          gateway_events="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'X-Nova-Intent: local-user-action' \
+              --data '{"model":null,"content":"Gateway"}' \
+              "http://127.0.0.1:5173/api/v1/chat/conversations/$timesheet_conversation_id/messages"
+          )"
+          printf '%s' "$gateway_events" \
+            | jq --slurp --exit-status \
+                '.[1].source.capability_id == "timesheet.capture"
+                 and .[2].content == "Saved: toll Murarrie."' \
+            > /dev/null
+          kuraby_events="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'X-Nova-Intent: local-user-action' \
+              --data '{"model":null,"content":"Kuraby"}' \
+              "http://127.0.0.1:5173/api/v1/chat/conversations/$timesheet_conversation_id/messages"
+          )"
+          printf '%s' "$kuraby_events" \
+            | jq --slurp --exit-status \
+                '.[1].source.capability_id == "timesheet.capture"
+                 and .[2].content == "Saved: toll Kuraby/Compton Road."' \
+            > /dev/null
+          incomplete_events="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'X-Nova-Intent: local-user-action' \
+              --data \
+                '{"model":null,"content":"I'\''m finished for the day"}' \
+              "http://127.0.0.1:5173/api/v1/chat/conversations/$timesheet_conversation_id/messages"
+          )"
+          printf '%s' "$incomplete_events" \
+            | jq --slurp --exit-status \
+                '.[1].source.capability_id == "timesheet.complete"
+                 and .[2].content == "Still needed: loading finish, driving start, driving finish, odometer start, odometer finish, total deliveries."' \
+            > /dev/null
+          current_timesheet_events="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'X-Nova-Intent: local-user-action' \
+              --data \
+                '{"model":null,"content":"Show me today'\''s timesheet"}' \
+              "http://127.0.0.1:5173/api/v1/chat/conversations/$timesheet_conversation_id/messages"
+          )"
+          printf '%s' "$current_timesheet_events" \
+            | jq --slurp --exit-status \
+                '.[1].source.capability_id == "timesheet.current"
+                 and (.[2].content | contains("tolls Murarrie, Kuraby/Compton Road"))' \
+            > /dev/null
           response_headers="$(
             curl --fail --silent --show-error --head \
               http://127.0.0.1:5173/

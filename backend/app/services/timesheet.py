@@ -225,18 +225,23 @@ class TimesheetService:
         normalized = " ".join(content.split())
         lowered = normalized.casefold().rstrip(".!?")
         if re.fullmatch(
-            r"(?:show|read|get|retrieve) (?:my |the )?(?:current|today'?s) timesheet",
+            r"(?:show|read|get|retrieve)(?: me)? "
+            r"(?:my |the )?(?:current|today'?s) timesheet",
             lowered,
         ):
             return TimesheetIntent("current")
         if re.fullmatch(
-            r"(?:show|read|get|calculate) (?:my |the )?(?:weekly|this week'?s) timesheet",
+            r"(?:show|read|get|calculate)(?: me)? "
+            r"(?:my |the )?(?:weekly|this week'?s) timesheet",
             lowered,
         ) or lowered == "weekly timesheet":
             return TimesheetIntent("weekly")
         if re.fullmatch(
             r"(?:(?:finish|complete|check) (?:my |the )?timesheet|"
             r"(?:end|finish) (?:my |the )?shift|is (?:my |the )?timesheet complete)",
+            lowered,
+        ) or re.fullmatch(
+            r"(?:(?:i(?:'|’)?m|i am) )?(?:finished|done) for (?:the )?day",
             lowered,
         ):
             return TimesheetIntent("complete")
@@ -265,7 +270,15 @@ class TimesheetService:
         has_toll_context = bool(
             re.search(r"\b(?:toll|surcharge|through|used|crossed|passed)\b", lowered)
         )
-        if has_toll_context:
+        bare_toll_entry = bool(
+            re.fullmatch(
+                r"(?:heathwood|loganlea|kuraby|compton(?: road)?|gateway|murarrie)"
+                r"(?:\s*(?:,|and)\s*"
+                r"(?:heathwood|loganlea|kuraby|compton(?: road)?|gateway|murarrie))*",
+                lowered,
+            )
+        ) and self._has_open_shift()
+        if has_toll_context or bare_toll_entry:
             for alias, point in _TOLL_ALIASES.items():
                 if re.search(rf"\b{re.escape(alias)}\b", lowered) and point not in toll_points:
                     toll_points.append(point)
@@ -316,6 +329,15 @@ class TimesheetService:
                     "SELECT * FROM timesheet_shifts WHERE shift_date = ?", (shift_date,)
                 ).fetchone()
             return self._record(connection, row) if row is not None else None
+
+    def _has_open_shift(self) -> bool:
+        with closing(self._connection()) as connection:
+            return (
+                connection.execute(
+                    "SELECT 1 FROM timesheet_shifts WHERE status = 'open' LIMIT 1"
+                ).fetchone()
+                is not None
+            )
 
     def _capture(self, intent: TimesheetIntent) -> str:
         timestamp = _timestamp()

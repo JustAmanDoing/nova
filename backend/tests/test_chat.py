@@ -793,6 +793,97 @@ def test_complete_timesheet_loop_works_through_ordinary_chat_without_a_model(
         )
 
 
+def test_owner_tolls_completion_and_retrieval_bypass_the_model(
+    tmp_path: Path,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = FailingProvider()
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 21, 17, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        application.state.timesheets.price_resolver = OfficialTollPriceResolver(
+            lambda _url: """
+            <table>
+              <tr><th>Point</th><th>C1</th><th>C2</th><th>C3</th><th>C4</th></tr>
+              <tr><td>Murarrie</td><td>$1.00</td><td>$2.00</td><td>$3.00</td><td>$20.74</td></tr>
+              <tr><td>Kuraby/Compton Road</td><td>$1.00</td><td>$2.00</td>
+              <td>$3.00</td><td>$12.24</td></tr>
+              <tr><td>Loganlea</td><td>$1.00</td><td>$2.00</td><td>$3.00</td><td>$7.84</td></tr>
+              <tr><td>Heathwood</td><td>$1.00</td><td>$2.00</td><td>$3.00</td><td>$12.95</td></tr>
+            </table>
+            """
+        )
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Owner acceptance regression"},
+        ).json()["id"]
+
+        def send(content: str) -> tuple[str, dict[str, object]]:
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": "qwen3:8b", "content": content},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+            assert [event["type"] for event in events] == [
+                "user",
+                "capability",
+                "delta",
+                "done",
+            ]
+            return events[2]["content"], events[1]["source"]
+
+        for message in (
+            "loading started at 5:00am",
+            "Loading finished 5:45",
+            "Driving started 5:50",
+            "Odometer start 623410",
+            "No, loading started 5:20",
+            "Driving finished 2:25pm",
+            "8 deliveries",
+        ):
+            send(message)
+
+        gateway, gateway_source = send("Gateway")
+        kuraby, kuraby_source = send("Kuraby")
+        assert gateway == "Saved: toll Murarrie. Total hours: 9.08."
+        assert kuraby == "Saved: toll Kuraby/Compton Road. Total hours: 9.08."
+        assert gateway_source["capability_id"] == "timesheet.capture"
+        assert kuraby_source["capability_id"] == "timesheet.capture"
+
+        incomplete, incomplete_source = send("I'm finished for the day")
+        assert incomplete == "Still needed: odometer finish."
+        assert incomplete_source["capability_id"] == "timesheet.complete"
+        assert "Let me know" not in incomplete
+
+        shift = application.state.timesheets.get_shift("2026-08-21")
+        assert shift is not None
+        assert shift.status == "open"
+        assert shift.odometer_finish is None
+        assert shift.total_minutes == 545
+        assert shift.toll_points == ("Murarrie", "Kuraby/Compton Road")
+
+        current, current_source = send("Show me today's timesheet")
+        assert "date 2026-08-21" in current
+        assert "tolls Murarrie, Kuraby/Compton Road" in current
+        assert current_source["capability_id"] == "timesheet.current"
+
+        weekly, weekly_source = send("Show me this week's timesheet")
+        assert "Weekly toll total: $32.98 for 2 recorded toll(s)" in weekly
+        assert weekly_source["capability_id"] == "timesheet.weekly"
+
+        send("odometer finish 623780")
+        completed, completed_source = send("I'm finished for the day")
+        assert completed.startswith("Timesheet complete.")
+        assert completed_source["capability_id"] == "timesheet.complete"
+        completed_shift = application.state.timesheets.get_shift("2026-08-21")
+        assert completed_shift is not None
+        assert completed_shift.status == "complete"
+
+
 @pytest.mark.parametrize("model", [None, "qwen3:8b"])
 def test_timesheet_capture_precedes_model_and_document_routing(
     tmp_path: Path,
