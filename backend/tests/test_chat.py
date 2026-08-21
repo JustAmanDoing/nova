@@ -791,3 +791,52 @@ def test_complete_timesheet_loop_works_through_ordinary_chat_without_a_model(
             for message in conversation["messages"]
             if message["role"] == "assistant"
         )
+
+
+@pytest.mark.parametrize("model", [None, "qwen3:8b"])
+def test_timesheet_capture_precedes_model_and_document_routing(
+    tmp_path: Path,
+    model: str | None,
+) -> None:
+    intake_path = tmp_path / "intake"
+    intake_path.mkdir()
+    (intake_path / "selected.txt").write_text(
+        "This selected document must not intercept a timesheet capture.",
+        encoding="utf-8",
+    )
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 21, 17, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        application.state.chat.provider = FailingProvider()
+        document_id = client.get("/api/v1/chat/documents").json()[0]["file_id"]
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Routing regression"},
+        ).json()["id"]
+
+        response = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={
+                "model": model,
+                "content": "Loading started 5:15",
+                "document_id": document_id,
+            },
+        )
+
+        assert response.status_code == 200
+        events = [json.loads(line) for line in response.text.splitlines()]
+        assert [event["type"] for event in events] == [
+            "user",
+            "capability",
+            "delta",
+            "done",
+        ]
+        assert events[2]["content"] == "Saved: loading start 5:15."
+        assert events[1]["source"]["capability_id"] == "timesheet.capture"
+        shift = application.state.timesheets.get_shift("2026-08-21")
+        assert shift is not None
+        assert shift.loading_start == "05:15"

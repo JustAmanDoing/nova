@@ -216,6 +216,31 @@ jobs:
                    | .[0].capability_sources[0].capability_id)
                    == "focus.next_actions"' \
             > /dev/null
+          timesheet_conversation_id="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'X-Nova-Intent: local-user-action' \
+              --data '{"title":"CI timesheet routing"}' \
+              http://127.0.0.1:5173/api/v1/chat/conversations \
+              | jq --raw-output '.id'
+          )"
+          timesheet_events="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'X-Nova-Intent: local-user-action' \
+              --data \
+                '{"model":null,"content":"Loading started 5:15"}' \
+              "http://127.0.0.1:5173/api/v1/chat/conversations/$timesheet_conversation_id/messages"
+          )"
+          printf '%s' "$timesheet_events" \
+            | jq --slurp --exit-status \
+                'map(.type) == ["user", "capability", "delta", "done"]
+                 and .[1].source.capability_id == "timesheet.capture"
+                 and .[2].content == "Saved: loading start 5:15."
+                 and .[3].message.content == "Saved: loading start 5:15."' \
+            > /dev/null
           response_headers="$(
             curl --fail --silent --show-error --head \
               http://127.0.0.1:5173/
