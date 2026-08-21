@@ -1233,6 +1233,8 @@
 @media (max-width: 800px) {
   .chat-shell {
     width: min(calc(100% - 24px), 1440px);
+    height: 100%;
+    min-height: 0;
   }
 
   .chat-provider {
@@ -1240,8 +1242,9 @@
   }
 
   .chat-layout {
+    height: 100%;
+    min-height: 0;
     grid-template-columns: 1fr;
-    min-height: calc(100dvh - 58px);
   }
 
   .conversation-sidebar {
@@ -1279,7 +1282,14 @@
 
 @media (max-width: 560px) {
   .chat-shell {
+    display: grid;
     width: calc(100% - 24px);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .chat-layout {
+    height: auto;
+    min-height: 0;
   }
 
   .mobile-chat-controls {
@@ -1423,7 +1433,7 @@
   }
 
   .chat-stage {
-    height: calc(100dvh - 134px);
+    height: 100%;
     min-height: 0;
     padding: 10px 0;
     overflow: hidden;
@@ -1553,5 +1563,11 @@
   .chat-composer button {
     width: auto;
     align-self: stretch;
+  }
+}
+
+@media (max-width: 560px) and (max-height: 600px) {
+  .conductor-starters {
+    display: none;
   }
 }
