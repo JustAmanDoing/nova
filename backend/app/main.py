@@ -19,6 +19,7 @@ from app.services.librarian import LibrarianService
 from app.services.next_actions import NextActionService
 from app.services.ocr import LocalOcrService
 from app.services.project_archive import ProjectArchiveService
+from app.services.timesheet import TimesheetService
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             knowledge=knowledge,
             operation_lock=operation_lock,
         )
+        timesheets = TimesheetService(
+            database_path=str(resolved_settings.database_path),
+            operation_lock=operation_lock,
+        )
         project_archive = ProjectArchiveService(resolved_settings.archive_path)
         conductor = ConductorService(
             knowledge=knowledge,
@@ -101,6 +106,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.knowledge = knowledge
         application.state.librarian = librarian
         application.state.next_actions = next_actions
+        application.state.timesheets = timesheets
         application.state.project_archive = project_archive
         application.state.conductor = conductor
         watcher = asyncio.create_task(

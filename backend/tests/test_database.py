@@ -57,6 +57,9 @@ def test_new_database_records_ordered_migration_history(tmp_path: Path) -> None:
         "chat_message_capability_sources",
         "next_actions",
         "next_action_events",
+        "timesheet_shifts",
+        "timesheet_tolls",
+        "timesheet_events",
         "schema_migrations",
     }.issubset(tables)
     assert "learning_revision" in recommendation_columns
@@ -182,7 +185,7 @@ def test_conversation_organisation_migration_preserves_existing_history(
 ) -> None:
     database_path = tmp_path / "nova.db"
     with closing(sqlite3.connect(database_path)) as connection:
-        migrate_database(connection, MIGRATIONS[:-2])
+        migrate_database(connection, MIGRATIONS[:16])
         connection.execute(
             """
             INSERT INTO chat_conversations (
@@ -245,7 +248,7 @@ def test_conductor_evidence_migration_preserves_existing_chat(
 ) -> None:
     database_path = tmp_path / "nova.db"
     with closing(sqlite3.connect(database_path)) as connection:
-        migrate_database(connection, MIGRATIONS[:-1])
+        migrate_database(connection, MIGRATIONS[:17])
         connection.execute(
             """
             INSERT INTO chat_conversations (
@@ -283,7 +286,74 @@ def test_conductor_evidence_migration_preserves_existing_chat(
 
     assert message == ("Existing private message",)
     assert table == ("chat_message_capability_sources",)
-    assert version == (18,)
+    assert version == (19,)
+
+
+def test_timesheet_migration_preserves_existing_chat_and_memory(tmp_path: Path) -> None:
+    database_path = tmp_path / "nova.db"
+    with closing(sqlite3.connect(database_path)) as connection:
+        migrate_database(connection, MIGRATIONS[:18])
+        connection.execute(
+            """
+            INSERT INTO chat_conversations (id, title, created_at, updated_at)
+            VALUES ('conversation', 'Memory source', ?, ?)
+            """,
+            ("2026-08-20T00:00:00+00:00", "2026-08-20T00:00:00+00:00"),
+        )
+        connection.execute(
+            "INSERT INTO chat_messages "
+            "(id, conversation_id, role, content, created_at) "
+            "VALUES ('message', 'conversation', 'user', 'Keep this', ?)",
+            ("2026-08-20T00:00:00+00:00",),
+        )
+        connection.execute(
+            """
+            INSERT INTO knowledge_candidates (
+                id, conversation_id, source_message_id, kind, title, content,
+                source_excerpt, reason, confidence, explicit_request, status,
+                created_at, reviewed_at
+            ) VALUES (
+                'candidate', 'conversation', 'message', 'fact', 'Existing memory',
+                'Keep this', 'Keep this', 'Owner approved', 1, 1, 'approved', ?, ?
+            )
+            """,
+            ("2026-08-20T00:00:00+00:00", "2026-08-20T00:00:00+00:00"),
+        )
+        connection.execute(
+            """
+            INSERT INTO knowledge_records (
+                id, candidate_id, kind, title, content, relative_path, sha256,
+                created_at, status, updated_at
+            ) VALUES (
+                'existing-memory', 'candidate', 'fact', 'Existing memory',
+                'Keep this', 'memory/existing.md', ?, ?, 'active', ?
+            )
+            """,
+            (
+                "0" * 64,
+                "2026-08-20T00:00:00+00:00",
+                "2026-08-20T00:00:00+00:00",
+            ),
+        )
+        connection.commit()
+
+    IntakeService(tmp_path / "intake", database_path).initialize()
+
+    with closing(sqlite3.connect(database_path)) as connection:
+        memory = connection.execute(
+            "SELECT content, status FROM knowledge_records WHERE id = 'existing-memory'"
+        ).fetchone()
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'timesheet_%'"
+            )
+        }
+        version = connection.execute("SELECT version FROM schema_meta").fetchone()
+
+    assert memory == ("Keep this", "active")
+    assert tables == {"timesheet_shifts", "timesheet_tolls", "timesheet_events"}
+    assert version == (19,)
 
 
 def test_unreadable_database_is_refused_before_migration(tmp_path: Path) -> None:

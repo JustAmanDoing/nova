@@ -35,6 +35,7 @@ from app.services.knowledge import (
     KnowledgeProposalError,
     KnowledgeRetrievalError,
 )
+from app.services.timesheet import TimesheetIntent, TimesheetService
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 LocalAction = Annotated[None, Depends(require_local_action)]
@@ -218,10 +219,16 @@ def send_message(
 ) -> StreamingResponse:
     chat = _chat(request)
     conductor = _conductor(request)
-    capability_id = (
-        conductor.match(payload.content) if payload.document_id is None else None
+    timesheet = _timesheet(request)
+    timesheet_intent = (
+        timesheet.match(payload.content) if payload.document_id is None else None
     )
-    if capability_id is None and payload.model is None:
+    capability_id = (
+        conductor.match(payload.content)
+        if payload.document_id is None and timesheet_intent is None
+        else None
+    )
+    if capability_id is None and timesheet_intent is None and payload.model is None:
         raise HTTPException(
             status_code=503,
             detail=(
@@ -245,6 +252,14 @@ def send_message(
         raise HTTPException(status_code=404, detail="Conversation not found.") from error
     except ChatConflictError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
+    if timesheet_intent is not None:
+        return _timesheet_response(
+            chat,
+            timesheet,
+            conversation_id,
+            timesheet_intent,
+            user_message,
+        )
     if capability_id is not None:
         return _conductor_response(
             chat,
@@ -321,6 +336,45 @@ def _chat(request: Request) -> ChatService:
 
 def _conductor(request: Request) -> ConductorService:
     return cast(ConductorService, request.app.state.conductor)
+
+
+def _timesheet(request: Request) -> TimesheetService:
+    return cast(TimesheetService, request.app.state.timesheets)
+
+
+def _timesheet_response(
+    chat: ChatService,
+    timesheet: TimesheetService,
+    conversation_id: str,
+    intent: TimesheetIntent,
+    user_message: MessageRecord,
+) -> StreamingResponse:
+    def events() -> Iterator[str]:
+        yield _event("user", message=asdict(user_message))
+        try:
+            result = timesheet.execute(intent)
+            yield _event("capability", source=asdict(result.source))
+            yield _event("delta", content=result.content)
+            assistant = chat.complete_turn(
+                conversation_id,
+                result.content,
+                None,
+                capability_sources=[result.source],
+            )
+            yield _event("done", message=asdict(assistant))
+        except Exception:
+            logger.exception("Structured timesheet operation failed")
+            yield _event(
+                "error",
+                message=(
+                    "NOVA could not update the timesheet right now. "
+                    "No unconfirmed value was saved."
+                ),
+            )
+        finally:
+            chat.end_turn(conversation_id)
+
+    return StreamingResponse(events(), media_type="application/x-ndjson")
 
 
 def _conductor_response(

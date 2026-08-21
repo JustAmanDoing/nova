@@ -610,6 +610,74 @@ def _conductor_capability_evidence(connection: sqlite3.Connection) -> None:
     _execute_all(connection, statements)
 
 
+def _minimum_timesheet_loop(connection: sqlite3.Connection) -> None:
+    statements = (
+        """
+        CREATE TABLE timesheet_shifts (
+            id TEXT PRIMARY KEY,
+            shift_date TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL CHECK (status IN ('open', 'complete')),
+            loading_start TEXT,
+            loading_finish TEXT,
+            driving_start TEXT,
+            driving_finish TEXT,
+            odometer_start INTEGER CHECK (odometer_start >= 0),
+            odometer_finish INTEGER CHECK (odometer_finish >= 0),
+            total_deliveries INTEGER CHECK (total_deliveries >= 0),
+            total_minutes INTEGER CHECK (total_minutes >= 0),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            completed_at TEXT
+        )
+        """,
+        """
+        CREATE UNIQUE INDEX ix_timesheet_one_open_shift
+        ON timesheet_shifts (status) WHERE status = 'open'
+        """,
+        """
+        CREATE INDEX ix_timesheet_shifts_date
+        ON timesheet_shifts (shift_date DESC)
+        """,
+        """
+        CREATE TABLE timesheet_tolls (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            id TEXT NOT NULL UNIQUE,
+            shift_id TEXT NOT NULL
+                REFERENCES timesheet_shifts(id) ON DELETE RESTRICT,
+            toll_point TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX ix_timesheet_tolls_shift
+        ON timesheet_tolls (shift_id, created_at, id)
+        """,
+        """
+        CREATE TABLE timesheet_events (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            shift_id TEXT NOT NULL
+                REFERENCES timesheet_shifts(id) ON DELETE RESTRICT,
+            event_type TEXT NOT NULL CHECK (
+                event_type IN (
+                    'opened', 'field_saved', 'field_corrected',
+                    'toll_added', 'toll_corrected', 'completed'
+                )
+            ),
+            field_name TEXT,
+            previous_value TEXT,
+            new_value TEXT,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE INDEX ix_timesheet_events_shift
+        ON timesheet_events (shift_id, sequence)
+        """,
+    )
+    _execute_all(connection, statements)
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(1, "observe-and-understand", _observe_and_understand),
     Migration(2, "structured-extraction-and-search", _structured_extraction_and_search),
@@ -649,6 +717,7 @@ MIGRATIONS: tuple[Migration, ...] = (
         "conductor-capability-evidence",
         _conductor_capability_evidence,
     ),
+    Migration(19, "minimum-timesheet-loop", _minimum_timesheet_loop),
 )
 LATEST_SCHEMA_VERSION = MIGRATIONS[-1].version
 
