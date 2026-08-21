@@ -1,5 +1,6 @@
 import json
 from collections.abc import Iterator, Sequence
+from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from app.services.chat import (
     ModelRecord,
     OllamaProvider,
 )
+from app.services.timesheet import BRISBANE_TIMEZONE, OfficialTollPriceResolver
 
 INTENT = {"X-Nova-Intent": "local-user-action"}
 
@@ -710,3 +712,82 @@ def test_missing_conversation_and_unavailable_model_provider_are_clear(
     assert missing.json()["detail"] == "Conversation not found."
     assert conversations.status_code == 200
     assert conversations.json() == []
+
+
+def test_complete_timesheet_loop_works_through_ordinary_chat_without_a_model(
+    tmp_path: Path,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 21, 17, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        application.state.timesheets.price_resolver = OfficialTollPriceResolver(
+            lambda _url: """
+            <table>
+              <tr><th>Point</th><th>C1</th><th>C2</th><th>C3</th><th>C4</th></tr>
+              <tr><td>Murarrie</td><td>$1.00</td><td>$2.00</td><td>$3.00</td><td>$20.74</td></tr>
+              <tr><td>Kuraby/Compton Road</td><td>$1.00</td><td>$2.00</td>
+              <td>$3.00</td><td>$12.24</td></tr>
+              <tr><td>Loganlea</td><td>$1.00</td><td>$2.00</td><td>$3.00</td><td>$7.84</td></tr>
+              <tr><td>Heathwood</td><td>$1.00</td><td>$2.00</td><td>$3.00</td><td>$12.95</td></tr>
+            </table>
+            """
+        )
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Friday shift"},
+        ).json()["id"]
+
+        def send(content: str) -> tuple[str, dict[str, object]]:
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": None, "content": content},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+            assert [event["type"] for event in events] == [
+                "user",
+                "capability",
+                "delta",
+                "done",
+            ]
+            return events[2]["content"], events[1]["source"]
+
+        assert send("loading started 5:15")[0] == "Saved: loading start 5:15."
+        assert send("loading finished 6:05")[0] == "Saved: loading finish 6:05."
+        assert send("driving started 6:15")[0] == "Saved: driving start 6:15."
+        assert send("odometer start 123,400")[0] == "Saved: odometer start 123,400."
+        assert send("I went through the Heathwood toll")[0] == "Saved: toll Heathwood."
+        assert send("driving finished 4:45 pm")[0].endswith("Total hours: 11.5.")
+        assert send("No, loading started 5:25")[0].endswith("Total hours: 11.33.")
+
+        missing, _source = send("finish my shift")
+        assert missing == "Still needed: odometer finish, total deliveries."
+        send("odometer finish 123,780")
+        send("14 deliveries")
+        completed, _source = send("finish my shift")
+        assert completed.startswith("Timesheet complete.")
+
+        retrieved, source = send("show today's timesheet")
+        assert "date 2026-08-21" in retrieved
+        assert "loading 5:25–6:05" in retrieved
+        assert "deliveries 14" in retrieved
+        assert source["capability_id"] == "timesheet.current"
+
+        weekly, weekly_source = send("show this week's timesheet")
+        assert "Weekly toll total: $12.95 for 1 recorded toll(s)" in weekly
+        assert "current Linkt Class 4 heavy-commercial prices" in weekly
+        assert weekly_source["capability_id"] == "timesheet.weekly"
+
+        conversation = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}"
+        ).json()
+        assert conversation["message_count"] == 26
+        assert all(
+            message["capability_sources"]
+            for message in conversation["messages"]
+            if message["role"] == "assistant"
+        )
