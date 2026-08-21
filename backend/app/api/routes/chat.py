@@ -220,9 +220,7 @@ def send_message(
     chat = _chat(request)
     conductor = _conductor(request)
     timesheet = _timesheet(request)
-    timesheet_intent = (
-        timesheet.match(payload.content) if payload.document_id is None else None
-    )
+    timesheet_intent = timesheet.match(payload.content)
     capability_id = (
         conductor.match(payload.content)
         if payload.document_id is None and timesheet_intent is None
@@ -237,7 +235,7 @@ def send_message(
             ),
         )
     document = None
-    if payload.document_id is not None:
+    if payload.document_id is not None and timesheet_intent is None:
         try:
             document = chat.prepare_document_context(payload.document_id)
         except DocumentContextError as error:

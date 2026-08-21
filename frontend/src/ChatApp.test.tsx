@@ -875,6 +875,130 @@ describe("ChatApp", () => {
     );
   });
 
+  it("saves an ordinary timesheet phrase when local AI is unavailable", async () => {
+    const content = "Loading started 5:15";
+    const source = {
+      capability_id: "timesheet.capture",
+      source_title: "NOVA structured timesheet",
+      source_url: "/chat.html",
+      generated_at: "2026-08-21T07:00:00Z",
+      result_sha256: "a".repeat(64),
+    };
+    let turnCompleted = false;
+    const savedMessages = [
+      {
+        id: "timesheet-user",
+        conversation_id: conversation.id,
+        role: "user",
+        content,
+        model: null,
+        created_at: "2026-08-21T07:00:00Z",
+        knowledge_checked: false,
+        sources: [],
+        document_sources: [],
+        capability_sources: [],
+      },
+      {
+        id: "timesheet-assistant",
+        conversation_id: conversation.id,
+        role: "assistant",
+        content: "Saved: loading start 5:15.",
+        model: null,
+        created_at: "2026-08-21T07:00:01Z",
+        knowledge_checked: false,
+        sources: [],
+        document_sources: [],
+        capability_sources: [source],
+      },
+    ];
+    const fetchMock = vi.fn(
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input.toString();
+        if (url.endsWith("/chat/models")) {
+          return Promise.resolve(
+            jsonResponse({ detail: "The local model provider is unavailable." }, 503),
+          );
+        }
+        if (url.endsWith("/chat/capabilities")) {
+          return Promise.resolve(jsonResponse([conductorCapability]));
+        }
+        if (url.endsWith("/chat/documents")) return Promise.resolve(jsonResponse([]));
+        if (url.endsWith("/knowledge/quality")) {
+          return Promise.resolve(jsonResponse(knowledgeQualityReport));
+        }
+        if (url.includes("/knowledge/candidates")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/knowledge/records")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (
+          url.endsWith("/chat/conversations/conversation-1/messages") &&
+          init?.method === "POST"
+        ) {
+          expect(JSON.parse(String(init.body))).toEqual({
+            model: null,
+            content,
+            document_id: null,
+          });
+          turnCompleted = true;
+          return Promise.resolve(
+            new Response(
+              [
+                JSON.stringify({ type: "user", message: savedMessages[0] }),
+                JSON.stringify({ type: "capability", source }),
+                JSON.stringify({
+                  type: "delta",
+                  content: "Saved: loading start 5:15.",
+                }),
+                JSON.stringify({ type: "done", message: savedMessages[1] }),
+                "",
+              ].join("\n"),
+              { headers: { "Content-Type": "application/x-ndjson" } },
+            ),
+          );
+        }
+        if (url.endsWith("/chat/conversations/conversation-1")) {
+          return Promise.resolve(
+            jsonResponse({
+              ...conversation,
+              title: turnCompleted ? content : conversation.title,
+              message_count: turnCompleted ? 2 : 0,
+              messages: turnCompleted ? savedMessages : [],
+            }),
+          );
+        }
+        if (url.includes("/chat/conversations?status=")) {
+          return Promise.resolve(jsonResponse([]));
+        }
+        if (url.endsWith("/chat/conversations")) {
+          return Promise.resolve(
+            jsonResponse([{ ...conversation, message_count: turnCompleted ? 2 : 0 }]),
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ChatApp />);
+
+    expect(await screen.findByText("Local AI unavailable")).toBeInTheDocument();
+    const textbox = screen.getByRole("textbox", { name: "Message Nova" });
+    await waitFor(() => expect(textbox).toBeEnabled());
+    fireEvent.change(textbox, { target: { value: content } });
+    const send = screen.getByRole("button", { name: "Send" });
+    await waitFor(() => expect(send).toBeEnabled());
+    fireEvent.click(send);
+    await screen.findByRole("button", { name: "Stop" });
+    await screen.findByRole("button", { name: "Send" });
+
+    expect(await screen.findByText("Saved: loading start 5:15.")).toBeInTheDocument();
+    expect(screen.getByLabelText("NOVA capability evidence")).toHaveTextContent(
+      "NOVA structured timesheet",
+    );
+  });
+
   it("requires explicit local approval before saving proposed knowledge", async () => {
     const candidate = {
       id: "candidate-1",
