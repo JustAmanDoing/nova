@@ -1,7 +1,7 @@
 import sqlite3
 from _thread import RLock
 from contextlib import closing
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -201,3 +201,132 @@ def test_completed_shift_is_retrievable_and_a_new_day_can_open(tmp_path: Path) -
     )
     next_day.execute(next_day.match("loading started 5:20"))  # type: ignore[arg-type]
     assert next_day.get_shift("2026-08-22") is not None
+
+
+def test_explicit_new_day_rolls_a_full_previous_shift_and_preserves_each_day(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+    for message in (
+        "loading started 5:15",
+        "loading finished 6:00",
+        "driving started 6:10",
+        "driving finished 4:45 pm",
+        "odometer start 123,400",
+        "odometer finish 123,780",
+        "14 deliveries",
+        "Loganlea toll",
+        "Loganlea toll",
+    ):
+        intent = service.match(message)
+        assert intent is not None
+        service.execute(intent)
+
+    next_day = TimesheetService(
+        service.database_path,
+        RLock(),
+        now=lambda: datetime(2026, 8, 21, 14, 5, tzinfo=UTC),
+        price_resolver=OfficialTollPriceResolver(lambda _url: _official_table()),
+    )
+    intent = next_day.match("Start a new day")
+    assert intent == TimesheetIntent("new_day")
+    assert next_day.execute(intent).content == (
+        "Timesheet for 2026-08-21 completed. "
+        "Started new timesheet for 2026-08-22."
+    )
+
+    next_day.execute(next_day.match("loading started 5:20"))  # type: ignore[arg-type]
+    next_day.execute(next_day.match("Loganlea toll"))  # type: ignore[arg-type]
+    next_day.execute(next_day.match("Loganlea toll"))  # type: ignore[arg-type]
+    correction = next_day.execute(
+        next_day.match("No, loading started 5:25")  # type: ignore[arg-type]
+    )
+
+    assert correction.content == "Corrected: loading start 5:25."
+    previous = next_day.get_shift("2026-08-21")
+    current = next_day.get_shift("2026-08-22")
+    assert previous is not None
+    assert previous.status == "complete"
+    assert previous.loading_start == "05:15"
+    assert previous.toll_points == ("Loganlea", "Loganlea")
+    assert current is not None
+    assert current.status == "open"
+    assert current.loading_start == "05:25"
+    assert current.toll_points == ("Loganlea", "Loganlea")
+
+    current_summary = next_day.execute(TimesheetIntent("current")).content
+    weekly_summary = next_day.execute(TimesheetIntent("weekly")).content
+    assert "date 2026-08-22" in current_summary
+    assert "tolls Loganlea, Loganlea" in current_summary
+    assert "date 2026-08-21" in weekly_summary
+    assert "date 2026-08-22" in weekly_summary
+    assert "Weekly toll total: $31.36 for 4 recorded toll(s)" in weekly_summary
+
+    restarted = TimesheetService(
+        service.database_path,
+        RLock(),
+        now=lambda: datetime(2026, 8, 21, 14, 10, tzinfo=UTC),
+    )
+    assert restarted.get_shift("2026-08-21") == previous
+    assert restarted.get_shift("2026-08-22") == current
+
+
+def test_new_day_keeps_an_incomplete_previous_shift_open_and_asks_only_missing(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+    service.execute(service.match("loading started 5:15"))  # type: ignore[arg-type]
+
+    next_day = TimesheetService(
+        service.database_path,
+        RLock(),
+        now=lambda: datetime(2026, 8, 21, 14, 1, tzinfo=UTC),
+    )
+    result = next_day.execute(next_day.match("Start a new day"))  # type: ignore[arg-type]
+
+    assert result.content == (
+        "Still needed for 2026-08-21 before starting 2026-08-22: "
+        "loading finish, driving start, driving finish, odometer start, "
+        "odometer finish, total deliveries."
+    )
+    previous = next_day.get_shift("2026-08-21")
+    assert previous is not None
+    assert previous.status == "open"
+    assert previous.loading_start == "05:15"
+    assert next_day.get_shift("2026-08-22") is None
+    assert next_day.execute(TimesheetIntent("current")).content == (
+        "No timesheet record has been started for 2026-08-22."
+    )
+
+    blocked_overwrite = next_day.execute(
+        next_day.match("loading started 5:30")  # type: ignore[arg-type]
+    )
+    assert blocked_overwrite.content == result.content
+    previous = next_day.get_shift("2026-08-21")
+    assert previous is not None
+    assert previous.loading_start == "05:15"
+
+    previous_day_value = next_day.execute(
+        next_day.match("loading finished 6:00")  # type: ignore[arg-type]
+    )
+    assert previous_day_value.content == (
+        "Saved for 2026-08-21: loading finish 6:00."
+    )
+    previous = next_day.get_shift("2026-08-21")
+    assert previous is not None
+    assert previous.loading_finish == "06:00"
+
+
+def test_new_day_is_idempotent_for_the_current_brisbane_date(tmp_path: Path) -> None:
+    service = _service(tmp_path)
+
+    first = service.execute(service.match("Start a new day"))  # type: ignore[arg-type]
+    second = service.execute(service.match("Start a new day"))  # type: ignore[arg-type]
+
+    assert first.content == "Started new timesheet for 2026-08-21."
+    assert second.content == "Timesheet for 2026-08-21 is already open."
+    with closing(sqlite3.connect(service.database_path)) as connection:
+        shifts = connection.execute(
+            "SELECT shift_date, status FROM timesheet_shifts ORDER BY shift_date"
+        ).fetchall()
+    assert shifts == [("2026-08-21", "open")]

@@ -5,7 +5,7 @@ from _thread import RLock
 from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass
-from datetime import UTC, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from html.parser import HTMLParser
 from typing import Literal, cast
 from urllib.error import HTTPError, URLError
@@ -94,7 +94,7 @@ class TollPriceResolutionError(RuntimeError):
 
 @dataclass(frozen=True)
 class TimesheetIntent:
-    kind: Literal["capture", "current", "complete", "weekly"]
+    kind: Literal["capture", "current", "complete", "weekly", "new_day"]
     values: tuple[tuple[str, str], ...] = ()
     toll_points: tuple[str, ...] = ()
     correction: bool = False
@@ -225,6 +225,11 @@ class TimesheetService:
         normalized = " ".join(content.split())
         lowered = normalized.casefold().rstrip(".!?")
         if re.fullmatch(
+            r"(?:start|begin)(?: a)? new (?:work ?)?day(?: timesheet)?",
+            lowered,
+        ):
+            return TimesheetIntent("new_day")
+        if re.fullmatch(
             r"(?:show|read|get|retrieve)(?: me)? "
             r"(?:my |the )?(?:current|today'?s) timesheet",
             lowered,
@@ -299,9 +304,12 @@ class TimesheetService:
         elif intent.kind == "complete":
             content = self._complete()
             capability_id = "timesheet.complete"
-        else:
+        elif intent.kind == "weekly":
             content = self._weekly_summary()
             capability_id = "timesheet.weekly"
+        else:
+            content = self._start_new_day()
+            capability_id = "timesheet.new_day"
         generated_at = _timestamp()
         is_weekly = intent.kind == "weekly"
         source_url = OFFICIAL_TOLL_PRICE_URL if is_weekly else "/chat.html"
@@ -341,10 +349,18 @@ class TimesheetService:
 
     def _capture(self, intent: TimesheetIntent) -> str:
         timestamp = _timestamp()
+        current_date = self._brisbane_date().isoformat()
         confirmations: list[str] = []
         with self.operation_lock, closing(self._connection()) as connection, connection:
-            row = self._open_or_today(connection, timestamp)
+            row = self._open_or_today(connection, timestamp, current_date)
             shift_id = str(row["id"])
+            shift_date = str(row["shift_date"])
+            is_previous_day = shift_date != current_date
+            fills_only_missing = bool(intent.values) and not intent.toll_points and all(
+                row[field] is None for field, _value in intent.values
+            )
+            if is_previous_day and not intent.correction and not fills_only_missing:
+                return self._missing_before_new_day(row, current_date)
             previous_total = row["total_minutes"]
             for field, value in intent.values:
                 previous = row[field]
@@ -408,15 +424,18 @@ class TimesheetService:
                     timestamp,
                 )
         prefix = "Corrected" if intent.correction else "Saved"
+        if is_previous_day:
+            prefix += f" for {shift_date}"
         content = f"{prefix}: " + "; ".join(confirmations) + "."
         if total_minutes is not None:
             content += f" Total hours: {_hours(total_minutes)}."
         return content
 
     def _current_summary(self) -> str:
-        shift = self.get_shift()
+        current_date = self._brisbane_date().isoformat()
+        shift = self.get_shift(current_date)
         if shift is None:
-            return "No timesheet record has been started yet."
+            return f"No timesheet record has been started for {current_date}."
         return self._format_shift(shift)
 
     def _complete(self) -> str:
@@ -427,15 +446,10 @@ class TimesheetService:
             ).fetchone()
             if row is None:
                 return "There is no open timesheet record to complete."
-            missing = [field for field in _REQUIRED_FIELDS if row[field] is None]
+            missing = self._missing_fields(row)
             if missing:
                 return "Still needed: " + ", ".join(_LABELS[field] for field in missing) + "."
-            connection.execute(
-                "UPDATE timesheet_shifts SET status = 'complete', completed_at = ?, updated_at = ? "
-                "WHERE id = ?",
-                (timestamp, timestamp, row["id"]),
-            )
-            self._event(connection, str(row["id"]), "completed", None, None, None, timestamp)
+            self._complete_row(connection, row, timestamp)
             completed = connection.execute(
                 "SELECT * FROM timesheet_shifts WHERE id = ?", (row["id"],)
             ).fetchone()
@@ -443,7 +457,7 @@ class TimesheetService:
         return "Timesheet complete. " + self._format_shift(record)
 
     def _weekly_summary(self) -> str:
-        today = self.now().date()
+        today = self._brisbane_date()
         week_start = today - timedelta(days=today.weekday())
         week_end = week_start + timedelta(days=6)
         with closing(self._connection()) as connection:
@@ -475,18 +489,70 @@ class TimesheetService:
         )
         return "\n".join(lines)
 
-    def _open_or_today(self, connection: sqlite3.Connection, timestamp: str) -> sqlite3.Row:
+    def _start_new_day(self) -> str:
+        timestamp = _timestamp()
+        current_date = self._brisbane_date().isoformat()
+        completed_previous: str | None = None
+        with self.operation_lock, closing(self._connection()) as connection, connection:
+            open_row = connection.execute(
+                "SELECT * FROM timesheet_shifts WHERE status = 'open'"
+            ).fetchone()
+            if open_row is not None:
+                open_date = str(open_row["shift_date"])
+                if open_date == current_date:
+                    return f"Timesheet for {current_date} is already open."
+                if open_date > current_date:
+                    return (
+                        f"Cannot start {current_date} while the future-dated timesheet "
+                        f"for {open_date} is open."
+                    )
+                missing = self._missing_fields(open_row)
+                if missing:
+                    return self._missing_before_new_day(open_row, current_date)
+                self._complete_row(connection, open_row, timestamp)
+                completed_previous = open_date
+
+            current_row = connection.execute(
+                "SELECT * FROM timesheet_shifts WHERE shift_date = ?", (current_date,)
+            ).fetchone()
+            if current_row is not None:
+                return f"Timesheet for {current_date} is already {current_row['status']}."
+            self._create_shift(connection, current_date, timestamp)
+
+        started = f"Started new timesheet for {current_date}."
+        if completed_previous is None:
+            return started
+        return f"Timesheet for {completed_previous} completed. {started}"
+
+    def _open_or_today(
+        self,
+        connection: sqlite3.Connection,
+        timestamp: str,
+        shift_date: str,
+    ) -> sqlite3.Row:
         row = connection.execute(
             "SELECT * FROM timesheet_shifts WHERE status = 'open'"
         ).fetchone()
         if row is not None:
-            return cast(sqlite3.Row, row)
-        shift_date = self.now().date().isoformat()
+            open_date = str(row["shift_date"])
+            if open_date == shift_date:
+                return cast(sqlite3.Row, row)
+            if open_date > shift_date or self._missing_fields(row):
+                return cast(sqlite3.Row, row)
+            self._complete_row(connection, row, timestamp)
         row = connection.execute(
             "SELECT * FROM timesheet_shifts WHERE shift_date = ?", (shift_date,)
         ).fetchone()
         if row is not None:
             return cast(sqlite3.Row, row)
+        return self._create_shift(connection, shift_date, timestamp)
+
+    def _create_shift(
+        self,
+        connection: sqlite3.Connection,
+        shift_date: str,
+        timestamp: str,
+    ) -> sqlite3.Row:
         shift_id = str(uuid4())
         connection.execute(
             "INSERT INTO timesheet_shifts "
@@ -500,6 +566,38 @@ class TimesheetService:
                 "SELECT * FROM timesheet_shifts WHERE id = ?", (shift_id,)
             ).fetchone(),
         )
+
+    @staticmethod
+    def _missing_fields(row: sqlite3.Row) -> list[str]:
+        return [field for field in _REQUIRED_FIELDS if row[field] is None]
+
+    def _missing_before_new_day(self, row: sqlite3.Row, current_date: str) -> str:
+        missing = self._missing_fields(row)
+        return (
+            f"Still needed for {row['shift_date']} before starting {current_date}: "
+            + ", ".join(_LABELS[field] for field in missing)
+            + "."
+        )
+
+    def _brisbane_date(self) -> date:
+        current = self.now()
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=BRISBANE_TIMEZONE)
+        return current.astimezone(BRISBANE_TIMEZONE).date()
+
+    @classmethod
+    def _complete_row(
+        cls,
+        connection: sqlite3.Connection,
+        row: sqlite3.Row,
+        timestamp: str,
+    ) -> None:
+        connection.execute(
+            "UPDATE timesheet_shifts SET status = 'complete', completed_at = ?, "
+            "updated_at = ? WHERE id = ?",
+            (timestamp, timestamp, row["id"]),
+        )
+        cls._event(connection, str(row["id"]), "completed", None, None, None, timestamp)
 
     @staticmethod
     def _event(
