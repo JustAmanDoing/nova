@@ -931,3 +931,83 @@ def test_timesheet_capture_precedes_model_and_document_routing(
         shift = application.state.timesheets.get_shift("2026-08-21")
         assert shift is not None
         assert shift.loading_start == "05:15"
+
+
+def test_new_day_routes_deterministically_and_subsequent_chat_targets_new_record(
+    tmp_path: Path,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = FailingProvider()
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 21, 17, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        for message in (
+            "loading started 5:15",
+            "loading finished 6:00",
+            "driving started 6:10",
+            "driving finished 4:45 pm",
+            "odometer start 123,400",
+            "odometer finish 123,780",
+            "14 deliveries",
+        ):
+            intent = application.state.timesheets.match(message)
+            assert intent is not None
+            application.state.timesheets.execute(intent)
+
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 22, 0, 5, tzinfo=BRISBANE_TIMEZONE
+        )
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Daily rollover regression"},
+        ).json()["id"]
+
+        def send(content: str) -> tuple[str, dict[str, object]]:
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": "qwen3:8b", "content": content},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+            assert [event["type"] for event in events] == [
+                "user",
+                "capability",
+                "delta",
+                "done",
+            ]
+            return events[2]["content"], events[1]["source"]
+
+        rollover, source = send("Start a new day")
+        assert rollover == (
+            "Timesheet for 2026-08-21 completed. "
+            "Started new timesheet for 2026-08-22."
+        )
+        assert source["capability_id"] == "timesheet.new_day"
+        assert send("loading started 5:20")[0] == "Saved: loading start 5:20."
+        assert send("Loganlea toll")[0] == "Saved: toll Loganlea."
+        assert send("Loganlea toll")[0] == "Saved: toll Loganlea."
+        assert send("No, loading started 5:25")[0] == (
+            "Corrected: loading start 5:25."
+        )
+
+        previous = application.state.timesheets.get_shift("2026-08-21")
+        current = application.state.timesheets.get_shift("2026-08-22")
+        assert previous is not None
+        assert previous.status == "complete"
+        assert previous.loading_start == "05:15"
+        assert current is not None
+        assert current.loading_start == "05:25"
+        assert current.toll_points == ("Loganlea", "Loganlea")
+
+        application.state.chat.provider = FakeProvider()
+        ordinary = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={"model": "qwen3:8b", "content": "Hello Nova"},
+        )
+        assert ordinary.status_code == 200
+        ordinary_events = [json.loads(line) for line in ordinary.text.splitlines()]
+        assert ordinary_events[-1]["message"]["content"] == "Hello Example Owner."

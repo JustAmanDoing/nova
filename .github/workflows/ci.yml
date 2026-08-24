@@ -295,6 +295,21 @@ jobs:
                 '.[1].source.capability_id == "timesheet.current"
                  and (.[2].content | contains("tolls Murarrie, Kuraby/Compton Road"))' \
             > /dev/null
+          new_day_events="$(
+            curl --fail --silent --show-error \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --header 'X-Nova-Intent: local-user-action' \
+              --data \
+                '{"model":"qwen3:8b","content":"Start a new day"}' \
+              "http://127.0.0.1:5173/api/v1/chat/conversations/$timesheet_conversation_id/messages"
+          )"
+          printf '%s' "$new_day_events" \
+            | jq --slurp --exit-status \
+                'map(.type) == ["user", "capability", "delta", "done"]
+                 and .[1].source.capability_id == "timesheet.new_day"
+                 and (.[2].content | endswith("is already open."))' \
+            > /dev/null
           response_headers="$(
             curl --fail --silent --show-error --head \
               http://127.0.0.1:5173/
