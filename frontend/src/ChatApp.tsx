@@ -289,7 +289,12 @@ function ChatApp() {
         return;
       }
 
-      activeComposer.style.height = "0px";
+      if (!activeComposer.value.includes("\n") && activeComposer.value.length <= 24) {
+        activeComposer.style.height = "44px";
+        return;
+      }
+
+      activeComposer.style.height = "44px";
       activeComposer.style.height = `${Math.min(120, Math.max(44, activeComposer.scrollHeight))}px`;
     }
 

@@ -314,6 +314,11 @@ describe("ChatApp", () => {
   });
 
   it("shows the local-only boundary and available Ollama model", async () => {
+    const compactViewport = Object.assign(new EventTarget(), {
+      matches: true,
+      media: "(max-width: 560px)",
+    });
+    vi.stubGlobal("matchMedia", () => compactViewport);
     vi.stubGlobal(
       "fetch",
       vi.fn((input: string | URL | Request) => {
@@ -368,6 +373,9 @@ describe("ChatApp", () => {
       .closest("details");
     expect(privacyDetails).not.toHaveAttribute("open");
     const composer = screen.getByRole("textbox", { name: "Message Nova" });
+    expect(composer).toHaveStyle({ height: "44px" });
+    fireEvent.change(composer, { target: { value: "Loading started 5:15" } });
+    expect(composer).toHaveStyle({ height: "44px" });
     const knowledgeHealth = screen.getByRole("region", {
       name: "Knowledge health",
     });
