@@ -44,7 +44,7 @@ export default function AppShell({
   }, [navigationOpen]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell app-shell-${activeWorkspace}`}>
       <header className="app-shell-mobile-header">
         <button
           type="button"
