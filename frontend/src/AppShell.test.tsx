@@ -48,4 +48,25 @@ describe("AppShell", () => {
     expect(navigation).not.toHaveClass("open");
     expect(screen.getByText("Conversation")).toBeInTheDocument();
   });
+
+  it("places compact Chat actions in the mobile header and drawer", () => {
+    render(
+      <AppShell
+        activeWorkspace="chat"
+        contentClassName="chat-shell"
+        mobileHeaderAction={<button type="button">New Chat</button>}
+        mobileNavigationContent={<p>Chat history and model controls</p>}
+      >
+        <p>Active conversation</p>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole("button", { name: "New Chat" })).toBeInTheDocument();
+    expect(screen.queryByText("Chat history and model controls"))
+      .not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace navigation" }));
+    expect(screen.getByText("Chat history and model controls")).toBeInTheDocument();
+    expect(screen.getByText("Active conversation")).toBeInTheDocument();
+  });
 });

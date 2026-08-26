@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import "./app-shell.css";
 
@@ -22,15 +22,29 @@ export default function AppShell({
   activeWorkspace,
   children,
   contentClassName,
+  mobileHeaderAction,
+  mobileNavigationContent,
+  navigationOpen: controlledNavigationOpen,
+  onNavigationOpenChange,
   status,
 }: {
   activeWorkspace: WorkspaceId;
   children: ReactNode;
   contentClassName: string;
+  mobileHeaderAction?: ReactNode;
+  mobileNavigationContent?: ReactNode;
+  navigationOpen?: boolean;
+  onNavigationOpenChange?: (open: boolean) => void;
   status?: ReactNode;
 }) {
-  const [navigationOpen, setNavigationOpen] = useState(false);
+  const [internalNavigationOpen, setInternalNavigationOpen] = useState(false);
+  const navigationOpen = controlledNavigationOpen ?? internalNavigationOpen;
   const activeLabel = workspaces.find((workspace) => workspace.id === activeWorkspace)?.label;
+
+  const setNavigationOpen = useCallback((open: boolean) => {
+    if (controlledNavigationOpen === undefined) setInternalNavigationOpen(open);
+    onNavigationOpenChange?.(open);
+  }, [controlledNavigationOpen, onNavigationOpenChange]);
 
   useEffect(() => {
     if (!navigationOpen) return;
@@ -41,10 +55,10 @@ export default function AppShell({
 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [navigationOpen]);
+  }, [navigationOpen, setNavigationOpen]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell app-shell-${activeWorkspace}`}>
       <header className="app-shell-mobile-header">
         <button
           type="button"
@@ -60,7 +74,9 @@ export default function AppShell({
           <span className="brand-mark" aria-hidden="true">N</span>
           <span>Nova</span>
         </a>
-        <span className="app-shell-current-workspace">{activeLabel}</span>
+        {mobileHeaderAction ?? (
+          <span className="app-shell-current-workspace">{activeLabel}</span>
+        )}
       </header>
 
       {navigationOpen ? (
@@ -112,6 +128,12 @@ export default function AppShell({
             </a>
           ))}
         </nav>
+
+        {navigationOpen && mobileNavigationContent ? (
+          <div className="app-shell-mobile-extension">
+            {mobileNavigationContent}
+          </div>
+        ) : null}
 
         <div className="app-shell-status">
           {status}
