@@ -26,6 +26,7 @@ describe("AppShell", () => {
       "aria-current",
       "page",
     );
+    expect(document.querySelector(".app-shell")).toHaveClass("app-shell-focus");
     expect(screen.getByRole("heading", { name: "Focus content" })).toBeInTheDocument();
   });
 
@@ -38,6 +39,7 @@ describe("AppShell", () => {
 
     const openButton = screen.getByRole("button", { name: "Open workspace navigation" });
     const navigation = screen.getByLabelText("Workspace navigation");
+    expect(document.querySelector(".app-shell")).toHaveClass("app-shell-chat");
 
     fireEvent.click(openButton);
     expect(openButton).toHaveAttribute("aria-expanded", "true");

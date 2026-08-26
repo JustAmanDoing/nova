@@ -56,6 +56,9 @@ type DraftMessage = Pick<
   | "capability_sources"
 >;
 
+const COMPACT_CHAT_QUERY =
+  "(max-width: 560px), (max-width: 900px) and (max-height: 560px)";
+
 function ChatApp() {
   const [models, setModels] = useState<ChatModel[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
@@ -99,6 +102,7 @@ function ChatApp() {
   const draftIdRef = useRef(0);
   const reviewRequestIdRef = useRef(0);
   const guidedQueryHandledRef = useRef(false);
+  const transcriptNearLatestRef = useRef(true);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -259,6 +263,7 @@ function ChatApp() {
   }, [openConversation]);
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = "auto") => {
+    transcriptNearLatestRef.current = true;
     transcriptRef.current?.scrollTo({
       top: transcriptRef.current.scrollHeight,
       behavior,
@@ -266,8 +271,58 @@ function ChatApp() {
   }, []);
 
   useEffect(() => {
-    scrollToLatest(generating ? "auto" : "smooth");
-  }, [messages, generating, scrollToLatest]);
+    if (loading) return;
+    const compactViewport = window.matchMedia?.(COMPACT_CHAT_QUERY).matches;
+    scrollToLatest(generating || compactViewport ? "auto" : "smooth");
+  }, [messages, generating, loading, scrollToLatest]);
+
+  useEffect(() => {
+    const composer = composerRef.current;
+    const compactViewport = window.matchMedia?.(COMPACT_CHAT_QUERY);
+    if (!composer || !compactViewport) return;
+    const activeComposer = composer;
+    const activeCompactViewport = compactViewport;
+
+    function resizeComposer() {
+      if (!activeCompactViewport.matches) {
+        activeComposer.style.height = "";
+        return;
+      }
+
+      if (!activeComposer.value.includes("\n") && activeComposer.value.length <= 24) {
+        activeComposer.style.height = "44px";
+        return;
+      }
+
+      activeComposer.style.height = "44px";
+      activeComposer.style.height = `${Math.min(120, Math.max(44, activeComposer.scrollHeight))}px`;
+    }
+
+    resizeComposer();
+    activeCompactViewport.addEventListener("change", resizeComposer);
+    return () => activeCompactViewport.removeEventListener("change", resizeComposer);
+  }, [draft]);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const activeViewport = viewport;
+
+    let previousHeight = activeViewport.height;
+    function keepLatestVisibleAfterViewportChange() {
+      const heightChanged = Math.abs(activeViewport.height - previousHeight) > 1;
+      previousHeight = activeViewport.height;
+      if (!heightChanged || !transcriptNearLatestRef.current) return;
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => scrollToLatest("auto"));
+      });
+    }
+
+    activeViewport.addEventListener("resize", keepLatestVisibleAfterViewportChange);
+    return () => {
+      activeViewport.removeEventListener("resize", keepLatestVisibleAfterViewportChange);
+    };
+  }, [scrollToLatest]);
 
   useEffect(() => {
     if (loading || guidedQueryHandledRef.current) return;
@@ -350,6 +405,7 @@ function ChatApp() {
     if (!transcript) return;
     const distanceFromLatest =
       transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight;
+    transcriptNearLatestRef.current = distanceFromLatest <= 96;
     setShowJumpToLatest(distanceFromLatest > 96);
   }
 
@@ -917,58 +973,79 @@ function ChatApp() {
             </label>
           </header>
 
-          <div
-            className="chat-transcript"
-            ref={transcriptRef}
-            onScroll={handleTranscriptScroll}
-            tabIndex={0}
-            aria-label="Conversation messages"
-            aria-live="polite"
-            aria-busy={generating}
-          >
-            {loading ? (
-              <div className="chat-welcome">
-                <span className="nova-orb" aria-hidden="true">N</span>
-                <p>Connecting to your local AI…</p>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="chat-welcome">
-                <span className="nova-orb" aria-hidden="true">N</span>
-                <h3>Ready when you are.</h3>
-                <p>
-                  Nova can use owner-approved local knowledge and show the exact
-                  record it considered. Say “Remember that…” to prepare a review
-                  card, or use a local status request below. Nova never silently
-                  saves personal facts.
-                </p>
-              </div>
-            ) : (
-              messages.map((message) => (
-                <article className={`chat-message ${message.role}`} key={message.id}>
-                  <span>{message.role === "user" ? "You" : "N"}</span>
-                  <div>
-                    <strong>{message.role === "user" ? "You" : "Nova"}</strong>
-                    <p>
-                      {message.content ||
-                        (message.role === "assistant" && generating
-                          ? "Thinking…"
-                          : "")}
-                    </p>
-                    {message.role === "assistant" && message.knowledge_checked ? (
-                      <KnowledgeSources sources={message.sources} />
-                    ) : null}
-                    {message.role === "assistant" &&
-                    message.document_sources?.length ? (
-                      <DocumentSources sources={message.document_sources} />
-                    ) : null}
-                    {message.role === "assistant" &&
-                    message.capability_sources?.length ? (
-                      <CapabilitySources sources={message.capability_sources} />
-                    ) : null}
-                  </div>
-                </article>
-              ))
-            )}
+          <div className={`chat-transcript-frame ${showJumpToLatest ? "has-jump" : ""}`}>
+            <div
+              className="chat-transcript"
+              ref={transcriptRef}
+              onScroll={handleTranscriptScroll}
+              tabIndex={0}
+              aria-label="Conversation messages"
+              aria-live="polite"
+              aria-busy={generating}
+            >
+              {loading ? (
+                <div className="chat-welcome">
+                  <span className="nova-orb" aria-hidden="true">N</span>
+                  <p>Connecting to your local AI…</p>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="chat-welcome">
+                  <span className="nova-orb" aria-hidden="true">N</span>
+                  <h3>Ready when you are.</h3>
+                  <p>
+                    Nova can use owner-approved local knowledge and show the exact
+                    record it considered. Say “Remember that…” to prepare a review
+                    card, or use a local status request below. Nova never silently
+                    saves personal facts.
+                  </p>
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <article className={`chat-message ${message.role}`} key={message.id}>
+                    <span>{message.role === "user" ? "You" : "N"}</span>
+                    <div>
+                      <strong>{message.role === "user" ? "You" : "Nova"}</strong>
+                      <p>
+                        {message.content ||
+                          (message.role === "assistant" && generating
+                            ? "Thinking…"
+                            : "")}
+                      </p>
+                      {message.role === "assistant" && message.knowledge_checked ? (
+                        <KnowledgeSources sources={message.sources} />
+                      ) : null}
+                      {message.role === "assistant" &&
+                      message.document_sources?.length ? (
+                        <DocumentSources sources={message.document_sources} />
+                      ) : null}
+                      {message.role === "assistant" &&
+                      message.capability_sources?.length ? (
+                        <CapabilitySources sources={message.capability_sources} />
+                      ) : null}
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+            {showJumpToLatest ? (
+              <button
+                type="button"
+                className="jump-to-latest"
+                onClick={() => {
+                  setShowJumpToLatest(false);
+                  window.requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
+                      const behavior = window.matchMedia?.(COMPACT_CHAT_QUERY).matches
+                        ? "auto"
+                        : "smooth";
+                      scrollToLatest(behavior);
+                    });
+                  });
+                }}
+              >
+                Jump to latest
+              </button>
+            ) : null}
           </div>
           {capabilities.length ? (
             <section className="conductor-starters" aria-label="Local NOVA status requests">
@@ -990,19 +1067,6 @@ function ChatApp() {
               </div>
             </section>
           ) : null}
-          {showJumpToLatest ? (
-            <button
-              type="button"
-              className="jump-to-latest"
-              onClick={() => {
-                scrollToLatest("smooth");
-                setShowJumpToLatest(false);
-              }}
-            >
-              Jump to latest
-            </button>
-          ) : null}
-
           {notice ? <p className="chat-notice" role="status">{notice}</p> : null}
 
           <form className="chat-composer" onSubmit={handleSend}>

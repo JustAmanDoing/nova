@@ -221,6 +221,8 @@ afterEach(() => {
 
 describe("ChatApp", () => {
   it("opens a long conversation at the latest exchange and offers phone shortcuts", async () => {
+    const visualViewport = Object.assign(new EventTarget(), { height: 874 });
+    vi.stubGlobal("visualViewport", visualViewport);
     const messages = Array.from({ length: 79 }, (_, index) => ({
       id: `message-${index + 1}`,
       conversation_id: conversation.id,
@@ -287,6 +289,7 @@ describe("ChatApp", () => {
 
     const transcript = document.querySelector<HTMLElement>(".chat-transcript");
     expect(transcript).not.toBeNull();
+    expect(transcript?.parentElement).toHaveClass("chat-transcript-frame");
     Object.defineProperties(transcript as HTMLElement, {
       scrollHeight: { configurable: true, value: 90_000 },
       clientHeight: { configurable: true, value: 300 },
@@ -294,14 +297,28 @@ describe("ChatApp", () => {
     });
     fireEvent.scroll(transcript as HTMLElement);
     const jump = screen.getByRole("button", { name: "Jump to latest" });
+    expect(transcript?.parentElement).toContainElement(jump);
+    expect(transcript?.parentElement).toHaveClass("has-jump");
     fireEvent.click(jump);
     expect(vi.mocked(HTMLElement.prototype.scrollTo)).toHaveBeenLastCalledWith({
       top: 90_000,
       behavior: "smooth",
     });
+
+    visualViewport.height = 430;
+    visualViewport.dispatchEvent(new Event("resize"));
+    expect(vi.mocked(HTMLElement.prototype.scrollTo)).toHaveBeenLastCalledWith({
+      top: 90_000,
+      behavior: "auto",
+    });
   });
 
   it("shows the local-only boundary and available Ollama model", async () => {
+    const compactViewport = Object.assign(new EventTarget(), {
+      matches: true,
+      media: "(max-width: 560px)",
+    });
+    vi.stubGlobal("matchMedia", () => compactViewport);
     vi.stubGlobal(
       "fetch",
       vi.fn((input: string | URL | Request) => {
@@ -356,6 +373,9 @@ describe("ChatApp", () => {
       .closest("details");
     expect(privacyDetails).not.toHaveAttribute("open");
     const composer = screen.getByRole("textbox", { name: "Message Nova" });
+    expect(composer).toHaveStyle({ height: "44px" });
+    fireEvent.change(composer, { target: { value: "Loading started 5:15" } });
+    expect(composer).toHaveStyle({ height: "44px" });
     const knowledgeHealth = screen.getByRole("region", {
       name: "Knowledge health",
     });
