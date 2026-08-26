@@ -220,7 +220,19 @@ def send_message(
     chat = _chat(request)
     conductor = _conductor(request)
     timesheet = _timesheet(request)
-    timesheet_intent = timesheet.match(payload.content)
+    try:
+        latest_capability_id = chat.latest_assistant_capability_id(conversation_id)
+    except ChatNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Conversation not found.") from error
+    pending_timesheet_field: Literal["odometer_finish"] | None = (
+        "odometer_finish"
+        if latest_capability_id == "timesheet.awaiting_odometer_finish"
+        else None
+    )
+    timesheet_intent = timesheet.match(
+        payload.content,
+        pending_field=pending_timesheet_field,
+    )
     capability_id = (
         conductor.match(payload.content)
         if payload.document_id is None and timesheet_intent is None

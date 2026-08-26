@@ -697,6 +697,25 @@ class ChatService:
             self._set_title(conversation_id, _suggest_title(message.content))
         return message, history
 
+    def latest_assistant_capability_id(self, conversation_id: str) -> str | None:
+        with closing(self._connection()) as connection:
+            self._conversation_row(connection, conversation_id)
+            latest = connection.execute(
+                """
+                SELECT message.role, source.capability_id
+                FROM chat_messages AS message
+                LEFT JOIN chat_message_capability_sources AS source
+                  ON source.message_id = message.id
+                WHERE message.conversation_id = ?
+                ORDER BY message.rowid DESC, source.position
+                LIMIT 1
+                """,
+                (conversation_id,),
+            ).fetchone()
+        if latest is None or latest["role"] != "assistant":
+            return None
+        return cast(str | None, latest["capability_id"])
+
     def end_turn(self, conversation_id: str) -> None:
         with self._turn_lock:
             self._active_turns.discard(conversation_id)

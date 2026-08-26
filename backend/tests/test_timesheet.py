@@ -49,7 +49,7 @@ def test_progressive_capture_correction_derivation_and_persistence(tmp_path: Pat
     service.execute(service.match("loading finished 6:10"))  # type: ignore[arg-type]
     service.execute(service.match("driving started 6:20"))  # type: ignore[arg-type]
     finish = service.execute(service.match("driving finished 4:45 pm"))  # type: ignore[arg-type]
-    assert finish.content == "Saved: driving finish 16:45. Total hours: 11.5."
+    assert finish.content == "Saved: driving finish 16:45. Total hours: 11.50."
 
     correction = service.match("No, loading started 5:25")
     assert correction is not None and correction.correction
@@ -77,8 +77,34 @@ def test_progressive_capture_correction_derivation_and_persistence(tmp_path: Pat
 def test_invalid_time_is_not_automatically_saved(tmp_path: Path) -> None:
     service = _service(tmp_path)
 
-    assert service.match("loading started 29:90") is None
+    assert service.match("loading started 29:90") == TimesheetIntent("unsupported")
     assert service.get_shift() is None
+
+
+def test_owner_word_order_combined_times_and_repeated_toll_quantity_are_parsed(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+
+    assert service.match("Start time 5am") == TimesheetIntent(
+        "capture", (("loading_start", "05:00"),)
+    )
+    assert service.match("Finish loading 6am") == TimesheetIntent(
+        "capture", (("loading_finish", "06:00"),)
+    )
+    assert service.match("Start driving 6am finished driving 6pm") == TimesheetIntent(
+        "capture",
+        (("driving_start", "06:00"), ("driving_finish", "18:00")),
+    )
+    assert service.match("2 gateway tolls") == TimesheetIntent(
+        "capture", toll_points=("Murarrie", "Murarrie")
+    )
+
+    service.execute(service.match("Start time 5am"))  # type: ignore[arg-type]
+    result = service.execute(
+        service.match("Start driving 6am finished driving 6pm")  # type: ignore[arg-type]
+    )
+    assert result.content.endswith("Total hours: 13.00.")
 
 
 def test_completeness_asks_only_for_missing_required_inputs(tmp_path: Path) -> None:
