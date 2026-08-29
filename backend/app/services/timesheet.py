@@ -262,6 +262,8 @@ class TimesheetService:
             lowered,
         ):
             return TimesheetIntent("complete")
+        if self._is_ordinary_timesheet_discussion(normalized, lowered):
+            return None
 
         values: list[tuple[str, str]] = []
         for field, pattern in _CAPTURE_PATTERNS.items():
@@ -294,8 +296,26 @@ class TimesheetService:
                 )
 
         toll_points: list[str] = []
+        toll_alias = "|".join(re.escape(alias) for alias in _TOLL_ALIASES)
+        direct_toll_entry = bool(
+            re.fullmatch(
+                rf"(?:(?:\d+\s+)?(?:{toll_alias})(?:\s+tolls?)?)"
+                rf"(?:\s*(?:,|and)\s*(?:\d+\s+)?(?:{toll_alias})"
+                r"(?:\s+tolls?)?)*",
+                lowered,
+            )
+            and re.search(r"\b(?:\d+|tolls?)\b", lowered)
+        )
         has_toll_context = bool(
-            re.search(r"\b(?:tolls?|surcharges?|through|used|crossed|passed)\b", lowered)
+            direct_toll_entry
+            or re.search(r"\b(?:through|used|crossed|passed)\b", lowered)
+            or (
+                re.search(r"\b(?:tolls?|surcharges?)\b", lowered)
+                and re.search(
+                    r"\b(?:save|record|log|correct|update|no|actually)\b",
+                    lowered,
+                )
+            )
         )
         bare_toll_entry = bool(
             re.fullmatch(
@@ -394,6 +414,24 @@ class TimesheetService:
                 is not None
             )
 
+    @staticmethod
+    def _is_ordinary_timesheet_discussion(content: str, lowered: str) -> bool:
+        if re.search(r"\b(?:save|record|log|correct|update)\b", lowered):
+            return False
+        if re.search(
+            r"\b(?:discuss|discussing|discussion|talk|talking|example|hypothetical)\b",
+            lowered,
+        ):
+            return True
+        return bool(
+            content.endswith("?")
+            and re.match(
+                r"(?:if|what|when|where|why|how|is|are|can|could|would|should|"
+                r"do|does|did|will)\b",
+                lowered,
+            )
+        )
+
     def _looks_like_timesheet_workflow(self, content: str) -> bool:
         if re.search(r"\b(?:timesheet|shift)\b", content):
             return True
@@ -409,11 +447,10 @@ class TimesheetService:
                 and re.search(r"\d|\b(?:total|save|record|correct|no|actually)\b", content)
             )
         if re.search(r"\b(?:tolls?|surcharges?)\b", content):
-            point = "|".join(re.escape(alias) for alias in _TOLL_ALIASES)
             return bool(
                 self._has_open_shift()
                 and re.search(
-                    rf"\d|\b(?:{point}|save|record|correct|no|actually)\b",
+                    r"\d|\b(?:save|record|log|correct|update|no|actually)\b",
                     content,
                 )
             )

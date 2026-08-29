@@ -107,6 +107,45 @@ def test_owner_word_order_combined_times_and_repeated_toll_quantity_are_parsed(
     assert result.content.endswith("Total hours: 13.00.")
 
 
+@pytest.mark.parametrize(
+    "content",
+    (
+        "Could we discuss what start time would avoid traffic tomorrow?",
+        "Let's talk about start time 5am for tomorrow.",
+        "We were discussing how loading started at 5am in the example.",
+        "If driving started at 6am, when would the motorway be quieter?",
+        "How much is the Gateway toll compared with Kuraby and Loganlea?",
+        "Is the Heathwood toll road near Murarrie?",
+        "Gateway tolls are expensive compared with the Loganlea toll.",
+        "Why do toll roads charge different prices?",
+        "The traffic report mentioned Gateway and Murarrie.",
+    ),
+)
+def test_ordinary_timesheet_language_is_not_matched_without_an_open_shift(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    service = _service(tmp_path)
+
+    assert service.match(content) is None
+    assert service.get_shift() is None
+
+
+def test_ordinary_timesheet_questions_stay_unmatched_during_an_open_shift(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+    service.execute(service.match("loading started 5:15"))  # type: ignore[arg-type]
+
+    assert service.match("Could we discuss whether loading usually starts at 5am?") is None
+    assert service.match("How much is the Gateway toll compared with Heathwood?") is None
+
+    shift = service.get_shift()
+    assert shift is not None
+    assert shift.loading_start == "05:15"
+    assert shift.toll_points == ()
+
+
 def test_completeness_asks_only_for_missing_required_inputs(tmp_path: Path) -> None:
     service = _service(tmp_path)
     service.execute(service.match("loading started 5:15"))  # type: ignore[arg-type]

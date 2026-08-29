@@ -56,6 +56,24 @@ class FailingProvider(FakeProvider):
         yield
 
 
+class BoundaryConversationProvider(FakeProvider):
+    def __init__(self, expected_prompts: Sequence[str]) -> None:
+        self.expected_prompts = list(expected_prompts)
+        self.seen_prompts: list[str] = []
+
+    def stream_chat(
+        self,
+        model: str,
+        messages: Sequence[dict[str, str]],
+    ) -> Iterator[str]:
+        assert model == "qwen3:8b"
+        prompt = messages[-1]
+        assert prompt["role"] == "user"
+        assert prompt["content"] == self.expected_prompts[len(self.seen_prompts)]
+        self.seen_prompts.append(prompt["content"])
+        yield "Ordinary local-model reply."
+
+
 class DocumentProvider(FakeProvider):
     def stream_chat(
         self,
@@ -1170,6 +1188,51 @@ def test_exact_owner_split_brain_sequence_stays_structured_with_stale_chat_histo
             assert ordinary.status_code == 200
             ordinary_events = [json.loads(line) for line in ordinary.text.splitlines()]
             assert ordinary_events[-1]["message"]["content"] == "Hello Example Owner."
+
+
+def test_ordinary_timesheet_related_conversation_stays_on_model_path(
+    tmp_path: Path,
+) -> None:
+    prompts = (
+        "Could we discuss what start time would avoid traffic tomorrow?",
+        "Let's talk about start time 5am for tomorrow.",
+        "We were discussing how loading started at 5am in the example.",
+        "If driving started at 6am, when would the motorway be quieter?",
+        "How much is the Gateway toll compared with Kuraby and Loganlea?",
+        "Is the Heathwood toll road near Murarrie?",
+        "Gateway tolls are expensive compared with the Loganlea toll.",
+        "Why do toll roads charge different prices?",
+        "The traffic report mentioned Gateway and Murarrie.",
+    )
+    application = _application(tmp_path)
+    provider = BoundaryConversationProvider(prompts)
+    with TestClient(application) as client:
+        application.state.chat.provider = provider
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Ordinary timesheet-language boundary"},
+        ).json()["id"]
+
+        for prompt in prompts:
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": "qwen3:8b", "content": prompt},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+            assert [event["type"] for event in events] == [
+                "user",
+                "knowledge",
+                "delta",
+                "done",
+            ]
+            assert events[2]["content"] == "Ordinary local-model reply."
+            assert events[-1]["message"]["capability_sources"] == []
+
+        assert provider.seen_prompts == list(prompts)
+        assert application.state.timesheets.get_shift() is None
 
 
 def test_unparsed_active_timesheet_turn_returns_structured_clarification(
