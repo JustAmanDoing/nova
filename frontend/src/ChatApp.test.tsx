@@ -203,6 +203,12 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+async function expectStatus(text: string | RegExp): Promise<void> {
+  await waitFor(() => {
+    expect(screen.getByRole("status")).toHaveTextContent(text);
+  });
+}
+
 beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, "scrollTo", {
     configurable: true,
@@ -281,7 +287,9 @@ describe("ChatApp", () => {
     render(<ChatApp />);
 
     expect(await screen.findByText("Private test exchange 79")).toBeInTheDocument();
-    expect(vi.mocked(HTMLElement.prototype.scrollTo)).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(vi.mocked(HTMLElement.prototype.scrollTo)).toHaveBeenCalled();
+    });
     expect(screen.getByRole("button", { name: "New Chat" })).toHaveClass(
       "mobile-header-new-chat",
     );
@@ -718,9 +726,7 @@ describe("ChatApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     fireEvent.click(await screen.findByRole("button", { name: "Stop" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Generation stopped.",
-    );
+    await expectStatus("Generation stopped.");
     expect(await screen.findByText("1 message")).toBeInTheDocument();
     expect(screen.getByText("A deliberately long reply")).toBeInTheDocument();
     expect(screen.queryByText("Partial")).toBeNull();
@@ -779,9 +785,7 @@ describe("ChatApp", () => {
     render(<ChatApp />);
 
     expect(await screen.findByText("Local AI unavailable")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Nova API returned 503: Ollama is unavailable.",
-    );
+    await expectStatus("Nova API returned 503: Ollama is unavailable.");
     expect(screen.getByText("Saved while local")).toBeInTheDocument();
     expect(screen.getByText("1 message")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message Nova" })).toBeEnabled();
@@ -1077,6 +1081,13 @@ describe("ChatApp", () => {
         if (url.endsWith("/chat/conversations")) {
           return Promise.resolve(jsonResponse([]));
         }
+        if (
+          url.endsWith("/chat/capabilities") ||
+          url.endsWith("/chat/documents") ||
+          url.includes("/chat/conversations?status=")
+        ) {
+          return Promise.resolve(jsonResponse([]));
+        }
         if (url.endsWith("/knowledge/quality")) {
           return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
@@ -1119,9 +1130,7 @@ describe("ChatApp", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Approve & save" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Saved locally to Preferences/response-style.md.",
-    );
+    await expectStatus("Saved locally to Preferences/response-style.md.");
     expect(screen.queryByText("Memory review")).toBeNull();
     const reviewCall = fetchMock.mock.calls.find(
       ([input, init]) =>
@@ -1287,6 +1296,13 @@ describe("ChatApp", () => {
         if (url.endsWith("/chat/conversations")) {
           return Promise.resolve(jsonResponse([]));
         }
+        if (
+          url.endsWith("/chat/capabilities") ||
+          url.endsWith("/chat/documents") ||
+          url.includes("/chat/conversations?status=")
+        ) {
+          return Promise.resolve(jsonResponse([]));
+        }
         if (url.endsWith("/knowledge/quality")) {
           return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
@@ -1326,9 +1342,7 @@ describe("ChatApp", () => {
     expect(approve).toBeEnabled();
     fireEvent.click(approve);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Saved locally to Facts/automated-approval-phrase-copy.md.",
-    );
+    await expectStatus("Saved locally to Facts/automated-approval-phrase-copy.md.");
     const reviewCall = fetchMock.mock.calls.find(
       ([input, init]) =>
         input
@@ -1406,9 +1420,7 @@ describe("ChatApp", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save new revision" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Updated Revised approval phrase to revision 2.",
-    );
+    await expectStatus("Updated Revised approval phrase to revision 2.");
     const updateCall = fetchMock.mock.calls.find(
       ([input, init]) =>
         input.toString().endsWith("/knowledge/records/record-1") &&
@@ -1426,9 +1438,7 @@ describe("ChatApp", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Create verified snapshot" }),
     );
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Verified knowledge snapshot created",
-    );
+    await expectStatus("Verified knowledge snapshot created");
   });
 
   it("states clearly when no approved knowledge matches", async () => {
