@@ -1538,8 +1538,8 @@ describe("ChatApp", () => {
 
     render(<ChatApp />);
 
-    expect(await screen.findByText("Knowledge health")).toBeInTheDocument();
-    expect(screen.getByText("16.7%")).toBeInTheDocument();
+    expect(await screen.findByText("16.7%")).toBeInTheDocument();
+    expect(screen.getByText("Knowledge health")).toBeInTheDocument();
     expect(screen.getAllByText("100%")).toHaveLength(2);
     expect(
       screen.getByText(/NOVA scores its published capability checklist, not you/),
