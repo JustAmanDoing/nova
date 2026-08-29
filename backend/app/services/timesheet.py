@@ -51,22 +51,26 @@ _TOLL_ALIASES = {
 }
 _CAPTURE_PATTERNS = {
     "loading_start": re.compile(
-        r"\bloading\s+(?:has\s+)?(?:start(?:ed)?|began)(?:\s+at)?\s+"
+        r"\b(?:loading\s+(?:has\s+)?(?:start(?:ed)?|began)|start\s+time)"
+        r"(?:\s+at)?\s+"
         r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b",
         re.IGNORECASE,
     ),
     "loading_finish": re.compile(
-        r"\bloading\s+(?:has\s+)?(?:finish(?:ed)?|ended|done)(?:\s+at)?\s+"
+        r"\b(?:loading\s+(?:has\s+)?(?:finish(?:ed)?|ended|done)|"
+        r"(?:finish(?:ed)?|end(?:ed)?)\s+loading)(?:\s+at)?\s+"
         r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b",
         re.IGNORECASE,
     ),
     "driving_start": re.compile(
-        r"\bdriv(?:ing|e)\s+(?:has\s+)?(?:start(?:ed)?|began)(?:\s+at)?\s+"
+        r"\b(?:driv(?:ing|e)\s+(?:has\s+)?(?:start(?:ed)?|began)|"
+        r"(?:start(?:ed)?|begin|began)\s+driv(?:ing|e))(?:\s+at)?\s+"
         r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b",
         re.IGNORECASE,
     ),
     "driving_finish": re.compile(
-        r"\bdriv(?:ing|e)\s+(?:has\s+)?(?:finish(?:ed)?|ended|done)(?:\s+at)?\s+"
+        r"\b(?:driv(?:ing|e)\s+(?:has\s+)?(?:finish(?:ed)?|ended|done)|"
+        r"(?:finish(?:ed)?|end(?:ed)?)\s+driv(?:ing|e))(?:\s+at)?\s+"
         r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b",
         re.IGNORECASE,
     ),
@@ -94,10 +98,13 @@ class TollPriceResolutionError(RuntimeError):
 
 @dataclass(frozen=True)
 class TimesheetIntent:
-    kind: Literal["capture", "current", "complete", "weekly", "new_day"]
+    kind: Literal[
+        "capture", "current", "complete", "weekly", "new_day", "prompt", "unsupported"
+    ]
     values: tuple[tuple[str, str], ...] = ()
     toll_points: tuple[str, ...] = ()
     correction: bool = False
+    follow_up: Literal["odometer_finish"] | None = None
 
 
 @dataclass(frozen=True)
@@ -221,7 +228,12 @@ class TimesheetService:
         self.now = now or (lambda: datetime.now(BRISBANE_TIMEZONE))
         self.price_resolver = price_resolver or OfficialTollPriceResolver()
 
-    def match(self, content: str) -> TimesheetIntent | None:
+    def match(
+        self,
+        content: str,
+        *,
+        pending_field: Literal["odometer_finish"] | None = None,
+    ) -> TimesheetIntent | None:
         normalized = " ".join(content.split())
         lowered = normalized.casefold().rstrip(".!?")
         if re.fullmatch(
@@ -250,6 +262,8 @@ class TimesheetService:
             lowered,
         ):
             return TimesheetIntent("complete")
+        if self._is_ordinary_timesheet_discussion(normalized, lowered):
+            return None
 
         values: list[tuple[str, str]] = []
         for field, pattern in _CAPTURE_PATTERNS.items():
@@ -271,9 +285,37 @@ class TimesheetService:
                 continue
             values.append((field, value))
 
+        if not values and pending_field == "odometer_finish":
+            numeric_follow_up = re.fullmatch(r"\s*(\d[\d,]*)\s*", normalized)
+            if numeric_follow_up is not None:
+                values.append(
+                    (
+                        "odometer_finish",
+                        str(int(numeric_follow_up.group(1).replace(",", ""))),
+                    )
+                )
+
         toll_points: list[str] = []
+        toll_alias = "|".join(re.escape(alias) for alias in _TOLL_ALIASES)
+        direct_toll_entry = bool(
+            re.fullmatch(
+                rf"(?:(?:\d+\s+)?(?:{toll_alias})(?:\s+tolls?)?)"
+                rf"(?:\s*(?:,|and)\s*(?:\d+\s+)?(?:{toll_alias})"
+                r"(?:\s+tolls?)?)*",
+                lowered,
+            )
+            and re.search(r"\b(?:\d+|tolls?)\b", lowered)
+        )
         has_toll_context = bool(
-            re.search(r"\b(?:toll|surcharge|through|used|crossed|passed)\b", lowered)
+            direct_toll_entry
+            or re.search(r"\b(?:through|used|crossed|passed)\b", lowered)
+            or (
+                re.search(r"\b(?:tolls?|surcharges?)\b", lowered)
+                and re.search(
+                    r"\b(?:save|record|log|correct|update|no|actually)\b",
+                    lowered,
+                )
+            )
         )
         bare_toll_entry = bool(
             re.fullmatch(
@@ -284,10 +326,26 @@ class TimesheetService:
             )
         ) and self._has_open_shift()
         if has_toll_context or bare_toll_entry:
+            toll_matches: list[tuple[int, str, int]] = []
             for alias, point in _TOLL_ALIASES.items():
-                if re.search(rf"\b{re.escape(alias)}\b", lowered) and point not in toll_points:
-                    toll_points.append(point)
+                pattern = re.compile(
+                    rf"(?:(?P<count>\d+)\s+)?\b{re.escape(alias)}\b"
+                )
+                for match in pattern.finditer(lowered):
+                    count = int(match.group("count") or "1")
+                    if 1 <= count <= 50:
+                        toll_matches.append((match.start(), point, count))
+            for _position, point, count in sorted(toll_matches):
+                toll_points.extend(point for _ in range(count))
         if not values and not toll_points:
+            if re.fullmatch(
+                r"(?:(?:finish|finished|end) (?:the )?(?:odometer|odo)|"
+                r"(?:odometer|odo) (?:finish|finished|end))",
+                lowered,
+            ) and self._has_open_shift():
+                return TimesheetIntent("prompt", follow_up="odometer_finish")
+            if self._looks_like_timesheet_workflow(lowered):
+                return TimesheetIntent("unsupported")
             return None
         correction = bool(re.match(r"\s*(?:no\b|actually\b|correction\b)", lowered))
         return TimesheetIntent(
@@ -307,9 +365,18 @@ class TimesheetService:
         elif intent.kind == "weekly":
             content = self._weekly_summary()
             capability_id = "timesheet.weekly"
-        else:
+        elif intent.kind == "new_day":
             content = self._start_new_day()
             capability_id = "timesheet.new_day"
+        elif intent.kind == "prompt":
+            content = "What was the odometer finish reading?"
+            capability_id = "timesheet.awaiting_odometer_finish"
+        else:
+            content = (
+                "I couldn't safely save that timesheet detail. Please provide a "
+                'supported field and value, for example: "loading finished 6am".'
+            )
+            capability_id = "timesheet.clarification"
         generated_at = _timestamp()
         is_weekly = intent.kind == "weekly"
         source_url = OFFICIAL_TOLL_PRICE_URL if is_weekly else "/chat.html"
@@ -346,6 +413,54 @@ class TimesheetService:
                 ).fetchone()
                 is not None
             )
+
+    @staticmethod
+    def _is_ordinary_timesheet_discussion(content: str, lowered: str) -> bool:
+        if re.search(r"\b(?:save|record|log|correct|update)\b", lowered):
+            return False
+        if re.search(
+            r"\b(?:discuss|discussing|discussion|talk|talking|example|hypothetical)\b",
+            lowered,
+        ):
+            return True
+        return bool(
+            content.endswith("?")
+            and re.match(
+                r"(?:if|what|when|where|why|how|is|are|can|could|would|should|"
+                r"do|does|did|will)\b",
+                lowered,
+            )
+        )
+
+    def _looks_like_timesheet_workflow(self, content: str) -> bool:
+        if re.search(r"\b(?:timesheet|shift)\b", content):
+            return True
+        action = r"(?:start(?:ed)?|begin|began|finish(?:ed)?|end(?:ed)?|done)"
+        field = r"(?:loading|driv(?:ing|e)|odometer|odo)"
+        if re.search(rf"\b(?:{field}\b.*\b{action}|{action}\b.*\b{field})\b", content):
+            return True
+        if re.search(r"\bstart\s+time\b", content):
+            return True
+        if re.search(r"\b(?:delivery|deliveries)\b", content):
+            return bool(
+                self._has_open_shift()
+                and re.search(r"\d|\b(?:total|save|record|correct|no|actually)\b", content)
+            )
+        if re.search(r"\b(?:tolls?|surcharges?)\b", content):
+            return bool(
+                self._has_open_shift()
+                and re.search(
+                    r"\d|\b(?:save|record|log|correct|update|no|actually)\b",
+                    content,
+                )
+            )
+        return bool(
+            self._has_open_shift()
+            and re.fullmatch(
+                r"(?:heathwood|loganlea|kuraby|compton(?: road)?|gateway|murarrie)",
+                content,
+            )
+        )
 
     def _capture(self, intent: TimesheetIntent) -> str:
         timestamp = _timestamp()
@@ -701,7 +816,7 @@ def _display_time(value: str) -> str:
 
 
 def _hours(minutes: int) -> str:
-    return f"{minutes / 60:.2f}".rstrip("0").rstrip(".")
+    return f"{minutes / 60:.2f}"
 
 
 def _range(start: object, finish: object) -> str:

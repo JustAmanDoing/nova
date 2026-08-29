@@ -14,7 +14,11 @@ from app.services.chat import (
     ModelRecord,
     OllamaProvider,
 )
-from app.services.timesheet import BRISBANE_TIMEZONE, OfficialTollPriceResolver
+from app.services.timesheet import (
+    BRISBANE_TIMEZONE,
+    OfficialTollPriceResolver,
+    TimesheetIntent,
+)
 
 INTENT = {"X-Nova-Intent": "local-user-action"}
 
@@ -50,6 +54,24 @@ class FailingProvider(FakeProvider):
         del model, messages
         raise LocalModelProviderError("The local model provider is unavailable.")
         yield
+
+
+class BoundaryConversationProvider(FakeProvider):
+    def __init__(self, expected_prompts: Sequence[str]) -> None:
+        self.expected_prompts = list(expected_prompts)
+        self.seen_prompts: list[str] = []
+
+    def stream_chat(
+        self,
+        model: str,
+        messages: Sequence[dict[str, str]],
+    ) -> Iterator[str]:
+        assert model == "qwen3:8b"
+        prompt = messages[-1]
+        assert prompt["role"] == "user"
+        assert prompt["content"] == self.expected_prompts[len(self.seen_prompts)]
+        self.seen_prompts.append(prompt["content"])
+        yield "Ordinary local-model reply."
 
 
 class DocumentProvider(FakeProvider):
@@ -761,7 +783,7 @@ def test_complete_timesheet_loop_works_through_ordinary_chat_without_a_model(
         assert send("driving started 6:15")[0] == "Saved: driving start 6:15."
         assert send("odometer start 123,400")[0] == "Saved: odometer start 123,400."
         assert send("I went through the Heathwood toll")[0] == "Saved: toll Heathwood."
-        assert send("driving finished 4:45 pm")[0].endswith("Total hours: 11.5.")
+        assert send("driving finished 4:45 pm")[0].endswith("Total hours: 11.50.")
         assert send("No, loading started 5:25")[0].endswith("Total hours: 11.33.")
 
         missing, _source = send("finish my shift")
@@ -1011,3 +1033,237 @@ def test_new_day_routes_deterministically_and_subsequent_chat_targets_new_record
         assert ordinary.status_code == 200
         ordinary_events = [json.loads(line) for line in ordinary.text.splitlines()]
         assert ordinary_events[-1]["message"]["content"] == "Hello Example Owner."
+
+
+@pytest.mark.parametrize("model", [None, "qwen3:8b"])
+def test_exact_owner_split_brain_sequence_stays_structured_with_stale_chat_history(
+    tmp_path: Path,
+    model: str | None,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = FakeProvider() if model else FailingProvider()
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 25, 17, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        for message in (
+            "loading started 5:20",
+            "loading finished 6:00",
+            "driving started 6:10",
+            "driving finished 2:25pm",
+            "odometer start 400000",
+            "odometer finish 400100",
+            "6 deliveries",
+            "2 Loganlea tolls",
+            "2 Heathwood tolls",
+        ):
+            intent = application.state.timesheets.match(message)
+            assert intent is not None
+            application.state.timesheets.execute(intent)
+        application.state.timesheets.execute(TimesheetIntent("complete"))
+
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Split-brain acceptance regression"},
+        ).json()["id"]
+        _old_user, _history = application.state.chat.begin_turn(
+            conversation_id,
+            "Give me yesterday's timesheet",
+            "qwen3:8b",
+        )
+        application.state.chat.complete_turn(
+            conversation_id,
+            "Saved: Loganlea 2, Heathwood 2, deliveries 6, average speed 10 mph.",
+            "qwen3:8b",
+        )
+        application.state.chat.end_turn(conversation_id)
+
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 26, 5, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+
+        def send(content: str) -> tuple[str, str]:
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": model, "content": content},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+            assert [event["type"] for event in events] == [
+                "user",
+                "capability",
+                "delta",
+                "done",
+            ]
+            return events[2]["content"], events[1]["source"]["capability_id"]
+
+        rollover, rollover_capability = send("Start a new day")
+        assert rollover == "Started new timesheet for 2026-08-26."
+        assert rollover_capability == "timesheet.new_day"
+
+        sequence = (
+            ("Start time 5am", "Saved: loading start 5:00.", "timesheet.capture"),
+            ("Finish loading 6am", "Saved: loading finish 6:00.", "timesheet.capture"),
+            (
+                "2 gateway tolls",
+                "Saved: toll Murarrie; toll Murarrie.",
+                "timesheet.capture",
+            ),
+            (
+                "Start driving 6am finished driving 6pm",
+                "Saved: driving start 6:00; driving finish 18:00. "
+                "Total hours: 13.00.",
+                "timesheet.capture",
+            ),
+            (
+                "Odometer start 444444",
+                "Saved: odometer start 444,444. Total hours: 13.00.",
+                "timesheet.capture",
+            ),
+            (
+                "Finish odometer",
+                "What was the odometer finish reading?",
+                "timesheet.awaiting_odometer_finish",
+            ),
+            (
+                "444455",
+                "Saved: odometer finish 444,455. Total hours: 13.00.",
+                "timesheet.capture",
+            ),
+        )
+        responses: list[str] = []
+        for prompt, expected, capability_id in sequence:
+            content, source = send(prompt)
+            assert content == expected
+            assert source == capability_id
+            responses.append(content)
+
+        current = application.state.timesheets.get_shift("2026-08-26")
+        previous = application.state.timesheets.get_shift("2026-08-25")
+        assert current is not None
+        assert current.loading_start == "05:00"
+        assert current.loading_finish == "06:00"
+        assert current.driving_start == "06:00"
+        assert current.driving_finish == "18:00"
+        assert current.odometer_start == 444444
+        assert current.odometer_finish == 444455
+        assert current.total_minutes == 780
+        assert current.total_deliveries is None
+        assert current.toll_points == ("Murarrie", "Murarrie")
+        assert previous is not None
+        assert previous.status == "complete"
+        assert previous.total_deliveries == 6
+        assert previous.toll_points == (
+            "Loganlea",
+            "Loganlea",
+            "Heathwood",
+            "Heathwood",
+        )
+        joined = " ".join(responses).casefold()
+        assert "loganlea" not in joined
+        assert "heathwood" not in joined
+        assert "deliveries" not in joined
+        assert "mile" not in joined
+        assert "average speed" not in joined
+
+        conversation = client.get(
+            f"/api/v1/chat/conversations/{conversation_id}"
+        ).json()
+        structured_responses = {rollover, *responses}
+        assert all(
+            message["capability_sources"]
+            for message in conversation["messages"]
+            if message["role"] == "assistant"
+            and message["content"] in structured_responses
+        )
+
+        if model is not None:
+            ordinary = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": model, "content": "Hello Nova"},
+            )
+            assert ordinary.status_code == 200
+            ordinary_events = [json.loads(line) for line in ordinary.text.splitlines()]
+            assert ordinary_events[-1]["message"]["content"] == "Hello Example Owner."
+
+
+def test_ordinary_timesheet_related_conversation_stays_on_model_path(
+    tmp_path: Path,
+) -> None:
+    prompts = (
+        "Could we discuss what start time would avoid traffic tomorrow?",
+        "Let's talk about start time 5am for tomorrow.",
+        "We were discussing how loading started at 5am in the example.",
+        "If driving started at 6am, when would the motorway be quieter?",
+        "How much is the Gateway toll compared with Kuraby and Loganlea?",
+        "Is the Heathwood toll road near Murarrie?",
+        "Gateway tolls are expensive compared with the Loganlea toll.",
+        "Why do toll roads charge different prices?",
+        "The traffic report mentioned Gateway and Murarrie.",
+    )
+    application = _application(tmp_path)
+    provider = BoundaryConversationProvider(prompts)
+    with TestClient(application) as client:
+        application.state.chat.provider = provider
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Ordinary timesheet-language boundary"},
+        ).json()["id"]
+
+        for prompt in prompts:
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": "qwen3:8b", "content": prompt},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+            assert [event["type"] for event in events] == [
+                "user",
+                "knowledge",
+                "delta",
+                "done",
+            ]
+            assert events[2]["content"] == "Ordinary local-model reply."
+            assert events[-1]["message"]["capability_sources"] == []
+
+        assert provider.seen_prompts == list(prompts)
+        assert application.state.timesheets.get_shift() is None
+
+
+def test_unparsed_active_timesheet_turn_returns_structured_clarification(
+    tmp_path: Path,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = FailingProvider()
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 26, 5, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Timesheet clarification guard"},
+        ).json()["id"]
+
+        for content in ("Start time 5am", "Finish loading"):
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": "qwen3:8b", "content": content},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+
+        assert events[1]["source"]["capability_id"] == "timesheet.clarification"
+        assert events[2]["content"].startswith(
+            "I couldn't safely save that timesheet detail."
+        )
+        shift = application.state.timesheets.get_shift("2026-08-26")
+        assert shift is not None
+        assert shift.loading_start == "05:00"
+        assert shift.loading_finish is None
