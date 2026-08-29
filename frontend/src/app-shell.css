@@ -145,6 +145,7 @@
 }
 
 .app-shell-mobile-header,
+.app-shell-mobile-extension,
 .app-shell-close-button,
 .app-shell-backdrop {
   display: none;
@@ -220,6 +221,13 @@
     font-weight: 700;
   }
 
+  .app-shell-mobile-extension {
+    display: block;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #202924;
+  }
+
   .app-shell-sidebar {
     visibility: hidden;
     width: min(294px, calc(100vw - 48px));
@@ -248,6 +256,88 @@
     height: 100%;
     background: rgba(0, 0, 0, 0.62);
     cursor: pointer;
+  }
+}
+
+@media (max-width: 560px), (max-width: 900px) and (max-height: 560px) {
+  .app-shell-chat {
+    height: 100dvh;
+    min-height: 100dvh;
+    padding-top: calc(50px + env(safe-area-inset-top));
+    overflow: hidden;
+  }
+
+  .app-shell-chat .app-shell-content {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .app-shell-chat .app-shell-mobile-header {
+    min-height: calc(50px + env(safe-area-inset-top));
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 5px;
+    padding:
+      calc(3px + env(safe-area-inset-top))
+      max(7px, env(safe-area-inset-right))
+      3px
+      max(7px, env(safe-area-inset-left));
+  }
+
+  .app-shell-chat .app-shell-menu-button {
+    border-radius: 9px;
+    font-size: 1.05rem;
+  }
+
+  .app-shell-chat .app-shell-mobile-brand {
+    justify-self: center;
+    gap: 7px;
+    font-size: 0.92rem;
+  }
+
+  .app-shell-chat .app-shell-mobile-brand .brand-mark {
+    width: 27px;
+    height: 27px;
+  }
+
+  .app-shell-chat .mobile-header-new-chat {
+    min-height: 44px;
+    padding: 6px 8px;
+    color: #dce5df;
+    border: 1px solid #405249;
+    border-radius: 9px;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .app-shell-chat .mobile-header-new-chat:disabled {
+    cursor: wait;
+    opacity: 0.55;
+  }
+
+  .app-shell-chat .app-shell-sidebar {
+    width: min(340px, calc(100vw - 24px));
+    padding:
+      max(12px, env(safe-area-inset-top))
+      12px
+      max(14px, env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+  }
+
+  .app-shell-chat .app-shell-workspaces {
+    margin-top: 16px;
+  }
+
+  .app-shell-chat .app-shell-workspaces a {
+    min-height: 46px;
+    padding-block: 5px;
+  }
+
+  .app-shell-chat .app-shell-mobile-extension {
+    margin-top: 12px;
+    padding-top: 12px;
   }
 }
 

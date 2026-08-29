@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -202,6 +203,12 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+async function expectStatus(text: string | RegExp): Promise<void> {
+  await waitFor(() => {
+    expect(screen.getByRole("status")).toHaveTextContent(text);
+  });
+}
+
 beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, "scrollTo", {
     configurable: true,
@@ -220,7 +227,7 @@ afterEach(() => {
 });
 
 describe("ChatApp", () => {
-  it("opens a long conversation at the latest exchange and offers phone shortcuts", async () => {
+  it("keeps a long conversation primary while mobile history stays in the menu", async () => {
     const messages = Array.from({ length: 79 }, (_, index) => ({
       id: `message-${index + 1}`,
       conversation_id: conversation.id,
@@ -252,6 +259,12 @@ describe("ChatApp", () => {
                 parameter_size: "8.2B",
                 quantization_level: "Q4_K_M",
               },
+              {
+                name: "gemma3:4b",
+                size_bytes: 3_300_000_000,
+                parameter_size: "4.3B",
+                quantization_level: "Q4_K_M",
+              },
             ]),
           );
         }
@@ -274,16 +287,13 @@ describe("ChatApp", () => {
     render(<ChatApp />);
 
     expect(await screen.findByText("Private test exchange 79")).toBeInTheDocument();
-    expect(vi.mocked(HTMLElement.prototype.scrollTo)).toHaveBeenCalled();
-    expect(screen.getAllByRole("button", { name: "New chat" })).toHaveLength(2);
-
-    const historyToggle = screen.getByRole("button", { name: "Chats" });
-    fireEvent.click(historyToggle);
-    expect(historyToggle).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("complementary", { name: "Conversation history" }))
-      .toHaveClass("mobile-open");
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(historyToggle).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => {
+      expect(vi.mocked(HTMLElement.prototype.scrollTo)).toHaveBeenCalled();
+    });
+    expect(screen.getByRole("button", { name: "New Chat" })).toHaveClass(
+      "mobile-header-new-chat",
+    );
+    expect(screen.queryByRole("button", { name: "Chats" })).not.toBeInTheDocument();
 
     const transcript = document.querySelector<HTMLElement>(".chat-transcript");
     expect(transcript).not.toBeNull();
@@ -293,6 +303,27 @@ describe("ChatApp", () => {
       scrollTop: { configurable: true, writable: true, value: 0 },
     });
     fireEvent.scroll(transcript as HTMLElement);
+
+    const menuToggle = screen.getByRole("button", {
+      name: "Open workspace navigation",
+    });
+    fireEvent.click(menuToggle);
+    expect(menuToggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("region", { name: "Chats and history" }))
+      .toBeInTheDocument();
+    const mobileModel = screen.getByRole("combobox", {
+      name: "Local model in mobile menu",
+    });
+    expect(mobileModel).toHaveValue("qwen3:8b");
+    fireEvent.change(mobileModel, { target: { value: "gemma3:4b" } });
+    expect(screen.getByRole("combobox", { name: "Local model" }))
+      .toHaveValue("gemma3:4b");
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Close workspace navigation" })[0],
+    );
+    expect(menuToggle).toHaveAttribute("aria-expanded", "false");
+    expect((transcript as HTMLElement).scrollTop).toBe(0);
+
     const jump = screen.getByRole("button", { name: "Jump to latest" });
     fireEvent.click(jump);
     expect(vi.mocked(HTMLElement.prototype.scrollTo)).toHaveBeenLastCalledWith({
@@ -513,18 +544,34 @@ describe("ChatApp", () => {
 
     render(<ChatApp />);
 
+    await screen.findByText("Local AI ready");
+    fireEvent.click(screen.getByRole("button", { name: "New Chat" }));
+    await waitFor(() => expect(conversationCreated).toBe(true));
+
     const documentSelector = await screen.findByRole("combobox", {
       name: "Local document for this turn",
     });
     expect(
       await screen.findByRole("option", { name: documentSource.original_name }),
     ).toBeInTheDocument();
-    fireEvent.change(documentSelector, {
+    const documentTrigger = screen.getByRole("button", { name: "Add local document" });
+    fireEvent.click(documentTrigger);
+    expect(documentTrigger).toHaveAttribute("aria-expanded", "true");
+    const documentDialog = screen.getByRole("dialog", {
+      name: "Local document for this turn",
+    });
+    const mobileDocumentSelector = within(documentDialog).getByRole("combobox");
+    fireEvent.change(mobileDocumentSelector, {
       target: { value: documentSource.file_id },
     });
     await waitFor(() => {
       expect(documentSelector).toHaveValue(documentSource.file_id);
     });
+    expect(screen.queryByRole("dialog", { name: "Local document for this turn" }))
+      .not.toBeInTheDocument();
+    expect(screen.getByRole("button", {
+      name: `Change local document, ${documentSource.original_name} selected`,
+    })).toHaveAttribute("aria-expanded", "false");
     const composer = await screen.findByRole("textbox", { name: "Message Nova" });
     fireEvent.change(composer, { target: { value: "Hello Nova" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
@@ -538,6 +585,9 @@ describe("ChatApp", () => {
     expect(screen.getByText("Selected local document")).toBeInTheDocument();
     expect(screen.getByText("Delivery note")).toBeInTheDocument();
     expect(screen.getByText("[D1]")).toBeInTheDocument();
+    expect(documentSelector).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Add local document" }))
+      .toBeInTheDocument();
     expect(
       screen.getByText("Facts/automated-approval-phrase.md"),
     ).toBeInTheDocument();
@@ -676,9 +726,7 @@ describe("ChatApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     fireEvent.click(await screen.findByRole("button", { name: "Stop" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Generation stopped.",
-    );
+    await expectStatus("Generation stopped.");
     expect(await screen.findByText("1 message")).toBeInTheDocument();
     expect(screen.getByText("A deliberately long reply")).toBeInTheDocument();
     expect(screen.queryByText("Partial")).toBeNull();
@@ -737,9 +785,7 @@ describe("ChatApp", () => {
     render(<ChatApp />);
 
     expect(await screen.findByText("Local AI unavailable")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Nova API returned 503: Ollama is unavailable.",
-    );
+    await expectStatus("Nova API returned 503: Ollama is unavailable.");
     expect(screen.getByText("Saved while local")).toBeInTheDocument();
     expect(screen.getByText("1 message")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Message Nova" })).toBeEnabled();
@@ -1035,6 +1081,13 @@ describe("ChatApp", () => {
         if (url.endsWith("/chat/conversations")) {
           return Promise.resolve(jsonResponse([]));
         }
+        if (
+          url.endsWith("/chat/capabilities") ||
+          url.endsWith("/chat/documents") ||
+          url.includes("/chat/conversations?status=")
+        ) {
+          return Promise.resolve(jsonResponse([]));
+        }
         if (url.endsWith("/knowledge/quality")) {
           return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
@@ -1077,9 +1130,7 @@ describe("ChatApp", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Approve & save" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Saved locally to Preferences/response-style.md.",
-    );
+    await expectStatus("Saved locally to Preferences/response-style.md.");
     expect(screen.queryByText("Memory review")).toBeNull();
     const reviewCall = fetchMock.mock.calls.find(
       ([input, init]) =>
@@ -1245,6 +1296,13 @@ describe("ChatApp", () => {
         if (url.endsWith("/chat/conversations")) {
           return Promise.resolve(jsonResponse([]));
         }
+        if (
+          url.endsWith("/chat/capabilities") ||
+          url.endsWith("/chat/documents") ||
+          url.includes("/chat/conversations?status=")
+        ) {
+          return Promise.resolve(jsonResponse([]));
+        }
         if (url.endsWith("/knowledge/quality")) {
           return Promise.resolve(jsonResponse(knowledgeQualityReport));
         }
@@ -1284,9 +1342,7 @@ describe("ChatApp", () => {
     expect(approve).toBeEnabled();
     fireEvent.click(approve);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Saved locally to Facts/automated-approval-phrase-copy.md.",
-    );
+    await expectStatus("Saved locally to Facts/automated-approval-phrase-copy.md.");
     const reviewCall = fetchMock.mock.calls.find(
       ([input, init]) =>
         input
@@ -1364,9 +1420,7 @@ describe("ChatApp", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save new revision" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Updated Revised approval phrase to revision 2.",
-    );
+    await expectStatus("Updated Revised approval phrase to revision 2.");
     const updateCall = fetchMock.mock.calls.find(
       ([input, init]) =>
         input.toString().endsWith("/knowledge/records/record-1") &&
@@ -1384,9 +1438,7 @@ describe("ChatApp", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Create verified snapshot" }),
     );
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Verified knowledge snapshot created",
-    );
+    await expectStatus("Verified knowledge snapshot created");
   });
 
   it("states clearly when no approved knowledge matches", async () => {
@@ -1486,8 +1538,8 @@ describe("ChatApp", () => {
 
     render(<ChatApp />);
 
-    expect(await screen.findByText("Knowledge health")).toBeInTheDocument();
-    expect(screen.getByText("16.7%")).toBeInTheDocument();
+    expect(await screen.findByText("16.7%")).toBeInTheDocument();
+    expect(screen.getByText("Knowledge health")).toBeInTheDocument();
     expect(screen.getAllByText("100%")).toHaveLength(2);
     expect(
       screen.getByText(/NOVA scores its published capability checklist, not you/),

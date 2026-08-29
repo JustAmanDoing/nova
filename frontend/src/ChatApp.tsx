@@ -56,6 +56,216 @@ type DraftMessage = Pick<
   | "capability_sources"
 >;
 
+const COMPACT_CHAT_QUERY =
+  "(max-width: 560px), (max-width: 900px) and (max-height: 560px)";
+
+type ConversationLocation = "active" | "archived" | "trash";
+
+function ConversationHistoryPanel({
+  archivedConversations,
+  conversations,
+  generating,
+  idPrefix,
+  onBeginRename,
+  onCancelAction,
+  onCancelRename,
+  onConversationAction,
+  onNewConversation,
+  onOpen,
+  onRenameDraftChange,
+  onRenameSubmit,
+  onRequestAction,
+  onRestore,
+  pendingConversationAction,
+  renameDraft,
+  renaming,
+  selectedConversation,
+  selectedConversationStatus,
+  selectedId,
+  showNewChat = true,
+  trashedConversations,
+}: {
+  archivedConversations: ChatConversationSummary[];
+  conversations: ChatConversationSummary[];
+  generating: boolean;
+  idPrefix: string;
+  onBeginRename: () => void;
+  onCancelAction: () => void;
+  onCancelRename: () => void;
+  onConversationAction: (action: "archive" | "trash") => void;
+  onNewConversation: () => void;
+  onOpen: (conversationId: string) => void | Promise<void>;
+  onRenameDraftChange: (value: string) => void;
+  onRenameSubmit: (event: FormEvent) => void;
+  onRequestAction: (action: "archive" | "trash") => void;
+  onRestore: (conversation: ChatConversationSummary, fromTrash: boolean) => void;
+  pendingConversationAction: "archive" | "trash" | null;
+  renameDraft: string;
+  renaming: boolean;
+  selectedConversation?: ChatConversationSummary;
+  selectedConversationStatus: ConversationLocation;
+  selectedId: string | null;
+  showNewChat?: boolean;
+  trashedConversations: ChatConversationSummary[];
+}) {
+  const titleInputId = `${idPrefix}-conversation-title`;
+
+  return (
+    <>
+      <div className="sidebar-heading">
+        <div>
+          <p className="section-number">Local history</p>
+          <h1>Conversations</h1>
+        </div>
+        {showNewChat ? (
+          <button
+            type="button"
+            className="new-chat-button"
+            onClick={onNewConversation}
+            disabled={generating}
+          >
+            New chat
+          </button>
+        ) : null}
+      </div>
+      <label className="conversation-picker">
+        <span>Open conversation</span>
+        <select
+          value={selectedId ?? ""}
+          onChange={(event) => void onOpen(event.target.value)}
+          disabled={generating || conversations.length === 0}
+        >
+          {conversations.length === 0 ? (
+            <option value="">No conversations yet</option>
+          ) : null}
+          {selectedConversation && selectedConversationStatus !== "active" ? (
+            <option value={selectedConversation.id}>
+              {selectedConversation.title} · {selectedConversationStatus}
+            </option>
+          ) : null}
+          {conversations.map((conversation) => (
+            <option key={conversation.id} value={conversation.id}>
+              {conversation.title} · {conversation.message_count} message
+              {conversation.message_count === 1 ? "" : "s"}
+            </option>
+          ))}
+        </select>
+      </label>
+      {selectedConversation ? (
+        <section className="conversation-management" aria-label="Conversation actions">
+          {renaming ? (
+            <form onSubmit={onRenameSubmit}>
+              <label htmlFor={titleInputId}>Conversation title</label>
+              <input
+                id={titleInputId}
+                value={renameDraft}
+                maxLength={120}
+                onChange={(event) => onRenameDraftChange(event.target.value)}
+                autoFocus
+              />
+              <div>
+                <button type="submit" disabled={!renameDraft.trim() || generating}>
+                  Save title
+                </button>
+                <button type="button" onClick={onCancelRename}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : selectedConversationStatus === "active" ? (
+            <div className="conversation-action-row">
+              <button type="button" onClick={onBeginRename} disabled={generating}>
+                Rename
+              </button>
+              <button
+                type="button"
+                onClick={() => onRequestAction("archive")}
+                disabled={generating}
+              >
+                Archive
+              </button>
+              <button
+                type="button"
+                className="conversation-trash-button"
+                onClick={() => onRequestAction("trash")}
+                disabled={generating}
+              >
+                Move to Trash
+              </button>
+            </div>
+          ) : (
+            <p className="conversation-read-only">
+              This conversation is {selectedConversationStatus} and read-only.
+            </p>
+          )}
+          {pendingConversationAction ? (
+            <div className="conversation-confirmation" role="alertdialog" aria-modal="true">
+              <strong>
+                {pendingConversationAction === "archive"
+                  ? "Archive this conversation?"
+                  : "Move this conversation to Trash?"}
+              </strong>
+              <p>Every message stays on this PC and the conversation can be restored.</p>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => onConversationAction(pendingConversationAction)}
+                >
+                  {pendingConversationAction === "archive" ? "Archive" : "Move to Trash"}
+                </button>
+                <button type="button" onClick={onCancelAction}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+      <div className="conversation-list">
+        {conversations.length ? (
+          conversations.map((conversation) => (
+            <button
+              type="button"
+              key={conversation.id}
+              className={conversation.id === selectedId ? "selected" : ""}
+              onClick={() => void onOpen(conversation.id)}
+              disabled={generating}
+            >
+              <strong>{conversation.title}</strong>
+              <span>
+                {conversation.message_count} message
+                {conversation.message_count === 1 ? "" : "s"}
+              </span>
+            </button>
+          ))
+        ) : (
+          <p className="conversation-empty">Your conversations stay on this PC.</p>
+        )}
+      </div>
+      <ConversationCollection
+        title="Archived conversations"
+        conversations={archivedConversations}
+        selectedId={selectedId}
+        generating={generating}
+        onOpen={onOpen}
+        onRestore={(conversation) => onRestore(conversation, false)}
+      />
+      <ConversationCollection
+        title="Trash"
+        conversations={trashedConversations}
+        selectedId={selectedId}
+        generating={generating}
+        onOpen={onOpen}
+        onRestore={(conversation) => onRestore(conversation, true)}
+      />
+      <p className="privacy-note">
+        Chat history and approved knowledge stay local. A suggestion is never permanent
+        until you choose Approve &amp; save.
+      </p>
+    </>
+  );
+}
+
 function ChatApp() {
   const [models, setModels] = useState<ChatModel[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
@@ -89,7 +299,8 @@ function ChatApp() {
   const [pendingConversationAction, setPendingConversationAction] = useState<
     "archive" | "trash" | null
   >(null);
-  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [documentMenuOpen, setDocumentMenuOpen] = useState(false);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [reviewRequest, setReviewRequest] = useState<{
     recordId: string;
@@ -99,6 +310,7 @@ function ChatApp() {
   const draftIdRef = useRef(0);
   const reviewRequestIdRef = useRef(0);
   const guidedQueryHandledRef = useRef(false);
+  const transcriptNearLatestRef = useRef(true);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -148,13 +360,15 @@ function ChatApp() {
 
   const openConversation = useCallback(async (conversationId: string) => {
     const conversation = await getChatConversation(conversationId);
+    transcriptNearLatestRef.current = true;
     setSelectedId(conversation.id);
     setMessages(conversation.messages);
     if (conversation.model) setSelectedModel(conversation.model);
     setNotice(null);
     setRenaming(false);
     setPendingConversationAction(null);
-    setMobileHistoryOpen(false);
+    setMobileNavigationOpen(false);
+    setDocumentMenuOpen(false);
     setShowJumpToLatest(false);
   }, []);
 
@@ -259,6 +473,7 @@ function ChatApp() {
   }, [openConversation]);
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = "auto") => {
+    transcriptNearLatestRef.current = true;
     transcriptRef.current?.scrollTo({
       top: transcriptRef.current.scrollHeight,
       behavior,
@@ -266,8 +481,61 @@ function ChatApp() {
   }, []);
 
   useEffect(() => {
-    scrollToLatest(generating ? "auto" : "smooth");
-  }, [messages, generating, scrollToLatest]);
+    if (loading || !transcriptNearLatestRef.current) return;
+    const compactViewport = window.matchMedia?.(COMPACT_CHAT_QUERY).matches;
+    scrollToLatest(generating || compactViewport ? "auto" : "smooth");
+  }, [messages, generating, loading, scrollToLatest]);
+
+  useEffect(() => {
+    const composer = composerRef.current;
+    const compactViewport = window.matchMedia?.(COMPACT_CHAT_QUERY);
+    if (!composer || !compactViewport) return;
+    const activeComposer = composer;
+    const activeCompactViewport = compactViewport;
+
+    function resizeComposer() {
+      if (!activeCompactViewport.matches) {
+        activeComposer.style.height = "";
+        return;
+      }
+
+      if (!activeComposer.value.includes("\n") && activeComposer.value.length <= 24) {
+        activeComposer.style.height = "44px";
+        return;
+      }
+
+      activeComposer.style.height = "44px";
+      activeComposer.style.height = `${Math.min(120, Math.max(44, activeComposer.scrollHeight))}px`;
+    }
+
+    resizeComposer();
+    activeCompactViewport.addEventListener("change", resizeComposer);
+    return () => activeCompactViewport.removeEventListener("change", resizeComposer);
+  }, [draft]);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    function preserveLatestOnViewportChange() {
+      if (!transcriptNearLatestRef.current) return;
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => scrollToLatest("auto"));
+      });
+    }
+
+    viewport.addEventListener("resize", preserveLatestOnViewportChange);
+    return () => viewport.removeEventListener("resize", preserveLatestOnViewportChange);
+  }, [scrollToLatest]);
+
+  useEffect(() => {
+    if (!documentMenuOpen) return;
+    function closeDocumentMenu(event: KeyboardEvent) {
+      if (event.key === "Escape") setDocumentMenuOpen(false);
+    }
+    window.addEventListener("keydown", closeDocumentMenu);
+    return () => window.removeEventListener("keydown", closeDocumentMenu);
+  }, [documentMenuOpen]);
 
   useEffect(() => {
     if (loading || guidedQueryHandledRef.current) return;
@@ -327,7 +595,8 @@ function ChatApp() {
       setNotice(null);
       setRenaming(false);
       setPendingConversationAction(null);
-      setMobileHistoryOpen(false);
+      setMobileNavigationOpen(false);
+      setDocumentMenuOpen(false);
       window.requestAnimationFrame(() => composerRef.current?.focus());
     } catch (error: unknown) {
       setNotice(error instanceof Error ? error.message : "Unable to start a chat.");
@@ -344,12 +613,16 @@ function ChatApp() {
     : selectedConversation?.archived_at
       ? "archived"
       : "active";
+  const selectedDocument = documents.find(
+    (document) => document.file_id === selectedDocumentId,
+  );
 
   function handleTranscriptScroll() {
     const transcript = transcriptRef.current;
     if (!transcript) return;
     const distanceFromLatest =
       transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight;
+    transcriptNearLatestRef.current = distanceFromLatest <= 96;
     setShowJumpToLatest(distanceFromLatest > 96);
   }
 
@@ -431,6 +704,7 @@ function ChatApp() {
     event.preventDefault();
     const content = draft.trim();
     if (!content || generating) return;
+    transcriptNearLatestRef.current = true;
     setDraft("");
     setNotice(null);
     setGenerating(true);
@@ -680,6 +954,91 @@ function ChatApp() {
     <AppShell
       activeWorkspace="chat"
       contentClassName="chat-shell"
+      navigationOpen={mobileNavigationOpen}
+      onNavigationOpenChange={setMobileNavigationOpen}
+      mobileHeaderAction={(
+        <button
+          type="button"
+          className="mobile-header-new-chat"
+          onClick={handleNewConversation}
+          disabled={generating}
+        >
+          New Chat
+        </button>
+      )}
+      mobileNavigationContent={(
+        <div className="mobile-chat-navigation">
+          <label className="mobile-model-selector">
+            <span>Local model</span>
+            <select
+              aria-label="Local model in mobile menu"
+              value={selectedModel}
+              onChange={(event) => setSelectedModel(event.target.value)}
+              disabled={generating || models.length === 0}
+            >
+              {models.map((model) => (
+                <option key={model.name} value={model.name}>
+                  {model.name}
+                  {model.parameter_size ? ` · ${model.parameter_size}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <section className="mobile-conversation-history" aria-label="Chats and history">
+            <ConversationHistoryPanel
+              archivedConversations={archivedConversations}
+              conversations={conversations}
+              generating={generating}
+              idPrefix="mobile"
+              onBeginRename={() => {
+                if (!selectedConversation) return;
+                setRenameDraft(selectedConversation.title);
+                setRenaming(true);
+              }}
+              onCancelAction={() => setPendingConversationAction(null)}
+              onCancelRename={() => setRenaming(false)}
+              onConversationAction={(action) => void handleConversationAction(action)}
+              onNewConversation={() => void handleNewConversation()}
+              onOpen={openConversation}
+              onRenameDraftChange={setRenameDraft}
+              onRenameSubmit={(event) => void handleRenameConversation(event)}
+              onRequestAction={setPendingConversationAction}
+              onRestore={(conversation, fromTrash) => {
+                void handleRestoreConversation(conversation, fromTrash);
+              }}
+              pendingConversationAction={pendingConversationAction}
+              renameDraft={renameDraft}
+              renaming={renaming}
+              selectedConversation={selectedConversation}
+              selectedConversationStatus={selectedConversationStatus}
+              selectedId={selectedId}
+              showNewChat={false}
+              trashedConversations={trashedConversations}
+            />
+          </section>
+          {capabilities.length ? (
+            <section className="mobile-chat-actions" aria-label="Local NOVA status requests">
+              <span>Local actions</span>
+              <div>
+                {capabilities.map((capability) => (
+                  <button
+                    type="button"
+                    key={capability.id}
+                    disabled={generating || selectedConversationStatus !== "active"}
+                    onClick={() => {
+                      setDraft(capability.prompt);
+                      setMobileNavigationOpen(false);
+                      window.requestAnimationFrame(() => composerRef.current?.focus());
+                    }}
+                  >
+                    {capability.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+      )}
       status={(
         <span className={`chat-provider ${models.length ? "online" : "offline"}`}>
           <span aria-hidden="true" />
@@ -687,214 +1046,45 @@ function ChatApp() {
         </span>
       )}
     >
-      <div className="mobile-chat-controls" aria-label="Chat controls">
-        <button
-          type="button"
-          className="mobile-chat-history-toggle"
-          aria-expanded={mobileHistoryOpen}
-          aria-controls="conversation-history"
-          onClick={() => setMobileHistoryOpen((current) => !current)}
-        >
-          Chats
-        </button>
-        <button
-          type="button"
-          className="mobile-new-chat"
-          onClick={handleNewConversation}
-          disabled={generating}
-        >
-          New chat
-        </button>
-      </div>
-
-      {mobileHistoryOpen ? (
-        <button
-          type="button"
-          className="mobile-history-backdrop"
-          aria-label="Close conversation history"
-          onClick={() => setMobileHistoryOpen(false)}
-        />
-      ) : null}
-
       <div className="chat-layout">
         <aside
           id="conversation-history"
-          className={`conversation-sidebar ${mobileHistoryOpen ? "mobile-open" : ""}`}
+          className="conversation-sidebar"
           aria-label="Conversation history"
         >
-          <div className="sidebar-heading">
-            <div>
-              <p className="section-number">Local history</p>
-              <h1>Conversations</h1>
-            </div>
-            <button
-              type="button"
-              className="new-chat-button"
-              onClick={handleNewConversation}
-              disabled={generating}
-            >
-              New chat
-            </button>
-            <button
-              type="button"
-              className="mobile-history-close"
-              onClick={() => setMobileHistoryOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-          <label className="conversation-picker">
-            <span>Open conversation</span>
-            <select
-              value={selectedId ?? ""}
-              onChange={(event) => void openConversation(event.target.value)}
-              disabled={generating || conversations.length === 0}
-            >
-              {conversations.length === 0 ? (
-                <option value="">No conversations yet</option>
-              ) : null}
-              {selectedConversation && selectedConversationStatus !== "active" ? (
-                <option value={selectedConversation.id}>
-                  {selectedConversation.title} · {selectedConversationStatus}
-                </option>
-              ) : null}
-              {conversations.map((conversation) => (
-                <option key={conversation.id} value={conversation.id}>
-                  {conversation.title} · {conversation.message_count} message
-                  {conversation.message_count === 1 ? "" : "s"}
-                </option>
-              ))}
-            </select>
-          </label>
-          {selectedConversation ? (
-            <section className="conversation-management" aria-label="Conversation actions">
-              {renaming ? (
-                <form onSubmit={handleRenameConversation}>
-                  <label htmlFor="conversation-title">Conversation title</label>
-                  <input
-                    id="conversation-title"
-                    value={renameDraft}
-                    maxLength={120}
-                    onChange={(event) => setRenameDraft(event.target.value)}
-                    autoFocus
-                  />
-                  <div>
-                    <button type="submit" disabled={!renameDraft.trim() || generating}>
-                      Save title
-                    </button>
-                    <button type="button" onClick={() => setRenaming(false)}>
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              ) : selectedConversationStatus === "active" ? (
-                <div className="conversation-action-row">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRenameDraft(selectedConversation.title);
-                      setRenaming(true);
-                    }}
-                    disabled={generating}
-                  >
-                    Rename
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPendingConversationAction("archive")}
-                    disabled={generating}
-                  >
-                    Archive
-                  </button>
-                  <button
-                    type="button"
-                    className="conversation-trash-button"
-                    onClick={() => setPendingConversationAction("trash")}
-                    disabled={generating}
-                  >
-                    Move to Trash
-                  </button>
-                </div>
-              ) : (
-                <p className="conversation-read-only">
-                  This conversation is {selectedConversationStatus} and read-only.
-                </p>
-              )}
-              {pendingConversationAction ? (
-                <div className="conversation-confirmation" role="alertdialog" aria-modal="true">
-                  <strong>
-                    {pendingConversationAction === "archive"
-                      ? "Archive this conversation?"
-                      : "Move this conversation to Trash?"}
-                  </strong>
-                  <p>
-                    Every message stays on this PC and the conversation can be restored.
-                  </p>
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => void handleConversationAction(pendingConversationAction)}
-                    >
-                      {pendingConversationAction === "archive" ? "Archive" : "Move to Trash"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPendingConversationAction(null)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </section>
-          ) : null}
-          <div className="conversation-list">
-            {conversations.length ? (
-              conversations.map((conversation) => (
-                <button
-                  type="button"
-                  key={conversation.id}
-                  className={conversation.id === selectedId ? "selected" : ""}
-                  onClick={() => void openConversation(conversation.id)}
-                  disabled={generating}
-                >
-                  <strong>{conversation.title}</strong>
-                  <span>
-                    {conversation.message_count} message
-                    {conversation.message_count === 1 ? "" : "s"}
-                  </span>
-                </button>
-              ))
-            ) : (
-              <p className="conversation-empty">
-                Your conversations stay on this PC.
-              </p>
-            )}
-          </div>
-          <ConversationCollection
-            title="Archived conversations"
-            conversations={archivedConversations}
-            selectedId={selectedId}
+          <ConversationHistoryPanel
+            archivedConversations={archivedConversations}
+            conversations={conversations}
             generating={generating}
+            idPrefix="desktop"
+            onBeginRename={() => {
+              if (!selectedConversation) return;
+              setRenameDraft(selectedConversation.title);
+              setRenaming(true);
+            }}
+            onCancelAction={() => setPendingConversationAction(null)}
+            onCancelRename={() => setRenaming(false)}
+            onConversationAction={(action) => void handleConversationAction(action)}
+            onNewConversation={() => void handleNewConversation()}
             onOpen={openConversation}
-            onRestore={(conversation) => handleRestoreConversation(conversation, false)}
-          />
-          <ConversationCollection
-            title="Trash"
-            conversations={trashedConversations}
+            onRenameDraftChange={setRenameDraft}
+            onRenameSubmit={(event) => void handleRenameConversation(event)}
+            onRequestAction={setPendingConversationAction}
+            onRestore={(conversation, fromTrash) => {
+              void handleRestoreConversation(conversation, fromTrash);
+            }}
+            pendingConversationAction={pendingConversationAction}
+            renameDraft={renameDraft}
+            renaming={renaming}
+            selectedConversation={selectedConversation}
+            selectedConversationStatus={selectedConversationStatus}
             selectedId={selectedId}
-            generating={generating}
-            onOpen={openConversation}
-            onRestore={(conversation) => handleRestoreConversation(conversation, true)}
+            trashedConversations={trashedConversations}
           />
-          <p className="privacy-note">
-            Chat history and approved knowledge stay local. A suggestion is never
-            permanent until you choose Approve &amp; save.
-          </p>
         </aside>
 
         <section className="chat-stage">
-          <section className="chat-workspace" aria-labelledby="chat-title">
+          <section className="chat-workspace" aria-label="Nova conversation">
           <header className="chat-heading">
             <div>
               <p className="eyebrow">Milestone 80 · Conductor Phase 1</p>
@@ -917,16 +1107,17 @@ function ChatApp() {
             </label>
           </header>
 
-          <div
-            className="chat-transcript"
-            ref={transcriptRef}
-            onScroll={handleTranscriptScroll}
-            tabIndex={0}
-            aria-label="Conversation messages"
-            aria-live="polite"
-            aria-busy={generating}
-          >
-            {loading ? (
+          <div className={`chat-transcript-frame ${showJumpToLatest ? "has-jump" : ""}`}>
+            <div
+              className="chat-transcript"
+              ref={transcriptRef}
+              onScroll={handleTranscriptScroll}
+              tabIndex={0}
+              aria-label="Conversation messages"
+              aria-live="polite"
+              aria-busy={generating}
+            >
+              {loading ? (
               <div className="chat-welcome">
                 <span className="nova-orb" aria-hidden="true">N</span>
                 <p>Connecting to your local AI…</p>
@@ -968,7 +1159,27 @@ function ChatApp() {
                   </div>
                 </article>
               ))
-            )}
+              )}
+            </div>
+            {showJumpToLatest ? (
+              <button
+                type="button"
+                className="jump-to-latest"
+                onClick={() => {
+                  setShowJumpToLatest(false);
+                  window.requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
+                      const behavior = window.matchMedia?.(COMPACT_CHAT_QUERY).matches
+                        ? "auto"
+                        : "smooth";
+                      scrollToLatest(behavior);
+                    });
+                  });
+                }}
+              >
+                Jump to latest
+              </button>
+            ) : null}
           </div>
           {capabilities.length ? (
             <section className="conductor-starters" aria-label="Local NOVA status requests">
@@ -990,23 +1201,65 @@ function ChatApp() {
               </div>
             </section>
           ) : null}
-          {showJumpToLatest ? (
-            <button
-              type="button"
-              className="jump-to-latest"
-              onClick={() => {
-                scrollToLatest("smooth");
-                setShowJumpToLatest(false);
-              }}
-            >
-              Jump to latest
-            </button>
-          ) : null}
-
           {notice ? <p className="chat-notice" role="status">{notice}</p> : null}
 
           <form className="chat-composer" onSubmit={handleSend}>
-            <label className="document-selector" htmlFor="chat-document">
+            <div className="mobile-document-control">
+              <button
+                type="button"
+                className={selectedDocumentId ? "document-trigger selected" : "document-trigger"}
+                aria-label={
+                  selectedDocument
+                    ? `Change local document, ${selectedDocument.original_name} selected`
+                    : "Add local document"
+                }
+                aria-expanded={documentMenuOpen}
+                aria-controls="mobile-document-picker"
+                onClick={() => setDocumentMenuOpen((current) => !current)}
+                disabled={
+                  models.length === 0 ||
+                  generating ||
+                  selectedConversationStatus !== "active"
+                }
+              >
+                <span aria-hidden="true">+</span>
+              </button>
+              {documentMenuOpen ? (
+                <div
+                  id="mobile-document-picker"
+                  className="mobile-document-popover"
+                  role="dialog"
+                  aria-label="Local document for this turn"
+                >
+                  <label htmlFor="mobile-chat-document">Local document for this turn</label>
+                  <select
+                    id="mobile-chat-document"
+                    value={selectedDocumentId}
+                    onChange={(event) => {
+                      setSelectedDocumentId(event.target.value);
+                      setDocumentMenuOpen(false);
+                      window.requestAnimationFrame(() => composerRef.current?.focus());
+                    }}
+                  >
+                    <option value="">None selected</option>
+                    {documents.map((document) => (
+                      <option key={document.file_id} value={document.file_id}>
+                        {document.original_name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedDocument ? (
+                    <small>{selectedDocument.original_name} is selected for the next turn.</small>
+                  ) : (
+                    <small>Choose one local document for the next turn.</small>
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <label
+              className="document-selector desktop-document-selector"
+              htmlFor="chat-document"
+            >
               <span>Local document for this turn</span>
               <select
                 id="chat-document"
@@ -1169,8 +1422,8 @@ function ConversationCollection({
   conversations: ChatConversationSummary[];
   selectedId: string | null;
   generating: boolean;
-  onOpen: (conversationId: string) => Promise<void>;
-  onRestore: (conversation: ChatConversationSummary) => Promise<void>;
+  onOpen: (conversationId: string) => void | Promise<void>;
+  onRestore: (conversation: ChatConversationSummary) => void | Promise<void>;
 }) {
   if (!conversations.length) return null;
   return (
