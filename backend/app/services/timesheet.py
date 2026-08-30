@@ -96,6 +96,10 @@ _DRIVING_FINISH_SHORTHAND_PATTERN = re.compile(
     r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)",
     re.IGNORECASE,
 )
+_ODOMETER_START_SHORTHAND_PATTERN = re.compile(
+    r"start\s+odometer(?:\s+(?:is|was))?\s+(?P<value>\d[\d,]*)",
+    re.IGNORECASE,
+)
 
 
 class TollPriceResolutionError(RuntimeError):
@@ -299,6 +303,19 @@ class TimesheetService:
         if shorthand is not None and self._can_infer_driving_finish():
             with suppress(ValueError):
                 values.append(("driving_finish", _parse_time(shorthand.group("value"))))
+
+        odometer_start_shorthand = (
+            _ODOMETER_START_SHORTHAND_PATTERN.fullmatch(lowered)
+            if not values and pending_field is None and not normalized.endswith("?")
+            else None
+        )
+        if odometer_start_shorthand is not None:
+            values.append(
+                (
+                    "odometer_start",
+                    str(int(odometer_start_shorthand.group("value").replace(",", ""))),
+                )
+            )
 
         if not values and pending_field == "odometer_finish":
             numeric_follow_up = re.fullmatch(r"\s*(\d[\d,]*)\s*", normalized)

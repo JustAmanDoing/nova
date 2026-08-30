@@ -1336,6 +1336,115 @@ def test_driving_finish_shorthand_is_structured_through_the_real_chat_path(
         assert shift.total_minutes == 480
 
 
+@pytest.mark.parametrize("model", [None, "qwen3:8b"])
+@pytest.mark.parametrize(
+    "content",
+    (
+        "Start odometer 444775",
+        "Start odometer is 444775",
+        "Start odometer was 444775",
+    ),
+)
+def test_start_odometer_shorthand_is_structured_through_the_real_chat_path(
+    tmp_path: Path,
+    content: str,
+    model: str | None,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = FailingProvider()
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 30, 8, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        application.state.timesheets.execute(TimesheetIntent("new_day"))
+        application.state.timesheets.execute(
+            TimesheetIntent(
+                "capture",
+                (
+                    ("loading_start", "05:00"),
+                    ("loading_finish", "06:30"),
+                    ("driving_start", "06:30"),
+                    ("driving_finish", "13:00"),
+                ),
+            )
+        )
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Odometer-start shorthand"},
+        ).json()["id"]
+
+        response = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={"model": model, "content": content},
+        )
+
+        assert response.status_code == 200
+        events = [json.loads(line) for line in response.text.splitlines()]
+        assert [event["type"] for event in events] == [
+            "user",
+            "capability",
+            "delta",
+            "done",
+        ]
+        assert events[1]["source"]["capability_id"] == "timesheet.capture"
+        assert events[2]["content"] == (
+            "Saved: odometer start 444,775. Total hours: 8.00."
+        )
+        assert events[-1]["message"]["capability_sources"] == [events[1]["source"]]
+        shift = application.state.timesheets.get_shift("2026-08-30")
+        assert shift is not None
+        assert shift.odometer_start == 444775
+        assert shift.total_minutes == 480
+
+
+def test_start_odometer_shorthand_boundary_stays_on_the_model_path(
+    tmp_path: Path,
+) -> None:
+    prompts = (
+        "What does start odometer 444775 mean?",
+        "If I start odometer 444775, will the totals change?",
+        "We were discussing start odometer 444775",
+        "For example, start odometer 444775",
+    )
+    application = _application(tmp_path)
+    provider = BoundaryConversationProvider(prompts)
+    with TestClient(application) as client:
+        application.state.chat.provider = provider
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 30, 8, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        application.state.timesheets.execute(TimesheetIntent("new_day"))
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Odometer-start shorthand boundary"},
+        ).json()["id"]
+
+        for prompt in prompts:
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": "qwen3:8b", "content": prompt},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+            assert [event["type"] for event in events] == [
+                "user",
+                "knowledge",
+                "delta",
+                "done",
+            ]
+            assert events[2]["content"] == "Ordinary local-model reply."
+            assert events[-1]["message"]["capability_sources"] == []
+            shift = application.state.timesheets.get_shift("2026-08-30")
+            assert shift is not None
+            assert shift.odometer_start is None
+
+        assert provider.seen_prompts == list(prompts)
+
+
 def test_driving_finish_shorthand_boundary_stays_on_the_model_path(
     tmp_path: Path,
 ) -> None:
