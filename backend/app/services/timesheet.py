@@ -52,25 +52,25 @@ _TOLL_ALIASES = {
 _CAPTURE_PATTERNS = {
     "loading_start": re.compile(
         r"\b(?:loading\s+(?:has\s+)?(?:start(?:ed)?|began)|start\s+time)"
-        r"(?:\s+at)?\s+"
+        r"(?:\s+(?:at|is|was))?\s+"
         r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b",
         re.IGNORECASE,
     ),
     "loading_finish": re.compile(
         r"\b(?:loading\s+(?:has\s+)?(?:finish(?:ed)?|ended|done)|"
-        r"(?:finish(?:ed)?|end(?:ed)?)\s+loading)(?:\s+at)?\s+"
+        r"(?:finish(?:ed)?|end(?:ed)?)\s+loading)(?:\s+(?:at|is|was))?\s+"
         r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b",
         re.IGNORECASE,
     ),
     "driving_start": re.compile(
         r"\b(?:driv(?:ing|e)\s+(?:has\s+)?(?:start(?:ed)?|began)|"
-        r"(?:start(?:ed)?|begin|began)\s+driv(?:ing|e))(?:\s+at)?\s+"
+        r"(?:start(?:ed)?|begin|began)\s+driv(?:ing|e))(?:\s+(?:at|is|was))?\s+"
         r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b",
         re.IGNORECASE,
     ),
     "driving_finish": re.compile(
         r"\b(?:driv(?:ing|e)\s+(?:has\s+)?(?:finish(?:ed)?|ended|done)|"
-        r"(?:finish(?:ed)?|end(?:ed)?)\s+driv(?:ing|e))(?:\s+at)?\s+"
+        r"(?:finish(?:ed)?|end(?:ed)?)\s+driv(?:ing|e))(?:\s+(?:at|is|was))?\s+"
         r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b",
         re.IGNORECASE,
     ),
@@ -98,6 +98,10 @@ _DRIVING_FINISH_SHORTHAND_PATTERN = re.compile(
 )
 _ODOMETER_START_SHORTHAND_PATTERN = re.compile(
     r"start\s+odometer(?:\s+(?:is|was))?\s+(?P<value>\d[\d,]*)",
+    re.IGNORECASE,
+)
+_ODOMETER_FINISH_SHORTHAND_PATTERN = re.compile(
+    r"finish\s+odometer(?:\s+(?:is|was))?\s+(?P<value>\d[\d,]*)",
     re.IGNORECASE,
 )
 
@@ -274,6 +278,8 @@ class TimesheetService:
             return TimesheetIntent("complete")
         if self._is_ordinary_timesheet_discussion(normalized, lowered):
             return None
+        if normalized.endswith("?"):
+            return None
 
         values: list[tuple[str, str]] = []
         for field, pattern in _CAPTURE_PATTERNS.items():
@@ -314,6 +320,19 @@ class TimesheetService:
                 (
                     "odometer_start",
                     str(int(odometer_start_shorthand.group("value").replace(",", ""))),
+                )
+            )
+
+        odometer_finish_shorthand = (
+            _ODOMETER_FINISH_SHORTHAND_PATTERN.fullmatch(lowered)
+            if not values and pending_field is None and not normalized.endswith("?")
+            else None
+        )
+        if odometer_finish_shorthand is not None:
+            values.append(
+                (
+                    "odometer_finish",
+                    str(int(odometer_finish_shorthand.group("value").replace(",", ""))),
                 )
             )
 
