@@ -214,6 +214,91 @@ def test_driving_finish_shorthand_rejects_nonqualifying_structured_state(
 @pytest.mark.parametrize(
     "content",
     (
+        "Start odometer 444775",
+        "Start odometer is 444775",
+        "Start odometer was 444775",
+    ),
+)
+def test_start_odometer_shorthand_saves_the_start_reading(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    service = _service(tmp_path)
+
+    intent = service.match(content)
+
+    assert intent == TimesheetIntent("capture", (("odometer_start", "444775"),))
+    result = service.execute(intent)
+    assert result.content == "Saved: odometer start 444,775."
+    assert result.source.capability_id == "timesheet.capture"
+    shift = service.get_shift("2026-08-21")
+    assert shift is not None
+    assert shift.odometer_start == 444775
+    with closing(sqlite3.connect(service.database_path)) as connection:
+        events = connection.execute(
+            "SELECT event_type, field_name, new_value FROM timesheet_events "
+            "WHERE field_name = 'odometer_start' ORDER BY sequence"
+        ).fetchall()
+    assert events == [("field_saved", "odometer_start", "444775")]
+
+
+@pytest.mark.parametrize(
+    "content",
+    (
+        "What does start odometer 444775 mean?",
+        "If I start odometer 444775, will the totals change?",
+        "We were discussing start odometer 444775",
+        "For example, start odometer 444775",
+    ),
+)
+def test_start_odometer_shorthand_rejects_ordinary_chat_boundaries(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    service = _service(tmp_path)
+    service.execute(service.match("loading started 5am"))  # type: ignore[arg-type]
+
+    assert service.match(content) is None
+
+    shift = service.get_shift("2026-08-21")
+    assert shift is not None
+    assert shift.odometer_start is None
+    with closing(sqlite3.connect(service.database_path)) as connection:
+        event_count = connection.execute(
+            "SELECT COUNT(*) FROM timesheet_events WHERE field_name = 'odometer_start'"
+        ).fetchone()[0]
+    assert event_count == 0
+
+
+@pytest.mark.parametrize(
+    "content",
+    (
+        "Starting odometer 444,775 km",
+        "Start odometer reading is 444,775 km",
+        "Beginning odometer 444775",
+        "Start mileage 444775",
+    ),
+)
+def test_start_odometer_shorthand_does_not_expand_beyond_the_approved_family(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    service = _service(tmp_path)
+
+    intent = service.match(content)
+
+    assert intent is None or intent.kind == "unsupported"
+    assert service.get_shift("2026-08-21") is None
+    with closing(sqlite3.connect(service.database_path)) as connection:
+        event_count = connection.execute(
+            "SELECT COUNT(*) FROM timesheet_events WHERE field_name = 'odometer_start'"
+        ).fetchone()[0]
+    assert event_count == 0
+
+
+@pytest.mark.parametrize(
+    "content",
+    (
         "Could we discuss what start time would avoid traffic tomorrow?",
         "Let's talk about start time 5am for tomorrow.",
         "We were discussing how loading started at 5am in the example.",
