@@ -3,7 +3,7 @@ import re
 import sqlite3
 from _thread import RLock
 from collections.abc import Callable
-from contextlib import closing
+from contextlib import closing, suppress
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta, timezone
 from html.parser import HTMLParser
@@ -90,6 +90,12 @@ _CAPTURE_PATTERNS = {
         re.IGNORECASE,
     ),
 }
+_DRIVING_FINISH_SHORTHAND_PATTERN = re.compile(
+    r"(?:finish\s+at|finished(?:\s+at)?|i\s+finished\s+at|"
+    r"finish\s+time(?:\s+(?:is|was))?)\s+"
+    r"(?P<value>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)",
+    re.IGNORECASE,
+)
 
 
 class TollPriceResolutionError(RuntimeError):
@@ -285,6 +291,15 @@ class TimesheetService:
                 continue
             values.append((field, value))
 
+        shorthand = (
+            _DRIVING_FINISH_SHORTHAND_PATTERN.fullmatch(lowered)
+            if not values and pending_field is None and not normalized.endswith("?")
+            else None
+        )
+        if shorthand is not None and self._can_infer_driving_finish():
+            with suppress(ValueError):
+                values.append(("driving_finish", _parse_time(shorthand.group("value"))))
+
         if not values and pending_field == "odometer_finish":
             numeric_follow_up = re.fullmatch(r"\s*(\d[\d,]*)\s*", normalized)
             if numeric_follow_up is not None:
@@ -413,6 +428,20 @@ class TimesheetService:
                 ).fetchone()
                 is not None
             )
+
+    def _can_infer_driving_finish(self) -> bool:
+        current_date = self._brisbane_date().isoformat()
+        with closing(self._connection()) as connection:
+            row = connection.execute(
+                "SELECT driving_start, driving_finish FROM timesheet_shifts "
+                "WHERE shift_date = ? AND status = 'open'",
+                (current_date,),
+            ).fetchone()
+        return bool(
+            row is not None
+            and row["driving_start"] is not None
+            and row["driving_finish"] is None
+        )
 
     @staticmethod
     def _is_ordinary_timesheet_discussion(content: str, lowered: str) -> bool:

@@ -1267,3 +1267,121 @@ def test_unparsed_active_timesheet_turn_returns_structured_clarification(
         assert shift is not None
         assert shift.loading_start == "05:00"
         assert shift.loading_finish is None
+
+
+@pytest.mark.parametrize("model", [None, "qwen3:8b"])
+@pytest.mark.parametrize(
+    "content",
+    (
+        "Finish at 1pm",
+        "Finished at 1pm",
+        "Finished 1pm",
+        "I finished at 1pm",
+        "Finish time 1pm",
+        "Finish time was 1pm",
+        "Finish time is 1pm",
+    ),
+)
+def test_driving_finish_shorthand_is_structured_through_the_real_chat_path(
+    tmp_path: Path,
+    content: str,
+    model: str | None,
+) -> None:
+    application = _application(tmp_path)
+    with TestClient(application) as client:
+        application.state.chat.provider = FailingProvider()
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 30, 8, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        application.state.timesheets.execute(TimesheetIntent("new_day"))
+        application.state.timesheets.execute(
+            TimesheetIntent(
+                "capture",
+                (
+                    ("loading_start", "05:00"),
+                    ("loading_finish", "06:30"),
+                    ("driving_start", "06:30"),
+                ),
+            )
+        )
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Driving-finish shorthand"},
+        ).json()["id"]
+
+        response = client.post(
+            f"/api/v1/chat/conversations/{conversation_id}/messages",
+            headers=INTENT,
+            json={"model": model, "content": content},
+        )
+
+        assert response.status_code == 200
+        events = [json.loads(line) for line in response.text.splitlines()]
+        assert [event["type"] for event in events] == [
+            "user",
+            "capability",
+            "delta",
+            "done",
+        ]
+        assert events[1]["source"]["capability_id"] == "timesheet.capture"
+        assert events[2]["content"] == (
+            "Saved: driving finish 13:00. Total hours: 8.00."
+        )
+        assert events[-1]["message"]["capability_sources"] == [events[1]["source"]]
+        shift = application.state.timesheets.get_shift("2026-08-30")
+        assert shift is not None
+        assert shift.driving_start == "06:30"
+        assert shift.driving_finish == "13:00"
+        assert shift.total_minutes == 480
+
+
+def test_driving_finish_shorthand_boundary_stays_on_the_model_path(
+    tmp_path: Path,
+) -> None:
+    prompts = (
+        "What finishes at 1pm?",
+        "Does the meeting finish at 1pm?",
+        "If I finish at 1pm, will traffic be bad?",
+        "We were talking about finishing at 1pm",
+        "The movie finishes at 1pm",
+        "Finish at 1pm?",
+    )
+    application = _application(tmp_path)
+    provider = BoundaryConversationProvider(prompts)
+    with TestClient(application) as client:
+        application.state.chat.provider = provider
+        application.state.timesheets.now = lambda: datetime(
+            2026, 8, 30, 8, 0, tzinfo=BRISBANE_TIMEZONE
+        )
+        application.state.timesheets.execute(TimesheetIntent("new_day"))
+        application.state.timesheets.execute(
+            TimesheetIntent("capture", (("driving_start", "06:30"),))
+        )
+        conversation_id = client.post(
+            "/api/v1/chat/conversations",
+            headers=INTENT,
+            json={"title": "Driving-finish shorthand boundary"},
+        ).json()["id"]
+
+        for prompt in prompts:
+            response = client.post(
+                f"/api/v1/chat/conversations/{conversation_id}/messages",
+                headers=INTENT,
+                json={"model": "qwen3:8b", "content": prompt},
+            )
+            assert response.status_code == 200
+            events = [json.loads(line) for line in response.text.splitlines()]
+            assert [event["type"] for event in events] == [
+                "user",
+                "knowledge",
+                "delta",
+                "done",
+            ]
+            assert events[2]["content"] == "Ordinary local-model reply."
+            assert events[-1]["message"]["capability_sources"] == []
+            shift = application.state.timesheets.get_shift("2026-08-30")
+            assert shift is not None
+            assert shift.driving_finish is None
+
+        assert provider.seen_prompts == list(prompts)
