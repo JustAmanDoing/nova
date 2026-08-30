@@ -110,6 +110,110 @@ def test_owner_word_order_combined_times_and_repeated_toll_quantity_are_parsed(
 @pytest.mark.parametrize(
     "content",
     (
+        "Finish at 1pm",
+        "Finished at 1pm",
+        "Finished 1pm",
+        "I finished at 1pm",
+        "Finish time 1pm",
+        "Finish time was 1pm",
+        "Finish time is 1pm",
+    ),
+)
+def test_driving_finish_shorthand_requires_unambiguous_current_shift_state(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    service = _service(tmp_path)
+    service.execute(service.match("driving started 6:30"))  # type: ignore[arg-type]
+
+    intent = service.match(content)
+
+    assert intent == TimesheetIntent("capture", (("driving_finish", "13:00"),))
+    result = service.execute(intent)
+    assert result.content == "Saved: driving finish 13:00."
+    assert result.source.capability_id == "timesheet.capture"
+    shift = service.get_shift("2026-08-21")
+    assert shift is not None
+    assert shift.driving_finish == "13:00"
+    with closing(sqlite3.connect(service.database_path)) as connection:
+        events = connection.execute(
+            "SELECT event_type, field_name, new_value FROM timesheet_events "
+            "WHERE field_name = 'driving_finish' ORDER BY sequence"
+        ).fetchall()
+    assert events == [("field_saved", "driving_finish", "13:00")]
+
+
+@pytest.mark.parametrize(
+    "content",
+    (
+        "What finishes at 1pm?",
+        "Does the meeting finish at 1pm?",
+        "If I finish at 1pm, will traffic be bad?",
+        "We were talking about finishing at 1pm",
+        "The movie finishes at 1pm",
+        "Finish at 1pm?",
+    ),
+)
+def test_driving_finish_shorthand_rejects_questions_hypotheticals_and_discussion(
+    tmp_path: Path,
+    content: str,
+) -> None:
+    service = _service(tmp_path)
+    service.execute(service.match("driving started 6:30"))  # type: ignore[arg-type]
+
+    assert service.match(content) is None
+
+    shift = service.get_shift("2026-08-21")
+    assert shift is not None
+    assert shift.driving_finish is None
+    with closing(sqlite3.connect(service.database_path)) as connection:
+        event_count = connection.execute(
+            "SELECT COUNT(*) FROM timesheet_events WHERE field_name = 'driving_finish'"
+        ).fetchone()[0]
+    assert event_count == 0
+
+
+def test_driving_finish_shorthand_rejects_nonqualifying_structured_state(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+    assert service.match("Finish at 1pm") is None
+
+    service.execute(service.match("loading started 5am"))  # type: ignore[arg-type]
+    assert service.match("Finish at 1pm") is None
+
+    service.execute(service.match("driving started 6:30"))  # type: ignore[arg-type]
+    assert service.match("Finish at 1pm", pending_field="odometer_finish") is None
+
+    explicit_finish = service.match("driving finished 12:30pm")
+    assert explicit_finish is not None
+    service.execute(explicit_finish)
+    assert service.match("Finish at 1pm") is None
+    shift = service.get_shift("2026-08-21")
+    assert shift is not None
+    assert shift.driving_finish == "12:30"
+
+    previous_day_root = tmp_path / "previous-day"
+    previous_day_root.mkdir()
+    previous_day = _service(previous_day_root)
+    previous_day.execute(
+        previous_day.match("driving started 6:30")  # type: ignore[arg-type]
+    )
+    next_day = TimesheetService(
+        previous_day.database_path,
+        RLock(),
+        now=lambda: datetime(2026, 8, 22, 5, 0, tzinfo=BRISBANE_TIMEZONE),
+    )
+    assert next_day.match("Finish at 1pm") is None
+    previous_shift = next_day.get_shift("2026-08-21")
+    assert previous_shift is not None
+    assert previous_shift.driving_start == "06:30"
+    assert previous_shift.driving_finish is None
+
+
+@pytest.mark.parametrize(
+    "content",
+    (
         "Could we discuss what start time would avoid traffic tomorrow?",
         "Let's talk about start time 5am for tomorrow.",
         "We were discussing how loading started at 5am in the example.",
